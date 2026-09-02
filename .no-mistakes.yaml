@@ -1,0 +1,6 @@
+ci:
+  no_ci: true
+
+test:
+  evidence:
+    store_in_repo: true

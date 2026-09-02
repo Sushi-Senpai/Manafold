@@ -1,0 +1,89 @@
+schema_version: 2
+last_updated: 2026-09-02
+
+taxonomy:
+  features:
+    - card-data
+    - deck-building
+    - ai-assist
+    - import-export
+  platform:
+    - platform-shell
+    - account-access
+
+arrows:
+  platform-shell:
+    status: MAPPED
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: [account-access, card-data, deck-building]
+    blockedBy: []
+    detail: platform-shell.md
+    next: "M1 landed: chi router + per-domain register helpers + config fail-fast + embedded migrations at startup + /health + cmd/cardsync binary + Next.js app-router shell + same-origin proxy. Deferred: graceful shutdown (PLATFORM-007)."
+    drift: null
+
+  account-access:
+    status: DRAFT
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: [deck-building]
+    blockedBy: [platform-shell]
+    detail: account-access.md
+    next: "M1 uses the DevAuth stub only (ACCT-001). M3: implement email + password (argon2id) + server-side sessions + anonymous drafts + claim-on-sign-in. Design must not preclude OAuth providers later."
+    drift: null
+
+  card-data:
+    status: MAPPED
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: [deck-building, import-export, ai-assist]
+    blockedBy: [platform-shell]
+    detail: card-data.md
+    next: "M1 landed: cards / card_prints / card_rulings / sync_runs / banlist_overrides schema; internal/cardsync ingests the Oracle + Default bulk exports with derived singleton_limit / can_be_commander and color_identity verbatim; GET /api/cards/search + /autocomplete over the mirror. Deferred: single-printing fallback (CARD-009, M2), oracle_tags ingestion (CARD-010)."
+    drift: null
+
+  deck-building:
+    status: MAPPED
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: [ai-assist, import-export]
+    blockedBy: [card-data, account-access]
+    detail: deck-building.md
+    next: "M1 landed: decks / deck_cards schema; internal/deckrules (identity, singleton, count, banlist, commander shape + partner); deck CRUD + commander assignment + add/remove cards + GET /validation; ownership in-query (404); read-only public deck view; /decks list + /decks/[id] builder. Deferred: real deck stats (DECK-051, M2), bootstrapping wizard, functional-subtype grouping, swap UX."
+    drift: null
+
+  import-export:
+    status: DRAFT
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: []
+    blockedBy: [card-data, deck-building]
+    detail: import-export.md
+    next: "No code in M1. M2: plain-text + MTGA + Moxfield + Archidekt parsers/emitters, imports audit table, parse-then-apply endpoints, unresolved-name reporting."
+    drift: null
+
+  ai-assist:
+    status: DRAFT
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: []
+    blockedBy: [card-data, deck-building]
+    detail: ai-assist.md
+    next: "No AI code in M1 beyond an internal/ai stub wired into server.Deps. M4: Anthropic Claude wrapper + search_cards tool + suggest-&-explain + the validate-every-returned-card gate. EDHREC synergy data (AI-040) blocked on a ToS decision."
+    drift: null
+
+unmapped:
+  docs:
+    intent: [collections, social]

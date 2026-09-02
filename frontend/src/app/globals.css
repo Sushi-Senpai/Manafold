@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/*
+ * Manafold design tokens. Semantic aliases (background/surface/foreground/
+ * primary/accent/border) are declared as literal values here — NOT as
+ * var(--color-*) cross-references — because Tailwind v4 resolves @theme
+ * cross-references at build time and bakes the resolved value into generated
+ * utilities, which makes a runtime `.workspace` override a no-op. Keeping them
+ * as independent literals means utilities compile to `var(--color-background)`
+ * itself, which the ".workspace" block below can reach at runtime.
+ */
+@theme {
+  --color-mana-ink: #14121a;
+  --color-mana-parchment: #f4f1ea;
+  --color-mana-violet: #6d3bd1;
+  --color-mana-gold: #c9a227;
+
+  /* Default (marketing) theme: dark. */
+  --color-background: #14121a;
+  --color-surface: #1e1b26;
+  --color-foreground: #ece9f1;
+  --color-primary: #8b5cf6;
+  --color-accent: #c9a227;
+  --color-border: #2b2733;
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+/*
+ * The in-app builder uses a lighter theme — easier for long deckbuilding
+ * sessions. Applied to the (app) route group's layout wrapper. Plain CSS, not
+ * @theme, so it overrides the custom properties themselves at runtime.
+ *
+ * @spec PLATFORM-023
+ */
+.workspace {
+  --color-background: #f4f1ea;
+  --color-surface: #ffffff;
+  --color-foreground: #14121a;
+  --color-primary: #6d3bd1;
+  --color-accent: #9a7b16;
+  --color-border: #e2ddd0;
+}

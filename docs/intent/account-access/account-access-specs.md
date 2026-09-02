@@ -1,0 +1,30 @@
+# Account & Access — EARS Specs
+
+## Identity Middleware
+
+- [x] **ACCT-001**: Where `DEV_AUTH=true`, the system shall attach an authenticated user ID to every `/api/*` request via a fixed dev-user stub (`dev-local-user`), upserting that user on first request, instead of session-based authentication (local development and CI only, off by default).
+- [x] **ACCT-002**: The system shall read the caller's identity in every handler through one accessor (`authctx.UserID`), independent of which auth middleware set it.
+- [x] **ACCT-015**: When any frontend API request receives a `401` response, the system shall redirect the client to `/`, so pages carry no per-page logged-out logic.
+- [x] **ACCT-016**: The system shall route every browser-facing request to `/api/*` through a same-origin rewrite on the frontend's own domain to the backend, so the session cookie is scoped first-party to the frontend's origin rather than as a third-party cookie subject to browser blocking.
+- [ ] **ACCT-003**: If an `/api/*` request outside `/api/auth/*`, `/api/public/*`, and `/health` carries no valid, unexpired session (and no accepted anonymous-draft token), then the system shall respond `401` and shall not invoke the downstream handler.
+
+## Email + Password (M3)
+
+- [ ] **ACCT-010**: When a client registers with an email and a password of at least 10 characters, the system shall reject a duplicate email with `409`, otherwise hash the password with argon2id (parameters encoded in the stored hash), create the user, create a 30-day session, and set the session cookie.
+- [ ] **ACCT-011**: When a client logs in, the system shall verify the password against the stored hash in constant time, create a session and set the cookie on success, and on any failure respond `401` with a message that does not distinguish an unknown email from a wrong password.
+- [ ] **ACCT-012**: When a client logs out, the system shall delete the session row and clear the session cookie.
+- [ ] **ACCT-013**: The system shall set the session cookie `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, with an expiry matching the session row's `expires_at`.
+- [ ] **ACCT-014**: When a client calls `GET /api/auth/session`, the system shall return whether a valid session is present without ever responding `401`.
+- [ ] **ACCT-017**: If more than a threshold of failed `/api/auth/login` or `/api/auth/register` attempts arrive from one client IP within a window, then the system shall respond `429` until the window passes.
+- [ ] **ACCT-018**: The system shall store `password_hash` as nullable on `users` and model sessions independently of the authentication method, so an OAuth provider can be added later without migrating existing accounts.
+
+## Anonymous Drafts (M3, owned with `deck-building`)
+
+- [ ] **ACCT-020**: Where a request carries no session but carries an `X-Anon-Token` header, the system shall resolve the caller to that token so `deck-building` can own decks by it.
+- [ ] **ACCT-021**: When a client calls `POST /api/auth/claim-drafts` with an anonymous-draft token while authenticated, the system shall, in one transaction, reassign every deck owned by that token to the authenticated user and clear the token.
+
+## Deferred
+
+- [D] **ACCT-030**: The system shall support authenticating via one or more OAuth providers through a `user_identities` table and the authorization-code flow.
+- [D] **ACCT-031**: The system shall send a verification email on registration and support a password-reset token flow.
+- [D] **ACCT-032**: When a client calls `DELETE /api/auth/sessions`, the system shall delete every session row for that user.

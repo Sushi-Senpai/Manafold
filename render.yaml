@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: manafold-backend
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: DEV_AUTH
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  # Daily Scryfall bulk-data sync. Runs the standalone cmd/cardsync binary
+  # built into the same image; downloads the Oracle Cards + Default Cards
+  # bulk exports and upserts them into cards / card_prints / card_rulings,
+  # writing a sync_runs row. See docs/intent/card-data/.
+  - type: cron
+    name: manafold-cardsync
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free
+    region: oregon
+    schedule: "0 9 * * *"
+    dockerCommand: /app/cardsync
+    envVars:
+      - key: DATABASE_URL
+        sync: false
