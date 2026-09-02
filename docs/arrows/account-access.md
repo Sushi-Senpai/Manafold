@@ -27,7 +27,8 @@ implemented (M1). The email + password flow is designed, not built.
 - backend/internal/middleware/devauth.go (ACCT-001)
 - backend/internal/authctx/context.go (ACCT-002)
 - frontend/src/lib/api.ts (401 redirect — ACCT-015), frontend/next.config.ts (same-origin proxy — ACCT-016), frontend/src/proxy.ts (pass-through)
-- (M3) backend/internal/middleware/session.go, backend/internal/sessioncookie/cookie.go, backend/internal/api/auth.go, backend/internal/db/queries/auth.sql
+- backend/internal/middleware/session.go, backend/internal/sessioncookie/cookie.go, backend/internal/db/queries/{users,sessions}.sql — ship in M1 so the `SessionAuth` path compiles and is test-covered; unused while `DEV_AUTH=true`
+- (M3) backend/internal/api/auth.go — the `/api/auth/*` register + login/logout handlers
 
 ## Architecture
 

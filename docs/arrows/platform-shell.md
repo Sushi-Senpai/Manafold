@@ -33,7 +33,7 @@ audited as a full segment.
 - backend/cmd/api/main.go, backend/cmd/cardsync/main.go
 - backend/internal/server/server.go (`New`, `registerCardRoutes`, `registerDeckRoutes`, `healthHandler`)
 - backend/internal/config/config.go
-- backend/internal/api/api.go, backend/internal/api/helpers.go
+- backend/internal/api/api.go, backend/internal/api/convert.go
 - backend/internal/db/migrate.go, backend/internal/db/generated/* (sqlc)
 - frontend/src/app/layout.tsx, globals.css, src/proxy.ts
 - frontend/next.config.ts, frontend/src/lib/api.ts, frontend/src/lib/deck.ts
@@ -48,7 +48,7 @@ shared plumbing, migrations, the frontend shell.
    helpers; no CORS (same-origin proxy instead); no graceful shutdown.
 2. `cmd/cardsync` — the daily sync as a separate process in the same image.
 3. Embedded migrations applied at startup before the pool opens.
-4. Shared handler infra — `api.go` / `helpers.go` / generated `db` package.
+4. Shared handler infra — `api.go` / `convert.go` / generated `db` package.
 5. Frontend substrate — root layout, Tailwind v4 semantic tokens with a
    `.workspace` runtime override, the Next 16 Proxy pass-through, the
    same-origin `/api/*` rewrite, the `lib/api.ts` client.

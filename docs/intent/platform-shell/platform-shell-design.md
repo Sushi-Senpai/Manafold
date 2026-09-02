@@ -50,15 +50,18 @@ one flat list. Each helper lives in the segment that owns those routes' handlers
 dependency (`Pool`, `Queries`, and later `AI`), not package globals.
 
 `internal/config/config.go` loads one `Config` struct with explicit `os.Getenv`
-per field and fail-fast validation. Required always: `DATABASE_URL`,
-`FRONTEND_URL`. Required unless `DEV_AUTH=true`: nothing in M1 (the real login
-flow is M3, at which point the argon2id/session config becomes required unless
-`DEV_AUTH=true`). `ANTHROPIC_API_KEY` becomes required at M4. `PORT` defaults to
-`8080`; `.env.example` documents the same value — no mismatch.
+per field and fail-fast validation. `config.Load` is the API server's path and
+requires both `DATABASE_URL` and `FRONTEND_URL`; `config.LoadCardsync` is the
+sync job's path and requires only `DATABASE_URL`, since that process has no HTTP
+surface and never needs the frontend origin. Required unless `DEV_AUTH=true`:
+nothing in M1 (the real login flow is M3, at which point the argon2id/session
+config becomes required unless `DEV_AUTH=true`). `ANTHROPIC_API_KEY` becomes
+required at M4. `PORT` defaults to `8080`; `.env.example` documents the same
+value — no mismatch.
 
-`internal/api/api.go` + `internal/api/helpers.go` are the shared foundation:
+`internal/api/api.go` + `internal/api/convert.go` are the shared foundation:
 the `API` struct, `writeJSON` / `writeError`, and `pgtype` conversion helpers
-(`textOrNull`, `parseUUID`, …). `internal/db/generated/` holds the sqlc output
+(`textPtr`, `rawOrNull`, `parseUUID`, …). `internal/db/generated/` holds the sqlc output
 (`db.go`, `models.go`, `querier.go`, `*.sql.go`) — referenced by every backend
 segment, never hand-edited. sqlc config: v2, `engine: postgresql`,
 `sql_package: pgx/v5`, `emit_interface: true`, `emit_json_tags: true`, `jsonb` →
@@ -68,7 +71,8 @@ segment, never hand-edited. sqlc config: v2, `engine: postgresql`,
 ## Backend: Standalone Binaries
 
 `cmd/cardsync/main.go` is a second `main` package in the same module and Docker
-image: it loads config, opens a pool, and runs `cardsync.Run` (see `card-data`).
+image: it loads its DB-only config (`config.LoadCardsync`), applies every pending
+embedded migration, opens a pool, and runs `cardsync.Run` (see `card-data`).
 It exists so the daily sync is a plain process with no HTTP surface, invokable as
 a Render cron (`dockerCommand: /app/cardsync`) and as `go run ./cmd/cardsync`
 for local seeding. The Dockerfile builds both `cmd/api` and `cmd/cardsync`.
@@ -137,7 +141,7 @@ set carried over in spirit from the sibling project.
 
 - Code: `backend/cmd/api/main.go`, `backend/cmd/cardsync/main.go`,
   `backend/internal/server/server.go`, `backend/internal/config/config.go`,
-  `backend/internal/api/api.go`, `backend/internal/api/helpers.go`,
+  `backend/internal/api/api.go`, `backend/internal/api/convert.go`,
   `backend/internal/db/migrate.go`, `backend/internal/db/generated/*`
 - Hosting: `backend/Dockerfile`, `render.yaml`, `.github/workflows/ci.yml`
 - Frontend: `frontend/src/app/layout.tsx`, `globals.css`, `src/proxy.ts`,

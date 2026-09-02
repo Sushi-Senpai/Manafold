@@ -40,10 +40,16 @@ only routes outside the protected group.
 
 ## Email + Password (M3)
 
-### Schema (migration `add_credentials`, M3)
+### Schema (migration `000002_create_users`, ships in M1)
 
-- `users` gains `email` (already unique) and `password_hash` text null (null for
-  a future OAuth-only user), `email_verified_at` timestamptz null.
+The tables ship in M1 so `SessionAuth` and its queries compile; only `DevAuth`
+writes to them until M3.
+
+- `users` — `id uuid pk`, `email text not null unique`, `name text`,
+  `password_hash text null` (null for a future OAuth-only user),
+  `email_verified_at timestamptz null`, `created_at` / `updated_at`. No
+  `add_credentials` follow-up migration — the credential columns are present
+  from the start.
 - `sessions` — `id uuid pk`, `user_id uuid fk → users on delete cascade`,
   `expires_at timestamptz not null`, `created_at timestamptz not null`. Index on
   `user_id`. No `updated_at` (a session is created, read, deleted/expired, never

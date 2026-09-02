@@ -174,7 +174,7 @@ card's Oracle fields plus its newest printing's `image_uris` and `prices`
 last, then `name`. Page size 60.
 
 The parser is a small hand-written tokenizer in `internal/cardsearch`
-(`ParseQuery(string) (Query, error)`), separate from the handler and unit-tested,
+(`Parse(string) (Query, error)`), separate from the handler and unit-tested,
 because Scryfall's syntax grows and the parse step is where a
 plausible-but-wrong query silently returns the wrong cards.
 

@@ -28,7 +28,7 @@ validation report, and the read-only public deck view.
 - backend/internal/deckrules/ (`Validate`, partner-variant parsing)
 - backend/internal/deckstats/ (`Analyze` — counts + avg mana value stub)
 - backend/internal/api/decks.go (`registerDeckRoutes` + all deck handlers, ownership scoped in queries)
-- backend/internal/db/migrations/000002_create_decks.up.sql / .down.sql
+- backend/internal/db/migrations/000003_create_decks.up.sql / .down.sql
 - backend/internal/db/queries/decks.sql
 - frontend/src/app/(app)/decks/page.tsx, frontend/src/app/(app)/decks/[id]/page.tsx
 - frontend/src/lib/deck.ts

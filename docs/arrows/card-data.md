@@ -20,8 +20,9 @@ The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
 - docs/intent/card-data/card-data-specs.md (CARD-001..011, CARD-020..024, CARD-030)
 
 ### Tests
-- backend/internal/cardsync/cardsync_test.go (`TestRun_IngestsFixtureAndDerivesFields`) — CARD-001, CARD-002 (verbatim color_identity), CARD-003, CARD-004, CARD-005, CARD-007
-- backend/internal/cardsync/httpfetch_test.go (`TestHTTPFetcher_SendsEtiquetteHeadersAndRetriesOn429`) — CARD-006
+- backend/internal/cardsync/cardsync_test.go (`TestRun_IngestsFixture_DerivesFields`) — CARD-001, CARD-002 (verbatim color_identity), CARD-003, CARD-004, CARD-005, CARD-007
+- backend/internal/cardsync/derive_test.go (`TestDeriveSingletonLimit`, `TestDeriveCanBeCommander`) — CARD-003, CARD-004
+- CARD-006 (etiquette headers + single 30 s back-off on HTTP 429) is implemented in `cardsync.go` (`get`, `retryBackoff`) but has no dedicated `@spec` test yet — coverage gap.
 - backend/internal/cardsearch/cardsearch_test.go — CARD-022, CARD-023
 - backend/internal/api/cards_test.go — CARD-020, CARD-021, CARD-023
 - CARD-008 / CARD-024 (no Scryfall call on a client request path) are a negative
@@ -31,7 +32,7 @@ The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
 
 ### Code
 - backend/internal/cardsync/ (`Run`, bulk manifest fetch, streaming JSONL upsert, derived fields)
-- backend/internal/cardsearch/ (`ParseQuery`, predicate → SQL)
+- backend/internal/cardsearch/ (`Parse`, predicate → SQL via `Query.WhereSQL`)
 - backend/internal/api/cards.go (`registerCardRoutes`, search + autocomplete handlers)
 - backend/cmd/cardsync/main.go
 - backend/internal/db/migrations/000001_create_card_data.up.sql / .down.sql
@@ -57,13 +58,14 @@ The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
 
 | Category | Spec IDs | Implemented | Deferred | Gaps |
 |---|---|---|---|---|
-| Sync job | CARD-001..008 | 7 | 0 | 0 (CARD-006 429-retry exercised via a stubbed transport) |
+| Sync job | CARD-001..008 | 7 | 0 | 1 (CARD-006 implemented in `get` / `retryBackoff` but has no dedicated test) |
 | Single-printing fallback | CARD-009 | 0 | 0 | 1 (M2) |
 | oracle_tags / all_cards | CARD-010, CARD-011 | 0 | 2 | 0 |
 | Search & autocomplete | CARD-020..024 | 5 | 0 | 0 |
 | Banlist overrides | CARD-030 | 1 | 0 | 0 |
 
-**Summary:** 13 of 16 implemented; 1 gap (CARD-009, M2); 2 deferred.
+**Summary:** 13 of 16 implemented; gaps: CARD-009 (M2) and no dedicated test
+for CARD-006's 429 back-off; 2 deferred.
 
 ## Key Findings
 

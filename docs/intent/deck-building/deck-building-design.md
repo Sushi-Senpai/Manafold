@@ -217,7 +217,7 @@ outside colour identity — it does not silently reject or silently accept
 
 - Code: `backend/internal/deckrules/`, `backend/internal/deckstats/`,
   `backend/internal/api/decks.go`,
-  `backend/internal/db/migrations/000002_create_decks.up.sql`,
+  `backend/internal/db/migrations/000003_create_decks.up.sql`,
   `backend/internal/db/queries/decks.sql`
 - Tests: `backend/internal/deckrules/deckrules_test.go`,
   `backend/internal/api/decks_test.go`
