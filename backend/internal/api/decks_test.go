@@ -292,4 +292,18 @@ func TestAddCard_ViolationFlagScopedToCountedBoards(t *testing.T) {
 	if len(report.ColorIdentityViolations) != 1 || report.ColorIdentityViolations[0].CardID != uuidString(outOfIdentity) {
 		t.Fatalf("validation violations = %+v, want exactly the main-board copy", report.ColorIdentityViolations)
 	}
+
+	// GET /decks/{id} scopes the per-entry flag the same way: the same card on
+	// the mainboard is flagged, the maybeboard copy is not.
+	rec = serve(t, a, owner, http.MethodGet, "/decks/"+deckID, nil)
+	detail := decode[deckDetailJSON](t, rec)
+	if len(detail.Boards["main"]) != 1 || !detail.Boards["main"][0].ColorIdentityViolation {
+		t.Fatalf("main-board entry not flagged: %+v", detail.Boards["main"])
+	}
+	if len(detail.Boards["maybe"]) != 1 || detail.Boards["maybe"][0].ColorIdentityViolation {
+		t.Fatalf("maybeboard entry leaked the colour-identity flag: %+v", detail.Boards["maybe"])
+	}
+	if len(detail.Boards["maybe"][0].OffendingColors) != 0 {
+		t.Fatalf("maybeboard entry carries offending_colors: %+v", detail.Boards["maybe"][0].OffendingColors)
+	}
 }

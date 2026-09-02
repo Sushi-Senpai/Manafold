@@ -16,6 +16,12 @@ import (
 
 var validBoards = map[string]bool{"command": true, "main": true, "maybe": true, "sideboard": true}
 
+// countedBoard reports whether a board counts toward the 100-card deck and is
+// checked for colour-identity and singleton violations (DECK-004, DECK-006);
+// maybe and sideboard are staging areas that are never flagged. It mirrors the
+// predicate deckrules.Validate applies internally.
+func countedBoard(board string) bool { return board == "main" || board == "command" }
+
 type deckJSON struct {
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`
@@ -181,6 +187,9 @@ func (ld *loadedDeck) detailJSON() deckDetailJSON {
 	}
 
 	addFlags := func(e deckEntryJSON) deckEntryJSON {
+		if !countedBoard(e.Board) {
+			return e
+		}
 		if o, ok := offending[e.CardID]; ok {
 			e.ColorIdentityViolation = true
 			e.OffendingColors = o
@@ -528,7 +537,7 @@ func (a *API) addCard(w http.ResponseWriter, r *http.Request) {
 	// the main and command boards — the same boards GET /decks/{id}/validation
 	// counts. A card staged on maybe/sideboard is never flagged, so the probe is
 	// skipped entirely for those boards and the two endpoints stay in agreement.
-	if board == "main" || board == "command" {
+	if countedBoard(board) {
 		deck, err := a.Queries.GetDeckForUser(r.Context(), db.GetDeckForUserParams{ID: id, UserID: callerID(r)})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to reload deck")
@@ -546,7 +555,7 @@ func (a *API) addCard(w http.ResponseWriter, r *http.Request) {
 		}
 		total := 0
 		for _, e := range all {
-			if uuidString(e.CardID) == uuidString(cardID) && (e.Board == "main" || e.Board == "command") {
+			if uuidString(e.CardID) == uuidString(cardID) && countedBoard(e.Board) {
 				total += int(e.Quantity)
 			}
 		}
