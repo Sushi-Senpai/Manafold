@@ -144,7 +144,7 @@ export const api = {
   createDeck: (name: string) =>
     request<Deck>("/api/decks", { method: "POST", body: JSON.stringify({ name }) }),
   getDeck: (id: string) => request<DeckDetail>(`/api/decks/${id}`),
-  getPublicDeck: (id: string) => request<DeckDetail>(`/api/public/decks/${id}`),
+  getPublicDeck: (id: string) => request<DeckDetail>(`/public/decks/${id}`),
   updateDeck: (id: string, patch: Partial<Pick<Deck, "name" | "description" | "is_public" | "bracket">>) =>
     request<Deck>(`/api/decks/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   setCommander: (id: string, commanderCardId: string, partnerCardId?: string) =>

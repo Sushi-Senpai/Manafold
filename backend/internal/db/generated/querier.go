@@ -11,7 +11,11 @@ import (
 )
 
 type Querier interface {
-	// @spec DECK-005
+	// Ownership is scoped in the query, exactly like the other deck_cards
+	// mutations: the INSERT ... SELECT draws deck_id from a decks row filtered by
+	// owner, so adding a card to a deck the caller does not own produces no row and
+	// the handler maps "no rows" to 404 (DECK-009).
+	// @spec DECK-005, DECK-009
 	AddDeckCard(ctx context.Context, arg AddDeckCardParams) (DeckCard, error)
 	// Up to 20 name completions for a prefix, best (lowest edhrec_rank) first.
 	// @spec CARD-020

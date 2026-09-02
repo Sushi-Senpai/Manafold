@@ -36,10 +36,22 @@ SET name = sqlc.arg(name),
 WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id)
 RETURNING *;
 
--- @spec DECK-005
+-- Ownership is scoped in the query, exactly like the other deck_cards
+-- mutations: the INSERT ... SELECT draws deck_id from a decks row filtered by
+-- owner, so adding a card to a deck the caller does not own produces no row and
+-- the handler maps "no rows" to 404 (DECK-009).
+-- @spec DECK-005, DECK-009
 -- name: AddDeckCard :one
 INSERT INTO deck_cards (deck_id, card_id, print_id, quantity, board, category)
-VALUES ($1, $2, $3, $4, $5, $6)
+SELECT d.id,
+       sqlc.arg(card_id)::uuid,
+       sqlc.narg(print_id)::uuid,
+       sqlc.arg(quantity)::integer,
+       sqlc.arg(board)::text,
+       sqlc.narg(category)::text
+FROM decks d
+WHERE d.id = sqlc.arg(deck_id)::uuid
+  AND d.user_id = sqlc.arg(user_id)::uuid
 ON CONFLICT (deck_id, card_id, board)
 DO UPDATE SET quantity = deck_cards.quantity + EXCLUDED.quantity,
               category = COALESCE(EXCLUDED.category, deck_cards.category)

@@ -1,8 +1,8 @@
 # build output
 /bin/
 manafold-backend
-api
-cardsync
+/cmd/api/api
+/cmd/cardsync/cardsync
 *.exe
 *.test
 

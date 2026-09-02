@@ -21,8 +21,8 @@
 
 ## Public Deck View
 
-- [x] **DECK-030**: While a deck is marked public, the system shall serve a read-only view of it at `GET /api/public/decks/{id}` to unauthenticated clients and shall expose no edit path for it to a non-owner.
-- [x] **DECK-031**: While a deck is not marked public, `GET /api/public/decks/{id}` shall respond `404`.
+- [x] **DECK-030**: While a deck is marked public, the system shall serve a read-only view of it at `GET /public/decks/{id}` — mounted at the router root, outside the authenticated `/api` group — to unauthenticated clients, and shall expose no edit path for it to a non-owner.
+- [x] **DECK-031**: While a deck is not marked public, `GET /public/decks/{id}` shall respond `404`, never `401`.
 
 ## Anonymous Drafts
 

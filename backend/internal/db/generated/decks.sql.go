@@ -13,7 +13,15 @@ import (
 
 const addDeckCard = `-- name: AddDeckCard :one
 INSERT INTO deck_cards (deck_id, card_id, print_id, quantity, board, category)
-VALUES ($1, $2, $3, $4, $5, $6)
+SELECT d.id,
+       $1::uuid,
+       $2::uuid,
+       $3::integer,
+       $4::text,
+       $5::text
+FROM decks d
+WHERE d.id = $6::uuid
+  AND d.user_id = $7::uuid
 ON CONFLICT (deck_id, card_id, board)
 DO UPDATE SET quantity = deck_cards.quantity + EXCLUDED.quantity,
               category = COALESCE(EXCLUDED.category, deck_cards.category)
@@ -21,23 +29,29 @@ RETURNING id, deck_id, card_id, print_id, quantity, board, category, added_at
 `
 
 type AddDeckCardParams struct {
-	DeckID   pgtype.UUID `json:"deck_id"`
 	CardID   pgtype.UUID `json:"card_id"`
 	PrintID  pgtype.UUID `json:"print_id"`
 	Quantity int32       `json:"quantity"`
 	Board    string      `json:"board"`
 	Category pgtype.Text `json:"category"`
+	DeckID   pgtype.UUID `json:"deck_id"`
+	UserID   pgtype.UUID `json:"user_id"`
 }
 
-// @spec DECK-005
+// Ownership is scoped in the query, exactly like the other deck_cards
+// mutations: the INSERT ... SELECT draws deck_id from a decks row filtered by
+// owner, so adding a card to a deck the caller does not own produces no row and
+// the handler maps "no rows" to 404 (DECK-009).
+// @spec DECK-005, DECK-009
 func (q *Queries) AddDeckCard(ctx context.Context, arg AddDeckCardParams) (DeckCard, error) {
 	row := q.db.QueryRow(ctx, addDeckCard,
-		arg.DeckID,
 		arg.CardID,
 		arg.PrintID,
 		arg.Quantity,
 		arg.Board,
 		arg.Category,
+		arg.DeckID,
+		arg.UserID,
 	)
 	var i DeckCard
 	err := row.Scan(

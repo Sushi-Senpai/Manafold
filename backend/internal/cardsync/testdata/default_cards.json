@@ -1,0 +1,49 @@
+[
+  {
+    "id": "c0000000-0000-0000-0000-0000000000a1",
+    "oracle_id": "11111111-1111-1111-1111-111111111111",
+    "name": "Manafold Test Goblin Boss",
+    "set": "tst",
+    "set_name": "Manafold Test Set",
+    "collector_number": "1",
+    "rarity": "mythic",
+    "released_at": "2020-01-01",
+    "finishes": ["nonfoil", "foil"],
+    "image_uris": { "small": "https://cards.scryfall.io/small/test1.jpg", "normal": "https://cards.scryfall.io/normal/test1.jpg" },
+    "prices": { "usd": "1.23", "eur": "1.05" },
+    "promo": false,
+    "reprint": false,
+    "digital": false
+  },
+  {
+    "id": "c0000000-0000-0000-0000-0000000000a2",
+    "oracle_id": "22222222-2222-2222-2222-222222222222",
+    "name": "Manafold Test Rat Swarm",
+    "set": "tst",
+    "set_name": "Manafold Test Set",
+    "collector_number": "2",
+    "rarity": "common",
+    "released_at": "2020-01-01",
+    "finishes": ["nonfoil"],
+    "image_uris": { "small": "https://cards.scryfall.io/small/test2.jpg", "normal": "https://cards.scryfall.io/normal/test2.jpg" },
+    "prices": { "usd": "0.10" },
+    "promo": false,
+    "reprint": true,
+    "digital": false
+  },
+  {
+    "id": "c0000000-0000-0000-0000-0000000000a3",
+    "oracle_id": "99999999-9999-9999-9999-999999999999",
+    "name": "Manafold Test Orphan Printing",
+    "set": "tst",
+    "set_name": "Manafold Test Set",
+    "collector_number": "3",
+    "rarity": "common",
+    "released_at": "2020-01-01",
+    "finishes": ["nonfoil"],
+    "prices": { "usd": "0.05" },
+    "promo": false,
+    "reprint": false,
+    "digital": false
+  }
+]

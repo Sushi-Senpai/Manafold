@@ -49,7 +49,7 @@ validation report, and the read-only public deck view.
 4. HTTP — CRUD + `PUT /commander` (422 when `can_be_commander` false) + add/remove
    cards (add returns the entry flagged, never silently rejects/accepts) +
    `GET /validation`; ownership scoped in every query → `404`; a read-only
-   `GET /api/public/decks/{id}` gated on `is_public`.
+   `GET /public/decks/{id}` (router root, outside `/api`) gated on `is_public`.
 5. Builder frontend — commander picker, card search + add, decklist grouped by
    board/category, live validation strip.
 

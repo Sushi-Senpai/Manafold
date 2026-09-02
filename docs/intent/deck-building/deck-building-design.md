@@ -141,7 +141,7 @@ All under the protected `/api` group (M1: `DevAuth`). Registered via
 | `/api/decks/{id}/cards/{cardId}` | DELETE | — | `204` | scoped through `decks.user_id` |
 | `/api/decks/{id}/validation` | GET | — | `ValidationReport` | |
 | `/api/decks/{id}` | PATCH | `{ name?, description?, is_public?, bracket? }` | `Deck` | |
-| `/api/public/decks/{id}` | GET | — | `DeckDetail` (read-only) | unauthenticated; `404` unless `is_public` |
+| `/public/decks/{id}` | GET | — | `DeckDetail` (read-only) | mounted at the router root, outside the `/api` auth group; unauthenticated; `404` (never `401`) unless `is_public` |
 
 Adding a card **records the entry and returns it flagged** when the card is
 outside colour identity — it does not silently reject or silently accept
