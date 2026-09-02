@@ -1,0 +1,282 @@
+===============================================================================
+ Manafold M1 vertical slice - live API transcript
+ target commit 903e947 | backend cmd/api on :8099 | DEV_AUTH=true
+ store: embedded PostgreSQL 16.9, 3 embedded golang-migrate migrations applied
+        at startup; 6 demo cards seeded via cardsync-shaped rows
+===============================================================================
+
+--- GET /health  (handler pings Postgres; PLATFORM-002) ---
+{"status":"ok"}
+   <= HTTP 200
+
+--- GET /api/cards/autocomplete?q=Manafold  (<=20 names, edhrec_rank order; CARD-020) ---
+{
+    "names": [
+        "Manafold Test Bolt",
+        "Manafold Test Goblin Boss",
+        "Manafold Test Walker",
+        "Manafold Test Rat Swarm",
+        "Manafold Test Septet",
+        "Manafold Test Forest"
+    ]
+}
+
+--- POST /api/decks {"name":"Goblin Aggro"}  (DECK-001) ---
+{
+    "id": "18984a10-74fc-4f28-8cf5-979f23fb63cf",
+    "name": "Goblin Aggro",
+    "description": "",
+    "format": "commander",
+    "bracket": null,
+    "is_public": false,
+    "color_identity": []
+}
+
+--- PUT /api/decks/{id}/commander {commander_card_id: Goblin Boss}  (mono-R legendary; DECK-002/003) ---
+    deck color_identity is recomputed from the commander:
+{
+  "deck_color_identity": [
+    "R"
+  ],
+  "commander": "Manafold Test Goblin Boss",
+  "command_board": [
+    "Manafold Test Goblin Boss"
+  ]
+}
+
+--- PUT commander := Manafold Test Bolt (an Instant, can_be_commander=false)  -> rejected ---
+{"error":"Manafold Test Bolt cannot be a commander"}
+   <= HTTP 422
+
+--- POST /api/decks/{id}/cards  Bolt (mono-R, inside deck identity) -> clean ---
+{
+    "board": "main",
+    "card_id": "cda00f94-9d6b-449f-961e-a29b4fa729aa",
+    "color_identity_violation": false,
+    "entry_id": "369c653a-ec19-4eb7-8189-08a8ba4436a1",
+    "offending_colors": [],
+    "quantity": 1,
+    "singleton_violation": false
+}
+
+--- POST /api/decks/{id}/cards  Rat Swarm (mono-B, OUTSIDE R identity) -> color_identity_violation ---
+{
+    "board": "main",
+    "card_id": "954f9b3d-f30f-48f0-8d45-8630d54208bb",
+    "color_identity_violation": true,
+    "entry_id": "b1e16c9a-2ae3-41ac-96d4-509ebd35fae2",
+    "offending_colors": [
+        "B"
+    ],
+    "quantity": 1,
+    "singleton_violation": false
+}
+
+--- POST Septet x9 (oracle 'up to seven' => singleton_limit 7) -> singleton_violation at qty>7 ---
+{
+    "board": "main",
+    "card_id": "fc80e180-b874-493e-b330-263a82771043",
+    "color_identity_violation": true,
+    "entry_id": "0c296fc8-12f8-4687-8326-1c1931f4ed82",
+    "offending_colors": [
+        "W"
+    ],
+    "quantity": 9,
+    "singleton_violation": true
+}
+
+--- POST Bolt again (plain card, limit 1) -> singleton_violation at qty 2 ---
+{
+    "board": "main",
+    "card_id": "cda00f94-9d6b-449f-961e-a29b4fa729aa",
+    "color_identity_violation": false,
+    "entry_id": "369c653a-ec19-4eb7-8189-08a8ba4436a1",
+    "offending_colors": [],
+    "quantity": 2,
+    "singleton_violation": true
+}
+
+--- POST Forest x5 (Basic Land) -> NO singleton violation (basics exempt); still color-identity flagged ---
+
+--- GET /api/decks/{id}/validation  (color identity + singleton + count vs 100 + banlist + commander shape; DECK-007) ---
+{
+    "color_identity_violations": [
+        {
+            "card_id": "768d2bb1-7134-43e7-8bb9-1bda878ed02f",
+            "card_name": "Manafold Test Forest",
+            "offending": [
+                "G"
+            ]
+        },
+        {
+            "card_id": "954f9b3d-f30f-48f0-8d45-8630d54208bb",
+            "card_name": "Manafold Test Rat Swarm",
+            "offending": [
+                "B"
+            ]
+        },
+        {
+            "card_id": "fc80e180-b874-493e-b330-263a82771043",
+            "card_name": "Manafold Test Septet",
+            "offending": [
+                "W"
+            ]
+        }
+    ],
+    "singleton_violations": [
+        {
+            "card_id": "cda00f94-9d6b-449f-961e-a29b4fa729aa",
+            "card_name": "Manafold Test Bolt",
+            "quantity": 2,
+            "limit": 1
+        },
+        {
+            "card_id": "fc80e180-b874-493e-b330-263a82771043",
+            "card_name": "Manafold Test Septet",
+            "quantity": 9,
+            "limit": 7
+        }
+    ],
+    "main_command_count": 18,
+    "count_deviation": -82,
+    "banlist_violations": [],
+    "commander_issues": [],
+    "legal": false
+}
+
+--- DELETE /api/decks/{id}/cards/{cardId}?board=main  Rat Swarm  (DECK-005) ---
+   first delete <= HTTP 204
+   repeat  (no row) <= HTTP 404
+
+--- PATCH /api/decks/{id} {is_public:true}, then GET /public/decks/{id} with NO auth  (DECK-030/031) ---
+  File "<string>", line 1
+    import sys,json;d=json.load(sys.stdin);print(json.dumps({"is_public":d["is_public"],"name":d["name"],"commander":d["commander"]["name"],"main_board":[f"{e[\"name\"]} x{e[\"quantity\"]}" for e in d["boards"]["main"]]},indent=2))
+                                                                                                                                                                ^
+SyntaxError: unexpected character after line continuation character
+
+--- a PRIVATE deck is not publicly readable ---
+   GET /public/decks/{private} <= HTTP 404
+
+--- ownership enforced in-query: GET a deck the caller does not own -> 404 (DECK-009) ---
+   <= HTTP 404
+
+--- GET /public/decks/a208f458-69fe-4ab1-9df0-cb9200137253  (no auth header/cookie, route mounted OUTSIDE the /api auth group) ---
+{
+    "id": "a208f458-69fe-4ab1-9df0-cb9200137253",
+    "name": "Goblin Aggro",
+    "description": "",
+    "format": "commander",
+    "bracket": null,
+    "is_public": true,
+    "color_identity": [
+        "R"
+    ],
+    "commander": {
+        "id": "ecd09e2c-5ada-4922-9487-bc48f44fdb42",
+        "name": "Manafold Test Goblin Boss",
+        "mana_cost": "{2}{R}",
+        "mana_value": 3,
+        "type_line": "Legendary Creature \u2014 Goblin",
+        "oracle_text": "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.",
+        "colors": [
+            "R"
+        ],
+        "color_identity": [
+            "R"
+        ],
+        "keywords": [],
+        "can_be_commander": true,
+        "edhrec_rank": 120,
+        "layout": "normal",
+        "image_uris": {
+            "small": "https://cards.scryfall.io/small/test1.jpg",
+            "normal": "https://cards.scryfall.io/normal/test1.jpg"
+        },
+        "prices": {
+            "eur": "1.05",
+            "usd": "1.23"
+        },
+        "set_code": "tst",
+        "collector_number": "1"
+    },
+    "partner": null,
+    "boards": {
+        "command": [
+            {
+                "entry_id": "commander",
+                "card_id": "ecd09e2c-5ada-4922-9487-bc48f44fdb42",
+                "name": "Manafold Test Goblin Boss",
+                "mana_cost": "{2}{R}",
+                "mana_value": 3,
+                "type_line": "Legendary Creature \u2014 Goblin",
+                "color_identity": [
+                    "R"
+                ],
+                "quantity": 1,
+                "board": "command",
+                "category": null,
+                "image_uris": {
+                    "small": "https://cards.scryfall.io/small/test1.jpg",
+                    "normal": "https://cards.scryfall.io/normal/test1.jpg"
+                },
+                "prices": {
+                    "eur": "1.05",
+                    "usd": "1.23"
+                },
+                "set_code": "tst",
+                "collector_number": "1",
+                "color_identity_violation": false,
+                "offending_colors": [],
+                "singleton_violation": false
+            }
+        ],
+        "main": [
+            {
+                "entry_id": "528a75a0-cfc2-49e0-aede-12cedd978686",
+                "card_id": "cda00f94-9d6b-449f-961e-a29b4fa729aa",
+                "name": "Manafold Test Bolt",
+                "mana_cost": "{R}",
+                "mana_value": 1,
+                "type_line": "Instant",
+                "color_identity": [
+                    "R"
+                ],
+                "quantity": 1,
+                "board": "main",
+                "category": null,
+                "image_uris": null,
+                "prices": null,
+                "set_code": "",
+                "collector_number": "",
+                "color_identity_violation": false,
+                "offending_colors": [],
+                "singleton_violation": false
+            },
+            {
+                "entry_id": "0a53fa53-965d-4ef7-8787-f53d8b4b00a8",
+                "card_id": "768d2bb1-7134-43e7-8bb9-1bda878ed02f",
+                "name": "Manafold Test Forest",
+                "mana_cost": "",
+                "mana_value": 0,
+                "type_line": "Basic Land \u2014 Forest",
+                "color_identity": [
+                    "G"
+                ],
+                "quantity": 1,
+                "board": "main",
+                "category": null,
+                "image_uris": null,
+                "prices": null,
+                "set_code": "",
+                "collector_number": "",
+                "color_identity_violation": true,
+                "offending_colors": [
+                    "G"
+                ],
+                "singleton_violation": false
+            }
+        ],
+        "maybe": [],
+        "sideboard": []
+    }
+}

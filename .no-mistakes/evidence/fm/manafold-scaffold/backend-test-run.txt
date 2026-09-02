@@ -1,0 +1,60 @@
+$ cd backend && go build ./... && go vet ./...
+build+vet OK
+
+$ DATABASE_URL=<embedded pg 16.9>  go test ./...   (DB-backed pkgs run, not skipped)
+?   	manafold-backend/cmd/api	[no test files]
+?   	manafold-backend/cmd/cardsync	[no test files]
+ok  	manafold-backend/internal/ai	(cached)
+ok  	manafold-backend/internal/api	(cached)
+?   	manafold-backend/internal/authctx	[no test files]
+ok  	manafold-backend/internal/cardsearch	(cached)
+ok  	manafold-backend/internal/cardsync	(cached)
+ok  	manafold-backend/internal/config	(cached)
+ok  	manafold-backend/internal/db	(cached)
+?   	manafold-backend/internal/db/generated	[no test files]
+ok  	manafold-backend/internal/deckrules	(cached)
+ok  	manafold-backend/internal/deckstats	(cached)
+?   	manafold-backend/internal/middleware	[no test files]
+ok  	manafold-backend/internal/server	(cached)
+?   	manafold-backend/internal/sessioncookie	[no test files]
+
+--- deckrules validation logic (table-driven; DECK-004/005/006/008 + partner/DFC/basic-land) ---
+=== RUN   TestValidate_ColorIdentity
+--- PASS: TestValidate_ColorIdentity (0.00s)
+=== RUN   TestValidate_PartnerCombinedIdentity
+--- PASS: TestValidate_PartnerCombinedIdentity (0.00s)
+=== RUN   TestValidate_IncompatiblePartner
+--- PASS: TestValidate_IncompatiblePartner (0.00s)
+=== RUN   TestValidate_ChooseABackgroundPairingIsLegal
+--- PASS: TestValidate_ChooseABackgroundPairingIsLegal (0.00s)
+=== RUN   TestValidate_PlainLegendaryCreatureAsPartnerIsIncompatible
+--- PASS: TestValidate_PlainLegendaryCreatureAsPartnerIsIncompatible (0.00s)
+=== RUN   TestValidate_Singleton
+=== RUN   TestValidate_Singleton/normal_card_over_1_is_a_violation
+=== RUN   TestValidate_Singleton/basic_land_at_any_quantity_is_fine
+=== RUN   TestValidate_Singleton/singleton_limit_0_(any_number)_is_fine
+=== RUN   TestValidate_Singleton/singleton_limit_7_caps_at_7_—_8_is_a_violation
+=== RUN   TestValidate_Singleton/singleton_limit_7_—_exactly_7_is_fine
+--- PASS: TestValidate_Singleton (0.00s)
+=== RUN   TestValidate_Banlist
+--- PASS: TestValidate_Banlist (0.00s)
+=== RUN   TestValidate_Count
+--- PASS: TestValidate_Count (0.00s)
+=== RUN   TestValidate_CommanderShape
+--- PASS: TestValidate_CommanderShape (0.00s)
+=== RUN   TestValidate_LegalDeckIsLegal
+--- PASS: TestValidate_LegalDeckIsLegal (0.00s)
+
+--- api deck endpoints end-to-end + cardsearch + ownership (internal/api) ---
+=== RUN   TestSearchCards_UnparseableQuery_Returns400NamingToken
+--- PASS: TestSearchCards_UnparseableQuery_Returns400NamingToken (0.00s)
+=== RUN   TestAutocomplete_EmptyPrefix_ReturnsEmptyList
+--- PASS: TestAutocomplete_EmptyPrefix_ReturnsEmptyList (0.00s)
+=== RUN   TestDeckEndpoints_EndToEnd
+--- PASS: TestDeckEndpoints_EndToEnd (0.11s)
+=== RUN   TestAddCard_ViolationFlagScopedToCountedBoards
+--- PASS: TestAddCard_ViolationFlagScopedToCountedBoards (0.05s)
+
+--- db/migrate_test.go (embedded migrations from empty schema) ---
+=== RUN   TestMigrate_FromEmptySchema_ReachesLatestVersion
+--- PASS: TestMigrate_FromEmptySchema_ReachesLatestVersion (0.42s)

@@ -1,0 +1,23 @@
+### cardsync ingestion — internal/cardsync against checked-in Scryfall bulk fixtures
+$ go test ./internal/cardsync/ -run TestRun_IngestsFixture_DerivesFields -v
+=== RUN   TestRun_IngestsFixture_DerivesFields
+--- PASS: TestRun_IngestsFixture_DerivesFields (0.05s)
+PASS
+ok  	manafold-backend/internal/cardsync	0.049s
+
+### resulting rows in Postgres (color_identity stored verbatim; singleton_limit /
+### can_be_commander / is_game_changer derived at sync from Oracle text — CARD-002/003/004)
+name                         color_id   singleton_limit can_be_commander cmdr       game_changer
+Manafold Test Bolt           [R         ] NULL            false            legal      false
+Manafold Test Forest         [G         ] NULL            false            legal      false
+Manafold Test Goblin Boss    [R         ] NULL            true             legal      false
+Manafold Test Rat Swarm      [B         ] 0               false            legal      false
+Manafold Test Septet         [W         ] 7               false            legal      false
+Manafold Test Walker         [U         ] NULL            true             legal      true
+
+sync_runs:
+  default_cards    status=succeeded  rows_upserted=2 err=<nil>
+  oracle_cards     status=succeeded  rows_upserted=4 err=<nil>
+  default_cards    status=succeeded  rows_upserted=2 err=<nil>
+  oracle_cards     status=succeeded  rows_upserted=4 err=<nil>
+  default_cards    status=succeeded  rows_upserted=2 err=<nil>
