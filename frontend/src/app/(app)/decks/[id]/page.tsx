@@ -272,9 +272,9 @@ function Decklist({
   deckId: string;
   onChange: () => void;
 }) {
-  async function remove(cardId: string) {
+  async function remove(cardId: string, board: string) {
     try {
-      await api.removeCard(deckId, cardId);
+      await api.removeCard(deckId, cardId, board);
       onChange();
     } catch (e) {
       alert(e instanceof ApiError ? e.message : "Could not remove card");
@@ -320,7 +320,7 @@ function Decklist({
                         </span>
                         {board !== "command" && (
                           <button
-                            onClick={() => remove(e.card_id)}
+                            onClick={() => remove(e.card_id, e.board)}
                             className="shrink-0 text-xs text-foreground/40 hover:text-red-600"
                           >
                             remove

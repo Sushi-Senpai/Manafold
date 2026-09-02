@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func clearEnv(t *testing.T) {
 	t.Helper()
@@ -22,21 +25,19 @@ func TestLoad_RequiresDatabaseURL(t *testing.T) {
 func TestLoad_RequiresFrontendURL(t *testing.T) {
 	clearEnv(t)
 	t.Setenv("DATABASE_URL", "postgres://example")
-	// FRONTEND_URL has a default, so the only way to make it empty is to make
-	// getEnv's fallback not apply — an explicitly empty value still triggers the
-	// default. Assert the happy path instead: DB set, frontend defaulted.
-	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("expected Load to succeed with DATABASE_URL set, got %v", err)
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected an error when FRONTEND_URL is unset")
 	}
-	if cfg.FrontendURL == "" {
-		t.Fatal("FRONTEND_URL should fall back to a default rather than being empty")
+	if !strings.Contains(err.Error(), "FRONTEND_URL") {
+		t.Fatalf("expected the error to name FRONTEND_URL, got %v", err)
 	}
 }
 
 func TestLoad_DevAuthAndPortDefault(t *testing.T) {
 	clearEnv(t)
 	t.Setenv("DATABASE_URL", "postgres://example")
+	t.Setenv("FRONTEND_URL", "http://localhost:3000")
 	t.Setenv("DEV_AUTH", "true")
 
 	cfg, err := Load()

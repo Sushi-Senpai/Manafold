@@ -601,9 +601,14 @@ func (a *API) removeCard(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "card id is not a valid id")
 		return
 	}
+	board := r.URL.Query().Get("board")
+	if board == "" {
+		board = "main"
+	}
 	if err := a.Queries.DeleteDeckCard(r.Context(), db.DeleteDeckCardParams{
 		DeckID: id,
 		CardID: cardID,
+		Board:  board,
 		UserID: callerID(r),
 	}); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to remove card")

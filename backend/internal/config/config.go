@@ -36,7 +36,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		Port:            getEnv("PORT", "8080"),
 		DatabaseURL:     os.Getenv("DATABASE_URL"),
-		FrontendURL:     getEnv("FRONTEND_URL", "http://localhost:3000"),
+		FrontendURL:     os.Getenv("FRONTEND_URL"),
 		DevAuth:         os.Getenv("DEV_AUTH") == "true",
 		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
 	}

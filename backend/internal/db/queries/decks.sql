@@ -63,6 +63,7 @@ DELETE FROM deck_cards dc
 USING decks d
 WHERE dc.deck_id = sqlc.arg(deck_id)
   AND dc.card_id = sqlc.arg(card_id)
+  AND dc.board = sqlc.arg(board)
   AND dc.deck_id = d.id
   AND d.user_id = sqlc.arg(user_id);
 

@@ -232,10 +232,52 @@ func TestDeckEndpoints_EndToEnd(t *testing.T) {
 		t.Fatalf("main board has %d entries after blocked write, want 2", got)
 	}
 
-	// DECK-010: owner removes an entry, 204.
+	// DECK-010: the same card also sits on the maybeboard, so the deck now has
+	// two entries for it — one on 'main', one on 'maybe'.
+	rec = serve(t, a, owner, http.MethodPost, "/decks/"+deckID+"/cards",
+		map[string]string{"card_id": uuidString(outOfIdentity), "board": "maybe"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("add out-of-identity card to maybe: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// DECK-010: removing the maybeboard entry is board-scoped — 204, and only
+	// the maybeboard row goes; the mainboard copy survives.
+	rec = serve(t, a, owner, http.MethodDelete, "/decks/"+deckID+"/cards/"+uuidString(outOfIdentity)+"?board=maybe", nil)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("remove card from maybe = %d, want 204", rec.Code)
+	}
+	rec = serve(t, a, owner, http.MethodGet, "/decks/"+deckID, nil)
+	detail = decode[deckDetailJSON](t, rec)
+	if got := len(detail.Boards["maybe"]); got != 0 {
+		t.Fatalf("maybe board has %d entries after board-scoped delete, want 0", got)
+	}
+	mainHas := false
+	for _, e := range detail.Boards["main"] {
+		if e.CardID == uuidString(outOfIdentity) {
+			mainHas = true
+		}
+	}
+	if !mainHas {
+		t.Fatalf("board-scoped delete removed the mainboard copy: %+v", detail.Boards["main"])
+	}
+
+	// DECK-010: no board query param defaults to 'main' — 204, mainboard entry gone.
 	rec = serve(t, a, owner, http.MethodDelete, "/decks/"+deckID+"/cards/"+uuidString(outOfIdentity), nil)
 	if rec.Code != http.StatusNoContent {
-		t.Fatalf("remove card = %d, want 204", rec.Code)
+		t.Fatalf("remove card from main = %d, want 204", rec.Code)
+	}
+	rec = serve(t, a, owner, http.MethodGet, "/decks/"+deckID, nil)
+	detail = decode[deckDetailJSON](t, rec)
+	for _, e := range detail.Boards["main"] {
+		if e.CardID == uuidString(outOfIdentity) {
+			t.Fatalf("default-board delete left the mainboard entry: %+v", detail.Boards["main"])
+		}
+	}
+
+	// DECK-010: deleting again, with no matching entry, still responds 204.
+	rec = serve(t, a, owner, http.MethodDelete, "/decks/"+deckID+"/cards/"+uuidString(outOfIdentity), nil)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("remove absent card = %d, want 204", rec.Code)
 	}
 }
 

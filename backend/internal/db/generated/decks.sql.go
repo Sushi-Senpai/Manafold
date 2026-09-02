@@ -106,19 +106,26 @@ DELETE FROM deck_cards dc
 USING decks d
 WHERE dc.deck_id = $1
   AND dc.card_id = $2
+  AND dc.board = $3
   AND dc.deck_id = d.id
-  AND d.user_id = $3
+  AND d.user_id = $4
 `
 
 type DeleteDeckCardParams struct {
 	DeckID pgtype.UUID `json:"deck_id"`
 	CardID pgtype.UUID `json:"card_id"`
+	Board  string      `json:"board"`
 	UserID pgtype.UUID `json:"user_id"`
 }
 
 // @spec DECK-010
 func (q *Queries) DeleteDeckCard(ctx context.Context, arg DeleteDeckCardParams) error {
-	_, err := q.db.Exec(ctx, deleteDeckCard, arg.DeckID, arg.CardID, arg.UserID)
+	_, err := q.db.Exec(ctx, deleteDeckCard,
+		arg.DeckID,
+		arg.CardID,
+		arg.Board,
+		arg.UserID,
+	)
 	return err
 }
 

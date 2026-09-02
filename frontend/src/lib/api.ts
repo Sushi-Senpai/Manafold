@@ -157,7 +157,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ card_id: cardId, board, category }),
     }),
-  removeCard: (id: string, cardId: string) =>
-    request<void>(`/api/decks/${id}/cards/${cardId}`, { method: "DELETE" }),
+  removeCard: (id: string, cardId: string, board = "main") =>
+    request<void>(
+      `/api/decks/${id}/cards/${cardId}?board=${encodeURIComponent(board)}`,
+      { method: "DELETE" },
+    ),
   getValidation: (id: string) => request<ValidationReport>(`/api/decks/${id}/validation`),
 };
