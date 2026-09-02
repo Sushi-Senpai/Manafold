@@ -1,29 +1,59 @@
 @import "tailwindcss";
 
 /*
- * Manafold design tokens. Semantic aliases (background/surface/foreground/
- * primary/accent/border) are declared as literal values here — NOT as
- * var(--color-*) cross-references — because Tailwind v4 resolves @theme
- * cross-references at build time and bakes the resolved value into generated
- * utilities, which makes a runtime `.workspace` override a no-op. Keeping them
- * as independent literals means utilities compile to `var(--color-background)`
- * itself, which the ".workspace" block below can reach at runtime.
+ * Manafold design tokens — palette "Slate & Signet" (brand direction A, adopted
+ * 2026-09-02; see docs/intent/platform-shell/platform-shell-design.md and
+ * MANAFOLD.md). Neutral cool-slate surfaces with a single violet primary chosen
+ * to sit off the blue/green wavelengths the WUBRG mana colours occupy, so a
+ * button or link never reads as a mana pip. The six --color-mana-* tokens are
+ * the loud category colours the brand palette deliberately frames.
+ *
+ * Semantic aliases (background/surface/foreground/primary/accent/border/…) are
+ * declared as literal values here — NOT as var(--color-*) cross-references —
+ * because Tailwind v4 resolves @theme cross-references at build time and bakes
+ * the resolved value into generated utilities, which makes a runtime
+ * `.workspace` override a no-op. Keeping them as independent literals means
+ * utilities compile to `var(--color-background)` itself, which the ".workspace"
+ * block below can reach at runtime (@spec PLATFORM-023).
  */
 @theme {
-  --color-mana-ink: #14121a;
-  --color-mana-parchment: #f4f1ea;
-  --color-mana-violet: #6d3bd1;
-  --color-mana-gold: #c9a227;
+  /* Raw brand ramp (dark values — the default marketing theme is dark). */
+  --color-slate-bg: #0e1116;
+  --color-slate-surface: #161b22;
+  --color-slate-surface-2: #1c232d;
+  --color-slate-border: #2a313c;
+  --color-signet-violet: #6e5ce0;
+  --color-signet-gold: #d8b25a;
+  --color-signet-teal: #3bc6d1;
 
-  /* Default (marketing) theme: dark. */
-  --color-background: #14121a;
-  --color-surface: #1e1b26;
-  --color-foreground: #ece9f1;
-  --color-primary: #8b5cf6;
-  --color-accent: #c9a227;
-  --color-border: #2b2733;
+  /* WUBRG category colours (dark). Never hand-place these — go through the
+   * ManaPip / ColorIdentity components. W always carries a ring. */
+  --color-mana-w: #ede6cb;
+  --color-mana-w-ring: #b7ae8c;
+  --color-mana-u: #5ca9da;
+  --color-mana-b: #9c93b0;
+  --color-mana-r: #ea7a54;
+  --color-mana-g: #5fb56c;
+  --color-mana-c: #a79e94;
+
+  /* Semantic aliases — default (marketing) theme: dark. */
+  --color-background: #0e1116;
+  --color-surface: #161b22;
+  --color-surface-2: #1c232d;
+  --color-foreground: #e4e8ee;
+  --color-muted: #8b95a3;
+  --color-primary: #6e5ce0;
+  --color-primary-ink: #ffffff;
+  --color-accent: #3bc6d1;
+  --color-accent-2: #d8b25a;
+  --color-border: #2a313c;
+  --color-success: #3cbb77;
+  --color-warning: #e0912e;
+  --color-danger: #ec6a63;
+  --color-info: #5aa6ff;
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), system-ui, sans-serif;
 }
 
 body {
@@ -33,17 +63,52 @@ body {
 }
 
 /*
- * The in-app builder uses a lighter theme — easier for long deckbuilding
- * sessions. Applied to the (app) route group's layout wrapper. Plain CSS, not
- * @theme, so it overrides the custom properties themselves at runtime.
+ * The in-app builder uses the light Slate & Signet theme — easier for long
+ * deckbuilding sessions and print-friendly for decklists. Applied to the (app)
+ * route group's layout wrapper. Plain CSS, not @theme, so it overrides the
+ * custom properties themselves at runtime.
  *
  * @spec PLATFORM-023
  */
 .workspace {
-  --color-background: #f4f1ea;
+  --color-background: #f7f8fa;
   --color-surface: #ffffff;
-  --color-foreground: #14121a;
-  --color-primary: #6d3bd1;
-  --color-accent: #9a7b16;
-  --color-border: #e2ddd0;
+  --color-surface-2: #f0f2f6;
+  --color-foreground: #1b2230;
+  --color-muted: #5b6472;
+  --color-primary: #5b3fd4;
+  --color-primary-ink: #ffffff;
+  --color-accent: #0e7c86;
+  --color-accent-2: #b98a2e;
+  --color-border: #e3e6ec;
+  --color-success: #177245;
+  --color-warning: #b4690e;
+  --color-danger: #c1372f;
+  --color-info: #2f80ed;
+
+  --color-mana-w: #e9e1c6;
+  --color-mana-w-ring: #cfc49e;
+  --color-mana-u: #2c6fa6;
+  --color-mana-b: #4a4560;
+  --color-mana-r: #d0532f;
+  --color-mana-g: #3e8f4e;
+  --color-mana-c: #948c83;
+}
+
+/*
+ * The "Manafold" wordmark: display face for the "Mana" stem, a lighter, faded
+ * weight for the "fold" tail. Used as the plain-text mark until the captain's
+ * vector mark lands (PLATFORM-024, deferred). A raster icon/lockup exists under
+ * the brand assets but is not shipped inline here — favicon is a neutral
+ * placeholder (see frontend/src/app/layout.tsx). TODO(captain): swap in the
+ * final vector mark.
+ */
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.wordmark > .wordmark-tail {
+  font-weight: 400;
+  opacity: 0.55;
 }

@@ -35,7 +35,7 @@ func (a *API) RegisterCardRoutes(r chi.Router) {
 // RegisterDeckRoutes mounts the deck CRUD and validation endpoints. It is
 // called inside the authenticated /api group.
 //
-// @spec DECK-001, DECK-009, PLATFORM-005
+// @spec DECK-001, DECK-009, DECK-051, PLATFORM-005
 func (a *API) RegisterDeckRoutes(r chi.Router) {
 	r.Get("/decks", a.listDecks)
 	r.Post("/decks", a.createDeck)
@@ -45,6 +45,7 @@ func (a *API) RegisterDeckRoutes(r chi.Router) {
 	r.Post("/decks/{id}/cards", a.addCard)
 	r.Delete("/decks/{id}/cards/{cardId}", a.removeCard)
 	r.Get("/decks/{id}/validation", a.getValidation)
+	r.Get("/decks/{id}/stats", a.getDeckStats)
 }
 
 // RegisterPublicRoutes mounts the read-only public deck view at the router

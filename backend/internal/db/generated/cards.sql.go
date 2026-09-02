@@ -341,6 +341,54 @@ func (q *Queries) ListBanlistOverrides(ctx context.Context) ([]ListBanlistOverri
 	return items, nil
 }
 
+const resolveCardByName = `-- name: ResolveCardByName :one
+SELECT id, scryfall_oracle_id, name, mana_cost, mana_value, type_line, oracle_text, colors, color_identity, produced_mana, keywords, power, toughness, loyalty, legalities, is_game_changer, is_reserved, layout, card_faces, singleton_limit, can_be_commander, commander_color_identity, edhrec_rank, created_at, updated_at FROM cards
+WHERE lower(name) = lower($1::text)
+   OR lower(name) LIKE lower($1::text) || ' // %'
+   OR lower(name) LIKE '% // ' || lower($1::text)
+ORDER BY (lower(name) = lower($1::text)) DESC,
+         edhrec_rank ASC NULLS LAST
+LIMIT 1
+`
+
+// Resolve a decklist line's card name to one cards row: an exact
+// case-insensitive match on the whole name, or a match on one face of a
+// split / double-faced card ("Fire" for "Fire // Ice"), preferring the exact
+// whole-name match (PORT-005).
+// @spec PORT-005
+func (q *Queries) ResolveCardByName(ctx context.Context, name string) (Card, error) {
+	row := q.db.QueryRow(ctx, resolveCardByName, name)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.ScryfallOracleID,
+		&i.Name,
+		&i.ManaCost,
+		&i.ManaValue,
+		&i.TypeLine,
+		&i.OracleText,
+		&i.Colors,
+		&i.ColorIdentity,
+		&i.ProducedMana,
+		&i.Keywords,
+		&i.Power,
+		&i.Toughness,
+		&i.Loyalty,
+		&i.Legalities,
+		&i.IsGameChanger,
+		&i.IsReserved,
+		&i.Layout,
+		&i.CardFaces,
+		&i.SingletonLimit,
+		&i.CanBeCommander,
+		&i.CommanderColorIdentity,
+		&i.EdhrecRank,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const upsertCard = `-- name: UpsertCard :one
 INSERT INTO cards (
     scryfall_oracle_id, name, mana_cost, mana_value, type_line, oracle_text,

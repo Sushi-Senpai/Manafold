@@ -161,3 +161,45 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   ingestion test, `internal/db` `migrate_test.go`. Real login UI/flow,
   import/export, deck stats beyond a stub, any AI call, and printing-selection
   UI are explicitly out of M1.
+
+- **2026-09-02** — M2 increment (same branch, one growing PR). Import/export and
+  deterministic deck stats, plus the brand palette wire-in and the closure of an
+  M1 test gap.
+  - **Import / export** (`PORT-001..007`, `DECK-060`): `internal/deckio` — one
+    tolerant line grammar for plain-text / MTGA / Moxfield / Archidekt (formats
+    differ only in header handling), plus plain-text and MTGA emitters; a pure
+    package with no name resolution and no DB. An `imports` audit table (raw
+    text + parsed result + unresolved lines + `applied_at`). Endpoints `POST
+    /api/decks/{id}/import` (parse + audit, no write), `POST
+    /api/decks/{id}/import/{importId}/apply` (writes `deck_cards` for every
+    resolved line in one transaction), `GET /api/decks/{id}/export?format=`.
+    Name resolution is exact case-insensitive or one face of a split/DFC card →
+    whole card; a name matching nothing is reported and stored, never dropped,
+    and an unparseable line is reported separately as *rejected*. Ownership
+    scoped in the queries → `404`.
+  - **Deck stats** (`DECK-051`, `DECK-052`): `internal/deckstats.Analyze` grew
+    from the M1 stub to a deterministic analyser — non-land mana curve
+    (`0`–`6`, `7+`), colour-pip demand vs colour sources, a functional-category
+    roll-up over a known vocabulary + synonym table with free-text passthrough,
+    and exported `CategoryTargets` rules-of-thumb bands. `GET
+    /api/decks/{id}/stats` echoes the analysis plus the targets; the builder
+    page renders a stats panel. LLM prose over these numbers stays M5.
+  - **Palette — "Slate & Signet"** (captain decision, brand direction A): the
+    light + dark semantic-token set and the six `--color-mana-*` WUBRG tokens
+    wired into `frontend/src/app/globals.css`, replacing the M1 placeholder
+    palette. The "Manafold" text wordmark (display "Mana" + faded "fold" tail)
+    is the approved mark; the favicon is a neutral placeholder pending the
+    captain's vector artwork (`PLATFORM-024` stays deferred — the mark supplied
+    so far is raster).
+  - **CARD-006** now carries a dedicated test
+    (`internal/cardsync/httpfetch_test.go`): every outbound Scryfall request
+    carries the descriptive `User-Agent` + explicit `Accept`, and an HTTP `429`
+    triggers exactly one retry after the (test-shortened) back-off.
+  - **Deferred out of M2** and recorded in the LLDs' future-decisions:
+    `PORT-008` / `CARD-009` (live single-printing fallback — waits on
+    printing-selection UI); trigram fuzzy name matching; auto-assigning the
+    commander from an imported `Commander` line; the Oracle-text + `oracle_tags`
+    auto-categorizer; and the captain's five "bonus" ideas (bootstrapping
+    wizard, EDHREC high-synergy, constrained deck prompts, functional-subtype
+    grouping, cut suggestions) — design notes only, folded into the relevant
+    LLDs.

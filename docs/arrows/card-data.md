@@ -22,7 +22,7 @@ The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
 ### Tests
 - backend/internal/cardsync/cardsync_test.go (`TestRun_IngestsFixture_DerivesFields`) — CARD-001, CARD-002 (verbatim color_identity), CARD-003, CARD-004, CARD-005, CARD-007
 - backend/internal/cardsync/derive_test.go (`TestDeriveSingletonLimit`, `TestDeriveCanBeCommander`) — CARD-003, CARD-004
-- CARD-006 (etiquette headers + single 30 s back-off on HTTP 429) is implemented in `cardsync.go` (`get`, `retryBackoff`) but has no dedicated `@spec` test yet — coverage gap.
+- backend/internal/cardsync/httpfetch_test.go (`TestFetcher_SendsEtiquetteHeadersAndRetriesOn429`, `TestFetcher_NonRetryableStatusIsAnError`) — CARD-006 (descriptive User-Agent + explicit Accept on every request; exactly one retry after the back-off on HTTP 429), CARD-007
 - backend/internal/cardsearch/cardsearch_test.go — CARD-022, CARD-023
 - backend/internal/api/cards_test.go — CARD-020, CARD-021, CARD-023
 - CARD-008 / CARD-024 (no Scryfall call on a client request path) are a negative
@@ -58,14 +58,16 @@ The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
 
 | Category | Spec IDs | Implemented | Deferred | Gaps |
 |---|---|---|---|---|
-| Sync job | CARD-001..008 | 7 | 0 | 1 (CARD-006 implemented in `get` / `retryBackoff` but has no dedicated test) |
-| Single-printing fallback | CARD-009 | 0 | 0 | 1 (M2) |
+| Sync job | CARD-001..008 | 8 | 0 | 0 |
+| Single-printing fallback | CARD-009 | 0 | 0 | 1 (M2+ — see below) |
 | oracle_tags / all_cards | CARD-010, CARD-011 | 0 | 2 | 0 |
 | Search & autocomplete | CARD-020..024 | 5 | 0 | 0 |
 | Banlist overrides | CARD-030 | 1 | 0 | 0 |
 
-**Summary:** 13 of 16 implemented; gaps: CARD-009 (M2) and no dedicated test
-for CARD-006's 429 back-off; 2 deferred.
+**Summary:** 14 of 16 implemented; one gap: CARD-009, the single-printing
+Scryfall fallback, deferred past M2's import/export (import resolves names
+against the mirror; an unmirrored `(SET) collector#` currently falls through to
+name resolution rather than triggering a live fetch). 2 deferred (CARD-010/011).
 
 ## Key Findings
 
@@ -82,8 +84,12 @@ for CARD-006's 429 back-off; 2 deferred.
 (none)
 
 ### Should Fix
-1. CARD-009 single-printing fallback lands with import/export (M2), where
-   unmirrored printings first appear in bulk.
+1. CARD-009 single-printing fallback: still a gap after M2. M2 import resolves
+   each line's name against the mirror and reports anything unmatched as
+   unresolved (PORT-004); a set code + collector number that names a printing
+   not in `card_prints` is not yet fetched live. Land the `/cards/collection`
+   fetch (held under ~2 req/s) when printing selection UI arrives so an imported
+   list can pin its exact printings.
 
 ### Nice to Have
 1. `oracle_tags` ingestion (CARD-010) to seed the functional auto-categorizer.

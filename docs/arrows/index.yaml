@@ -1,5 +1,8 @@
 schema_version: 2
 last_updated: 2026-09-02
+# M1: LID bootstrap + Waystone-mirrored skeleton + Commander deck vertical slice.
+# M2: import/export (deckio + parse-then-apply endpoints) + deterministic deck
+#     stats + the Slate & Signet palette wire-in.
 
 taxonomy:
   features:
@@ -45,7 +48,7 @@ arrows:
     blocks: [deck-building, import-export, ai-assist]
     blockedBy: [platform-shell]
     detail: card-data.md
-    next: "M1 landed: cards / card_prints / card_rulings / sync_runs / banlist_overrides schema; internal/cardsync ingests the Oracle + Default bulk exports with derived singleton_limit / can_be_commander and color_identity verbatim; GET /api/cards/search + /autocomplete over the mirror. Deferred: single-printing fallback (CARD-009, M2), oracle_tags ingestion (CARD-010)."
+    next: "M1 landed: cards / card_prints / card_rulings / sync_runs / banlist_overrides schema; internal/cardsync ingests the Oracle + Default bulk exports with derived singleton_limit / can_be_commander and color_identity verbatim; GET /api/cards/search + /autocomplete over the mirror. M2: CARD-006 etiquette-header + 429-backoff test closed; ResolveCardByName (exact / DFC face) added for import. Deferred: single-printing fallback (CARD-009, with printing-selection UI), oracle_tags ingestion (CARD-010)."
     drift: null
 
   deck-building:
@@ -57,11 +60,11 @@ arrows:
     blocks: [ai-assist, import-export]
     blockedBy: [card-data, account-access]
     detail: deck-building.md
-    next: "M1 landed: decks / deck_cards schema; internal/deckrules (identity, singleton, count, banlist, commander shape + partner); deck CRUD + commander assignment + add/remove cards + GET /validation; ownership in-query (404); read-only public deck view; /decks list + /decks/[id] builder. Deferred: real deck stats (DECK-051, M2), bootstrapping wizard, functional-subtype grouping, swap UX."
+    next: "M1 landed: decks / deck_cards schema; internal/deckrules; deck CRUD + commander assignment + add/remove cards + GET /validation; ownership in-query (404); read-only public deck view; /decks list + /decks/[id] builder. M2 landed: internal/deckstats (curve / pips-vs-sources / category roll-up + CategoryTargets) + GET /decks/{id}/stats + stats panel (DECK-051, DECK-052); DECK-060 bulk import write. Deferred: anonymous drafts + claim (DECK-040/041, M3); auto-categorizer, bootstrapping wizard, swap UX, cut suggestions (M4+)."
     drift: null
 
   import-export:
-    status: DRAFT
+    status: MAPPED
     parent: null
     sampled: 2026-09-02
     audited: null
@@ -69,7 +72,7 @@ arrows:
     blocks: []
     blockedBy: [card-data, deck-building]
     detail: import-export.md
-    next: "No code in M1. M2: plain-text + MTGA + Moxfield + Archidekt parsers/emitters, imports audit table, parse-then-apply endpoints, unresolved-name reporting."
+    next: "M2 landed: internal/deckio (one tolerant grammar for plain-text / MTGA / Moxfield / Archidekt; plain-text + MTGA emitters); imports audit table; POST /import (parse + audit) + POST /import/{id}/apply (one txn, DECK-060) + GET /export; exact / DFC-face name resolution; unresolved + rejected reporting (PORT-001..007). Gap: PORT-008 single-printing fallback waits on CARD-009. Deferred: .dec / .cod (PORT-020), paste-to-new-deck (PORT-021), printing export (PORT-022)."
     drift: null
 
   ai-assist:

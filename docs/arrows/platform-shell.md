@@ -26,16 +26,17 @@ audited as a full segment.
 - backend/internal/config/config_test.go — PLATFORM-003
 - PLATFORM-004 (no CORS), PLATFORM-006 (cardsync binary in the image), and the
   frontend-config specs PLATFORM-020..023 are structural invariants verified by
-  `go build ./...` / the Dockerfile / `yarn lint` + `yarn build`, not by a
-  dedicated `@spec`-annotated test.
+  `go build ./...` / the Dockerfile / `npm run lint` + `npm run build`, not by a
+  dedicated `@spec`-annotated test. PLATFORM-023's `.workspace` runtime override
+  now carries the "Slate & Signet" semantic-token values.
 
 ### Code
 - backend/cmd/api/main.go, backend/cmd/cardsync/main.go
-- backend/internal/server/server.go (`New`, `registerCardRoutes`, `registerDeckRoutes`, `healthHandler`)
+- backend/internal/server/server.go (`New`, `RegisterCardRoutes`, `RegisterDeckRoutes`, `RegisterImportRoutes`, `healthHandler`)
 - backend/internal/config/config.go
 - backend/internal/api/api.go, backend/internal/api/convert.go
 - backend/internal/db/migrate.go, backend/internal/db/generated/* (sqlc)
-- frontend/src/app/layout.tsx, globals.css, src/proxy.ts
+- frontend/src/app/layout.tsx, frontend/src/app/globals.css (Slate & Signet tokens + `.wordmark`), frontend/src/components/Wordmark.tsx, frontend/src/proxy.ts
 - frontend/next.config.ts, frontend/src/lib/api.ts, frontend/src/lib/deck.ts
 
 ## Architecture

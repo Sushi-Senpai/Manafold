@@ -32,9 +32,9 @@
 ## Deck Stats
 
 - [x] **DECK-050**: The system shall provide a pure `internal/deckstats.Analyze` function returning per-deck type counts and average mana value.
-- [ ] **DECK-051**: The system shall compute a per-deck mana curve, colour-pip counts against land sources, and functional-category counts against Commander rules-of-thumb, and expose them at `GET /api/decks/{id}/stats`.
-- [ ] **DECK-052**: The system shall treat the functional categories (Removal, Counterspell, Ramp, Card Draw, Board Wipe, Land, and their siblings) as a known vocabulary that `deckstats` rolls counts up by, with free-text categories permitted as an escape hatch.
+- [x] **DECK-051**: The system shall compute, over the `main` and `command` boards, a per-deck mana curve (non-land cards bucketed by mana value, 0–6 then `7+`), colour-pip counts demanded by mana costs against colour-producing sources, and functional-category counts, and expose them with the Commander rules-of-thumb targets at `GET /api/decks/{id}/stats`.
+- [x] **DECK-052**: The system shall treat the functional categories (Removal, Counterspell, Ramp, Card Draw, Board Wipe, Land, Protection, Recursion, Tutor, Threat) as a known vocabulary — matched case-insensitively and through a synonym table — that `deckstats` rolls counts up by, with any other `deck_cards.category` kept verbatim as a free-text escape hatch.
 
 ## Import Bulk-Add (owned with `import-export`)
 
-- [ ] **DECK-060**: When `import-export` supplies a parsed decklist, the system shall create `deck_cards` entries for every resolved card in one transaction, preserving each entry's board and category.
+- [x] **DECK-060**: When `import-export` supplies a parsed decklist, the system shall create `deck_cards` entries for every resolved card in one transaction, preserving each entry's board and category.

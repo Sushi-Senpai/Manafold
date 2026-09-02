@@ -9,8 +9,8 @@
 - [x] **CARD-005**: When ingesting a `default_cards` printing whose `oracle_id` has no matching `cards` row, the system shall skip that printing and count it, rather than failing the run.
 - [x] **CARD-006**: Every outbound Scryfall request the sync job makes shall carry a descriptive `User-Agent` identifying Manafold and an explicit `Accept` header, and on an HTTP `429` the job shall wait at least 30 seconds before one retry.
 - [x] **CARD-007**: If any step of a bulk ingestion fails, then the system shall mark that `sync_runs` row `failed` with the error text and a `finished_at`, and the job process shall exit non-zero.
-- [x] **CARD-008**: The system shall not call any Scryfall `/cards/*` endpoint on a client-facing request path; live Scryfall calls occur only in the sync job and (from M2) an explicit single-printing fallback on card add.
-- [ ] **CARD-009**: When a client adds a card by a collector number not present in `card_prints`, the system shall fetch that single printing from Scryfall's `/cards/collection` endpoint (held under ~2 requests/second), upsert it, and then complete the add.
+- [x] **CARD-008**: The system shall not call any Scryfall `/cards/*` endpoint on a client-facing request path; live Scryfall calls occur only in the sync job and, once CARD-009 lands, an explicit single-printing fallback on card add.
+- [ ] **CARD-009**: When a client adds a card by a collector number not present in `card_prints`, the system shall fetch that single printing from Scryfall's `/cards/collection` endpoint (held under ~2 requests/second), upsert it, and then complete the add. (Gap through M2: import resolves by name only; an unmirrored `(SET) collector#` is reported unresolved rather than fetched. Lands with printing-selection UI.)
 - [D] **CARD-010**: When the card-sync job runs, the system shall also ingest Scryfall's `oracle_tags` bulk file to seed `deck-building`'s functional auto-categorizer.
 - [D] **CARD-011**: The system shall mirror non-English printings from the Scryfall `all_cards` export.
 

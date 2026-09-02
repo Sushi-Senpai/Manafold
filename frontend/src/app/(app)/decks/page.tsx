@@ -52,7 +52,7 @@ export default function DecksPage() {
         <button
           type="submit"
           disabled={creating}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-40"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-ink transition hover:opacity-90 disabled:opacity-40"
         >
           {creating ? "Creating…" : "New deck"}
         </button>

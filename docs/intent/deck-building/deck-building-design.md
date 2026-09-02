@@ -119,12 +119,43 @@ whenever a commander is assigned or cleared: the union of
 `partner.commander_color_identity`, falling back to `color_identity` when
 `commander_color_identity` is null.
 
-## `internal/deckstats` — analyser (stub in M1)
+## `internal/deckstats` — the analyser
 
-`Analyze(cards []CardFacts) Stats` returning a `Stats{ ManaCurve, ColorPips,
-TypeCounts, CategoryCounts, AvgManaValue }`. M1 ships the type and a trivial
-implementation (counts and average mana value only); the curve/pip/heuristic
-comparison lands at M2/M5. It is pure so it can be unit-tested from day one.
+A pure package: `Analyze(cards []CardStat) Stats`, no DB and no AI — the handler
+assembles the input from already-loaded rows. It is deterministic; an LLM prose
+summary over these numbers is a later milestone (M5).
+
+`CardStat` per entry: `TypeLine`, `ManaCost` (Scryfall string), `ManaValue`,
+`Quantity`, `IsLand`, `ProducedMana` (Scryfall `produced_mana`), `Category`.
+
+`Stats` returns:
+
+- **`TypeCounts`** — quantity by primary type (`Creature` / `Planeswalker` /
+  `Land` / `Artifact` / `Enchantment` / `Instant` / `Sorcery` / `Battle` /
+  `Other`), checked in that order so "Legendary Creature — God" lands under
+  Creature.
+- **`AvgManaValue`** — mean mana value of the non-land cards.
+- **`ManaCurve`** — non-land quantity bucketed by integer mana value `0`–`6`,
+  everything `≥ 7` collapsed to `7+`.
+- **`ColorPips`** — coloured mana symbols demanded by non-land mana costs; each
+  `{…}` symbol adds 1 to every WUBRG letter it names, so hybrid `{W/U}` counts
+  for both and Phyrexian `{W/P}` counts for W.
+- **`ColorSources`** — quantity of cards (of any board-counted type) whose
+  `produced_mana` includes each WUBRG colour — the denominator the pip demand is
+  read against.
+- **`CategoryCounts`** — `deck_cards.category` rolled up: a value matching the
+  known vocabulary (`KnownCategories`) or a synonym (`categorySynonyms`) is
+  counted under its canonical name; anything else passes through verbatim
+  (`DECK-052`).
+- **`LandCount`** / **`NonLandCount`**.
+
+`CategoryTargets` is an exported map of Commander rules-of-thumb bands (Land
+36–38, Ramp / Card Draw / Removal 8–12, Board Wipe 3–5, Counterspell 0–8) the
+roll-up is meant to be read against — guidance for the UI and `ai-assist`, not
+validation. The stats endpoint echoes it alongside the counts.
+
+The analyser looks only at the `main` and `command` boards, matching what
+`/validation` counts.
 
 ## HTTP API
 
@@ -140,6 +171,7 @@ All under the protected `/api` group (M1: `DevAuth`). Registered via
 | `/api/decks/{id}/cards` | POST | `{ card_id, board, quantity?, category?, print_id? }` | `DeckCard` (flagged) | increments an existing `(deck_id, card_id, board)` entry rather than duplicating; the response carries any colour-identity / singleton flag for that entry |
 | `/api/decks/{id}/cards/{cardId}` | DELETE | — | `204` / `404` | scoped through `decks.user_id`; `204` only when a row was deleted, `404` when none matched |
 | `/api/decks/{id}/validation` | GET | — | `ValidationReport` | |
+| `/api/decks/{id}/stats` | GET | — | `Stats` + `category_targets` | deterministic; curve / pips / sources / category roll-up over `main` + `command` (`DECK-051`, `DECK-052`) |
 | `/api/decks/{id}` | PATCH | `{ name?, description?, is_public?, bracket? }` | `Deck` | |
 | `/public/decks/{id}` | GET | — | `DeckDetail` (read-only) | mounted at the router root, outside the `/api` auth group; unauthenticated; `404` (never `401`) unless `is_public` |
 
@@ -161,8 +193,15 @@ outside colour identity — it does not silently reject or silently accept
   - **Validation strip** — a persistent bar reading the `/validation` report:
     "2 cards outside colour identity", "97/100", "singleton: 2× Sol Ring",
     "banned: Channel". Refetched after every mutation.
+  - **Deck stats panel** — reads `/stats`: land / non-land / average MV, a
+    bar-chart mana curve, colour pips vs sources, and category counts against
+    the rules-of-thumb bands. Refetched when the deck's cards or commander
+    change.
+  - **Import / export panel** — see `import-export`.
 - `frontend/src/lib/deck.ts` — pure helpers: `groupByBoard`,
   `groupByCategory`, `formatValidationStrip(report)`.
+- `frontend/src/lib/deckstats.ts` — pure view helpers over the stats payload:
+  `curveRows`, `pipRows`, `categoryRows`.
 
 ## Decisions & Alternatives
 
@@ -200,29 +239,42 @@ outside colour identity — it does not silently reject or silently accept
    `PUT /api/decks/{id}/cards/{cardId}/replace` endpoint or a client-side
    remove+add; no schema change.
 4. **Printing selection** — `print_id` is in the schema and defaults to
-   newest; the picker UI is M2.
-5. **Deck stats beyond counts** — curve, colour pips vs land sources, type
-   breakdown, category counts vs heuristics — M2, in `internal/deckstats`.
+   newest; the picker UI is still pending. Its arrival unblocks `PORT-008` /
+   `CARD-009` (pin an imported list's exact printings) and `PORT-022`
+   (export chosen printings).
+5. **Cut suggestions** (captain bonus #5, paired with the swap UX below) — once
+   `deckstats` and `ai-assist` are both live, a "what should I cut" pass that
+   reads the category roll-up against `CategoryTargets`, the curve, and
+   `edhrec_rank` to propose the weakest entries. Design note only; roadmap M5+.
 6. **Deck version history / named snapshots** — a `deck_snapshots` table with a
    jsonb entry list; M7. Not scaffolded now beyond this note.
+7. **LLM deck-health prose** — `deckstats` numbers are deterministic; an
+   `ai-assist` summary that reads them into a prioritised fix list is roadmap
+   M5.
 
 ### Gaps
-7. **`maybe` and `sideboard` boards are stored but not colour-identity checked**
+8. **`maybe` and `sideboard` boards are stored but not colour-identity checked**
    — intentional (they are staging areas), but the builder should make clear
    that a `maybe` card's legality is unchecked until moved to `main`.
-8. **Concurrent edits to one deck** — last write wins; no optimistic
+9. **Concurrent edits to one deck** — last write wins; no optimistic
    concurrency token in v1. Acceptable for a single-user builder.
+10. **Category auto-categorizer** — `deck_cards.category` is still hand-entered
+    (or carried in from an Archidekt import). The Oracle-text + Scryfall
+    `oracle_tags` heuristic categorizer that would populate it automatically
+    (feeding `DECK-052`'s roll-up) is roadmap M5 and depends on `CARD-010`.
 
 ## References
 
 - Code: `backend/internal/deckrules/`, `backend/internal/deckstats/`,
-  `backend/internal/api/decks.go`,
+  `backend/internal/api/decks.go`, `backend/internal/api/stats.go`,
   `backend/internal/db/migrations/000003_create_decks.up.sql`,
   `backend/internal/db/queries/decks.sql`
 - Tests: `backend/internal/deckrules/deckrules_test.go`,
-  `backend/internal/api/decks_test.go`
+  `backend/internal/deckstats/deckstats_test.go`,
+  `backend/internal/api/decks_test.go`, `backend/internal/api/stats_test.go`
 - Frontend: `frontend/src/app/(app)/decks/page.tsx`,
-  `frontend/src/app/(app)/decks/[id]/page.tsx`, `frontend/src/lib/deck.ts`
+  `frontend/src/app/(app)/decks/[id]/page.tsx`, `frontend/src/lib/deck.ts`,
+  `frontend/src/lib/deckstats.ts`
 - Cross-segment: reads `card-data` (`cards`, `card_prints`, `banlist_overrides`);
   `user_id` / `anon_token` ownership comes from `account-access` (M1: the
   `DevAuth` user). `ai-assist` reuses `internal/deckrules` to gate model output.

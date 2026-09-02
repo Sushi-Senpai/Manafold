@@ -210,6 +210,7 @@ SELECT
     c.type_line,
     c.oracle_text,
     c.color_identity,
+    c.produced_mana,
     c.keywords,
     c.singleton_limit,
     c.can_be_commander,
@@ -247,6 +248,7 @@ type ListDeckCardEntriesRow struct {
 	TypeLine            string      `json:"type_line"`
 	OracleText          string      `json:"oracle_text"`
 	ColorIdentity       []string    `json:"color_identity"`
+	ProducedMana        []string    `json:"produced_mana"`
 	Keywords            []string    `json:"keywords"`
 	SingletonLimit      pgtype.Int4 `json:"singleton_limit"`
 	CanBeCommander      bool        `json:"can_be_commander"`
@@ -280,6 +282,7 @@ func (q *Queries) ListDeckCardEntries(ctx context.Context, deckID pgtype.UUID) (
 			&i.TypeLine,
 			&i.OracleText,
 			&i.ColorIdentity,
+			&i.ProducedMana,
 			&i.Keywords,
 			&i.SingletonLimit,
 			&i.CanBeCommander,

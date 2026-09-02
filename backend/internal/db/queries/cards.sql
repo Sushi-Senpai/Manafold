@@ -27,6 +27,20 @@ LIMIT 1;
 -- name: GetPrintByID :one
 SELECT * FROM card_prints WHERE id = $1;
 
+-- Resolve a decklist line's card name to one cards row: an exact
+-- case-insensitive match on the whole name, or a match on one face of a
+-- split / double-faced card ("Fire" for "Fire // Ice"), preferring the exact
+-- whole-name match (PORT-005).
+-- @spec PORT-005
+-- name: ResolveCardByName :one
+SELECT * FROM cards
+WHERE lower(name) = lower(sqlc.arg(name)::text)
+   OR lower(name) LIKE lower(sqlc.arg(name)::text) || ' // %'
+   OR lower(name) LIKE '% // ' || lower(sqlc.arg(name)::text)
+ORDER BY (lower(name) = lower(sqlc.arg(name)::text)) DESC,
+         edhrec_rank ASC NULLS LAST
+LIMIT 1;
+
 -- @spec CARD-030
 -- name: ListBanlistOverrides :many
 SELECT card_name, banned FROM banlist_overrides;

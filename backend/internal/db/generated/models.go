@@ -101,6 +101,17 @@ type DeckCard struct {
 	AddedAt  pgtype.Timestamptz `json:"added_at"`
 }
 
+type Import struct {
+	ID           pgtype.UUID        `json:"id"`
+	DeckID       pgtype.UUID        `json:"deck_id"`
+	SourceFormat string             `json:"source_format"`
+	RawText      string             `json:"raw_text"`
+	Parsed       json.RawMessage    `json:"parsed"`
+	Unresolved   json.RawMessage    `json:"unresolved"`
+	AppliedAt    pgtype.Timestamptz `json:"applied_at"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type Session struct {
 	ID        pgtype.UUID        `json:"id"`
 	UserID    pgtype.UUID        `json:"user_id"`

@@ -85,6 +85,7 @@ SELECT
     c.type_line,
     c.oracle_text,
     c.color_identity,
+    c.produced_mana,
     c.keywords,
     c.singleton_limit,
     c.can_be_commander,

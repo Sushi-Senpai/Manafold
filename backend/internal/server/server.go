@@ -58,6 +58,7 @@ func New(d Deps) http.Handler {
 		// @spec PLATFORM-005 — per-domain registration helpers, not a flat list.
 		h.RegisterCardRoutes(r)
 		h.RegisterDeckRoutes(r)
+		h.RegisterImportRoutes(r)
 	})
 
 	return r

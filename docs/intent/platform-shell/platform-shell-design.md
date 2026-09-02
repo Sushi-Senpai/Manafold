@@ -103,12 +103,29 @@ ever talks to the frontend origin (`ACCT-016`).
 `request<T>(path, init?)` with `credentials: "include"` and a JSON
 `Content-Type` default, a typed `ApiError { status, message }`, and centralized
 `401` handling (`window.location.href = "/"`, `ACCT-015`). One exported `api`
-object with one method per endpoint. `frontend/src/lib/deck.ts` holds small pure
-helpers (board grouping, validation-strip formatting).
+object with one method per endpoint (`exportDeck` bypasses `request` because it
+returns `text/plain`). `frontend/src/lib/deck.ts` and
+`frontend/src/lib/deckstats.ts` hold small pure view helpers.
 
-A plain-text wordmark logo is fine for M1. The visual polish system (shared
-primitives) is not a v1 concern beyond a `Card` / `EmptyState` / `RadialGlow`
-set carried over in spirit from the sibling project.
+### Palette and wordmark
+
+The theme is brand direction **"Slate & Signet"** (adopted 2026-09-02): neutral
+cool-slate surfaces framing a single violet primary (`#5B3FD4` light /
+`#6E5CE0` dark) deliberately off the blue/green wavelengths the WUBRG mana
+colours occupy, so a button never reads as a mana pip. `globals.css` carries the
+full semantic set (background / surface / surface-2 / foreground / muted /
+primary / primary-ink / accent / accent-2 / border / success / warning / danger
+/ info) as literal light values in `@theme`, re-declared under `.workspace` for
+the in-app light theme, plus six `--color-mana-{w,u,b,r,g,c}` tokens (W also
+carries `--color-mana-w-ring`) that are the loud category colours the brand
+frame is quiet around.
+
+The **"Manafold" wordmark** — display face (Space Grotesk) for the "Mana" stem,
+a lighter faded weight for the "fold" tail — is the approved plain-text mark
+(`frontend/src/components/Wordmark.tsx`, `.wordmark` styles in `globals.css`).
+The favicon is a neutral placeholder; the captain supplies the final mark, and a
+vector version of it is still wanted (`PLATFORM-024` stays deferred — the mark
+delivered so far is raster).
 
 ## Decisions & Alternatives
 
@@ -127,8 +144,10 @@ set carried over in spirit from the sibling project.
 1. **Graceful shutdown** — signal handling so in-flight requests finish on
    redeploy. Acceptable to skip while the backend is a single free-tier
    instance; revisit before any multi-instance deploy.
-2. **Real vector logo** — a text wordmark ships for v1; swap in designed artwork
-   later.
+2. **Real vector logo** (`PLATFORM-024`) — the "Slate & Signet" text wordmark
+   ships for v1. The captain has delivered a raster mark (icon + lockup PNGs on
+   a dark ground); a clean vector version, and its use as the favicon /
+   app-icon, are still outstanding.
 3. **Shared visual-polish primitives** (completion rings, status chips, radial
    glow as a system) — carried in spirit for M1; formalise if the UI grows.
 
@@ -144,8 +163,10 @@ set carried over in spirit from the sibling project.
   `backend/internal/api/api.go`, `backend/internal/api/convert.go`,
   `backend/internal/db/migrate.go`, `backend/internal/db/generated/*`
 - Hosting: `backend/Dockerfile`, `render.yaml`, `.github/workflows/ci.yml`
-- Frontend: `frontend/src/app/layout.tsx`, `globals.css`, `src/proxy.ts`,
-  `frontend/next.config.ts`, `frontend/src/lib/api.ts`, `frontend/src/lib/deck.ts`
+- Frontend: `frontend/src/app/layout.tsx`, `frontend/src/app/globals.css`,
+  `frontend/src/components/Wordmark.tsx`, `frontend/src/proxy.ts`,
+  `frontend/next.config.ts`, `frontend/src/lib/api.ts`,
+  `frontend/src/lib/deck.ts`, `frontend/src/lib/deckstats.ts`
 - Cross-segment: every `/api/*` route runs under `account-access`'s auth
   middleware (`ACCT-001` / `ACCT-012`); `card-data` and `deck-building` register
   their routes through this segment's helpers.

@@ -134,6 +134,48 @@ export type AddCardFlag = {
   singleton_violation: boolean;
 };
 
+// ---- import / export -------------------------------------------------
+
+export type ImportFormat = "plaintext" | "mtga" | "moxfield" | "archidekt";
+
+export type ResolvedLine = {
+  card_id: string;
+  name: string;
+  quantity: number;
+  board: string;
+  category?: string;
+};
+
+export type UnresolvedLine = {
+  name: string;
+  quantity: number;
+  board: string;
+  raw: string;
+};
+
+// The parse step's result: what resolved against the mirror, what did not
+// (never dropped — PORT-004), and lines the grammar could not read at all.
+export type ImportPreview = {
+  import_id: string;
+  resolved: ResolvedLine[];
+  unresolved: UnresolvedLine[];
+  rejected: string[];
+};
+
+// ---- deck stats ----------------------------------------------------
+
+export type DeckStats = {
+  type_counts: Record<string, number>;
+  avg_mana_value: number;
+  mana_curve: Record<string, number>;
+  color_pips: Record<string, number>;
+  color_sources: Record<string, number>;
+  category_counts: Record<string, number>;
+  land_count: number;
+  nonland_count: number;
+  category_targets: Record<string, [number, number]>;
+};
+
 export const api = {
   searchCards: (q: string, page = 0) =>
     request<CardSearchResult>(`/api/cards/search?q=${encodeURIComponent(q)}&page=${page}`),
@@ -163,4 +205,28 @@ export const api = {
       { method: "DELETE" },
     ),
   getValidation: (id: string) => request<ValidationReport>(`/api/decks/${id}/validation`),
+  getDeckStats: (id: string) => request<DeckStats>(`/api/decks/${id}/stats`),
+
+  parseImport: (id: string, sourceFormat: ImportFormat, rawText: string) =>
+    request<ImportPreview>(`/api/decks/${id}/import`, {
+      method: "POST",
+      body: JSON.stringify({ source_format: sourceFormat, raw_text: rawText }),
+    }),
+  applyImport: (id: string, importId: string) =>
+    request<DeckDetail>(`/api/decks/${id}/import/${importId}/apply`, { method: "POST" }),
+
+  // Export returns text/plain, not JSON, so it bypasses the shared request()
+  // helper and its JSON Content-Type / body handling.
+  exportDeck: async (id: string, format: "plaintext" | "mtga"): Promise<string> => {
+    const res = await fetch(`/api/decks/${id}/export?format=${format}`, {
+      credentials: "include",
+    });
+    if (handleUnauthorized(res.status)) {
+      throw new ApiError(res.status, "Not authenticated");
+    }
+    if (!res.ok) {
+      throw new ApiError(res.status, `Export failed (${res.status})`);
+    }
+    return res.text();
+  },
 };

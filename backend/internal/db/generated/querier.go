@@ -22,6 +22,8 @@ type Querier interface {
 	AutocompleteCardNames(ctx context.Context, prefix string) ([]string, error)
 	// @spec DECK-001
 	CreateDeck(ctx context.Context, arg CreateDeckParams) (Deck, error)
+	// @spec PORT-001
+	CreateImport(ctx context.Context, arg CreateImportParams) (Import, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	// @spec CARD-001, CARD-007
 	CreateSyncRun(ctx context.Context, arg CreateSyncRunParams) (SyncRun, error)
@@ -42,6 +44,10 @@ type Querier interface {
 	// row, which the handler maps to 404 (DECK-009).
 	// @spec DECK-009
 	GetDeckForUser(ctx context.Context, arg GetDeckForUserParams) (Deck, error)
+	// Ownership is scoped through the deck: an import for a deck the caller does not
+	// own returns no row, which the handler maps to 404 (DECK-009).
+	// @spec PORT-006, DECK-009
+	GetImportForOwner(ctx context.Context, arg GetImportForOwnerParams) (Import, error)
 	// The newest printing for a card — the default display printing when a
 	// deck_cards entry has no chosen print_id.
 	GetNewestPrintForCard(ctx context.Context, cardID pgtype.UUID) (CardPrint, error)
@@ -59,6 +65,13 @@ type Querier interface {
 	// @spec DECK-007
 	ListDeckCardEntries(ctx context.Context, deckID pgtype.UUID) ([]ListDeckCardEntriesRow, error)
 	ListDecksByUser(ctx context.Context, userID pgtype.UUID) ([]Deck, error)
+	MarkImportApplied(ctx context.Context, id pgtype.UUID) error
+	// Resolve a decklist line's card name to one cards row: an exact
+	// case-insensitive match on the whole name, or a match on one face of a
+	// split / double-faced card ("Fire" for "Fire // Ice"), preferring the exact
+	// whole-name match (PORT-005).
+	// @spec PORT-005
+	ResolveCardByName(ctx context.Context, name string) (Card, error)
 	// @spec DECK-002, DECK-003
 	SetDeckCommander(ctx context.Context, arg SetDeckCommanderParams) (Deck, error)
 	// @spec DECK-011
