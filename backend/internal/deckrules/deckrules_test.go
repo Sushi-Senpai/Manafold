@@ -110,6 +110,61 @@ func TestValidate_IncompatiblePartner(t *testing.T) {
 	}
 }
 
+// @spec DECK-021
+func TestValidate_ChooseABackgroundPairingIsLegal(t *testing.T) {
+	// "Choose a Background" legendary creature + a Background enchantment. The
+	// Background is "Legendary Enchantment — Background" with no "can be your
+	// commander" text, so its CanBeCommander is legitimately false — but the
+	// pairing is one of the five compatible partner variants, so the report
+	// must raise no commander-shape issue.
+	commander := CardFacts{
+		ID: "wilson", Name: "Wilson, Refined Grizzly", CanBeCommander: true,
+		TypeLine:   "Legendary Creature — Bear Warrior",
+		OracleText: "Ward {2}\nChoose a Background (You can have a Background as a second commander.)",
+	}
+	background := CardFacts{
+		ID: "cultist", Name: "Cult of the Absolute", CanBeCommander: false,
+		TypeLine:   "Legendary Enchantment — Background",
+		OracleText: "Commander creatures you own have base power and toughness 6/6, have trample, and are Phyrexian Horrors in addition to their other types.",
+	}
+
+	report := Validate(ValidationInput{
+		DeckColorIdentity: []string{"B", "G"},
+		Commander:         &commander,
+		Partner:           &background,
+	})
+	if len(report.CommanderIssues) != 0 {
+		t.Fatalf("a Choose-a-Background pairing must raise no commander-shape issue, got %v", report.CommanderIssues)
+	}
+}
+
+// @spec DECK-021
+func TestValidate_PlainLegendaryCreatureAsPartnerIsIncompatible(t *testing.T) {
+	// A legendary creature with no partner mechanic at all cannot be a second
+	// commander, even though it can be a commander on its own.
+	commander := CardFacts{ID: "tana", Name: "Tana, the Bloodsower", CanBeCommander: true, Keywords: []string{"Partner"}}
+	plain := CardFacts{
+		ID: "bear", Name: "Ancient Silverback", CanBeCommander: true,
+		TypeLine:   "Legendary Creature — Ape",
+		OracleText: "{4}: Regenerate Ancient Silverback.",
+	}
+
+	report := Validate(ValidationInput{
+		DeckColorIdentity: []string{"G"},
+		Commander:         &commander,
+		Partner:           &plain,
+	})
+	found := false
+	for _, issue := range report.CommanderIssues {
+		if issue == "Tana, the Bloodsower and Ancient Silverback are not a valid partner pairing" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected an incompatible-partner issue, got %v", report.CommanderIssues)
+	}
+}
+
 // @spec DECK-006
 func TestValidate_Singleton(t *testing.T) {
 	tests := []struct {

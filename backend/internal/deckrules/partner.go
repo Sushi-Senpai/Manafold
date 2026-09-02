@@ -28,12 +28,13 @@ func commanderIssues(commander, partner *CardFacts) []string {
 	}
 
 	if partner != nil {
+		if compatiblePartners(*commander, *partner) {
+			return issues
+		}
+		issues = append(issues, fmt.Sprintf(
+			"%s and %s are not a valid partner pairing", commander.Name, partner.Name))
 		if !partner.CanBeCommander {
 			issues = append(issues, fmt.Sprintf("%s cannot be a commander", partner.Name))
-		}
-		if !compatiblePartners(*commander, *partner) {
-			issues = append(issues, fmt.Sprintf(
-				"%s and %s are not a valid partner pairing", commander.Name, partner.Name))
 		}
 	}
 
