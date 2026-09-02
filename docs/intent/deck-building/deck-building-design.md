@@ -149,10 +149,13 @@ summary over these numbers is a later milestone (M5).
   (`DECK-052`).
 - **`LandCount`** / **`NonLandCount`**.
 
-`CategoryTargets` is an exported map of Commander rules-of-thumb bands (Land
-36–38, Ramp / Card Draw / Removal 8–12, Board Wipe 3–5, Counterspell 0–8) the
-roll-up is meant to be read against — guidance for the UI and `ai-assist`, not
-validation. The stats endpoint echoes it alongside the counts.
+`CategoryTargets` is an exported map of Commander rules-of-thumb bands (Ramp /
+Card Draw / Removal 8–12, Board Wipe 3–5, Counterspell 0–8) the roll-up is meant
+to be read against — guidance for the UI and `ai-assist`, not validation. The
+stats endpoint echoes it alongside the counts. Land carries no band: the roll-up
+only counts cards the user has manually tagged, so a land target would read
+"under" for nearly every deck; the real land signal is `LandCount`, surfaced
+separately in the land / non-land split.
 
 The analyser looks only at the `main` and `command` boards, matching what
 `/validation` counts.

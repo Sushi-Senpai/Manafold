@@ -145,6 +145,27 @@ func (a *API) loadDeck(r *http.Request, deck db.Deck) (*loadedDeck, error) {
 		}
 	}
 
+	// An imported Commander section is written as a command-board deck_cards row
+	// without setting decks.commander_card_id. If that same card is later
+	// assigned as commander/partner via the picker, it would be counted twice —
+	// once from ld.commander/ld.partner and once from its own entry row. Drop the
+	// duplicate command-board entry so every loadDeck consumer (validation,
+	// detailJSON, stats, export) counts the assigned commander/partner exactly
+	// once. A command-board row for a card that is not the assigned
+	// commander/partner stays as a normal entry.
+	if ld.commander != nil || ld.partner != nil {
+		kept := ld.entries[:0]
+		for _, e := range ld.entries {
+			if e.Board == "command" &&
+				((ld.commander != nil && e.CardID == ld.commander.ID) ||
+					(ld.partner != nil && e.CardID == ld.partner.ID)) {
+				continue
+			}
+			kept = append(kept, e)
+		}
+		ld.entries = kept
+	}
+
 	in := deckrules.ValidationInput{
 		DeckColorIdentity: nonNil(deck.ColorIdentity),
 	}
@@ -158,7 +179,7 @@ func (a *API) loadDeck(r *http.Request, deck db.Deck) (*loadedDeck, error) {
 		in.Partner = &f
 		in.Entries = append(in.Entries, deckrules.Entry{Card: f, Board: "command", Quantity: 1})
 	}
-	for _, e := range entries {
+	for _, e := range ld.entries {
 		in.Entries = append(in.Entries, deckrules.Entry{
 			Card:     cardFactsFromEntry(e, overrideFor(e.Name)),
 			Board:    e.Board,

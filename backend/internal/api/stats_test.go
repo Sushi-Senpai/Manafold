@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"manafold-backend/internal/deckrules"
 	"manafold-backend/internal/deckstats"
 )
 
@@ -63,7 +64,7 @@ func TestDeckStats_EndToEnd(t *testing.T) {
 	if stats.CategoryCounts["Ramp"] != 1 || stats.CategoryCounts["Threat"] != 1 {
 		t.Errorf("category_counts = %#v, want Ramp:1 Threat:1", stats.CategoryCounts)
 	}
-	if got := stats.CategoryTargets["Land"]; got != deckstats.CategoryTargets["Land"] {
+	if got := stats.CategoryTargets["Ramp"]; got != deckstats.CategoryTargets["Ramp"] {
 		t.Errorf("category_targets not echoed: %#v", stats.CategoryTargets)
 	}
 
@@ -71,5 +72,58 @@ func TestDeckStats_EndToEnd(t *testing.T) {
 	stranger := makeUser(t, a)
 	if rec := serveIO(t, a, stranger, http.MethodGet, "/decks/"+deckID+"/stats", ""); rec.Code != http.StatusNotFound {
 		t.Fatalf("non-owner stats = %d, want 404", rec.Code)
+	}
+}
+
+// A card imported into the command board and then assigned as commander via the
+// picker must be counted exactly once — not doubled across the curve, pips,
+// type counts, land/non-land split, or the singleton check.
+//
+// @spec DECK-051, DECK-052, DECK-008
+func TestDeckStats_CommanderNotDoubleCounted(t *testing.T) {
+	a := testAPI(t)
+	owner := makeUser(t, a)
+	sfx := hex.EncodeToString(randBytes(t, 4))
+
+	cmd := mkCard(t, a, "Solo Commander "+sfx, "Legendary Creature — Elf", "{1}{G}", 2, []string{"G"}, nil, true)
+	deckID := newDeck(t, a, owner)
+
+	// An imported Commander section lands as a command-board deck_cards row.
+	if rec := serveIO(t, a, owner, http.MethodPost, "/decks/"+deckID+"/cards", `{"card_id":"`+uuidString(cmd)+`","board":"command"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("add command-board card: %d %s", rec.Code, rec.Body.String())
+	}
+	// The same card is then assigned as commander through the picker.
+	if rec := serveIO(t, a, owner, http.MethodPut, "/decks/"+deckID+"/commander", `{"commander_card_id":"`+uuidString(cmd)+`"}`); rec.Code != http.StatusOK {
+		t.Fatalf("set commander: %d %s", rec.Code, rec.Body.String())
+	}
+
+	rec := serveIO(t, a, owner, http.MethodGet, "/decks/"+deckID+"/stats", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get stats: %d %s", rec.Code, rec.Body.String())
+	}
+	stats := decode[deckStatsJSON](t, rec)
+	if stats.NonLandCount != 1 {
+		t.Errorf("nonland_count = %d, want 1 (commander counted once)", stats.NonLandCount)
+	}
+	if stats.ManaCurve["2"] != 1 {
+		t.Errorf("mana_curve[2] = %d, want 1", stats.ManaCurve["2"])
+	}
+	if stats.ColorPips["G"] != 1 {
+		t.Errorf("G pips = %d, want 1", stats.ColorPips["G"])
+	}
+	if stats.TypeCounts["Creature"] != 1 {
+		t.Errorf("Creature count = %d, want 1", stats.TypeCounts["Creature"])
+	}
+
+	rec = serveIO(t, a, owner, http.MethodGet, "/decks/"+deckID+"/validation", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get validation: %d %s", rec.Code, rec.Body.String())
+	}
+	report := decode[deckrules.ValidationReport](t, rec)
+	if len(report.SingletonViolations) != 0 {
+		t.Errorf("singleton violations = %+v, want none (commander not doubled)", report.SingletonViolations)
+	}
+	if report.MainCommandCount != 1 {
+		t.Errorf("main_command_count = %d, want 1", report.MainCommandCount)
 	}
 }

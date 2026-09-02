@@ -14,7 +14,6 @@ const base: DeckStats = {
   land_count: 37,
   nonland_count: 62,
   category_targets: {
-    Land: [36, 38],
     Ramp: [8, 12],
     "Card Draw": [8, 12],
   },
@@ -47,10 +46,10 @@ test("categoryRows merges targets with counts and flags under/over/ok", () => {
   assert.equal(byName["Card Draw"].count, 0);
   assert.equal(byName["Card Draw"].status, "under");
   assert.equal(byName["Ramp"].status, "ok");
-  assert.equal(byName["Land"].status, "under"); // 0 counted, target 36-38
   assert.equal(byName["Group Hug"].status, "untargeted");
+  assert.equal(byName["Land"], undefined); // no Land target, no Land count → no row
   assert.deepEqual(
     rows.map((r) => r.name),
-    ["Card Draw", "Group Hug", "Land", "Ramp"],
+    ["Card Draw", "Group Hug", "Ramp"],
   );
 });

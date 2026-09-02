@@ -181,9 +181,12 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
     from the M1 stub to a deterministic analyser — non-land mana curve
     (`0`–`6`, `7+`), colour-pip demand vs colour sources, a functional-category
     roll-up over a known vocabulary + synonym table with free-text passthrough,
-    and exported `CategoryTargets` rules-of-thumb bands. `GET
-    /api/decks/{id}/stats` echoes the analysis plus the targets; the builder
-    page renders a stats panel. LLM prose over these numbers stays M5.
+    and exported `CategoryTargets` rules-of-thumb bands for Ramp / Card Draw /
+    Removal / Board Wipe / Counterspell (Land carries no band — the roll-up only
+    counts manually tagged cards, so the real land signal is the separate
+    land / non-land split). `GET /api/decks/{id}/stats` echoes the analysis plus
+    the targets; the builder page renders a stats panel. LLM prose over these
+    numbers stays M5.
   - **Palette — "Slate & Signet"** (captain decision, brand direction A): the
     light + dark semantic-token set and the six `--color-mana-*` WUBRG tokens
     wired into `frontend/src/app/globals.css`, replacing the M1 placeholder

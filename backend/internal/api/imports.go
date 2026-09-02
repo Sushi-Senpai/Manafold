@@ -152,6 +152,19 @@ func (a *API) applyImport(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	// The import is scoped to its own deck: applying deck A's stored parse into
+	// deck B would write the wrong cards and leave a misleading audit trail.
+	if imp.DeckID != deck.ID {
+		writeError(w, http.StatusNotFound, "import not found")
+		return
+	}
+	// Apply is one-shot. AddDeckCard accumulates quantity on conflict, so a
+	// second apply would silently double every card; applied_at records that it
+	// has already run.
+	if imp.AppliedAt.Valid {
+		writeError(w, http.StatusConflict, "import has already been applied")
+		return
+	}
 
 	var parsed deckio.ParseResult
 	if err := json.Unmarshal(imp.Parsed, &parsed); err != nil {

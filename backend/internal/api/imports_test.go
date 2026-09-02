@@ -171,6 +171,82 @@ func TestImport_NonOwnerGets404(t *testing.T) {
 	}
 }
 
+// @spec PORT-006
+func TestImport_ApplyRejectsCrossDeck(t *testing.T) {
+	a := testAPI(t)
+	owner := makeUser(t, a)
+	sfx := hex.EncodeToString(randBytes(t, 4))
+	mkCard(t, a, "Cross Deck Card "+sfx, "Artifact", "{1}", 1, nil, nil, false)
+
+	deckA := newDeck(t, a, owner)
+	deckB := newDeck(t, a, owner)
+
+	raw := "Deck\n1 Cross Deck Card " + sfx + "\n"
+	body, _ := json.Marshal(map[string]string{"source_format": "plaintext", "raw_text": raw})
+	rec := serveIO(t, a, owner, http.MethodPost, "/decks/"+deckA+"/import", string(body))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("parse import: %d %s", rec.Code, rec.Body.String())
+	}
+	importID := decode[importResponse](t, rec).ImportID
+
+	// Applying deck A's stored import through deck B's path is a 404 — the
+	// import is scoped to the deck it was parsed against.
+	rec = serveIO(t, a, owner, http.MethodPost, "/decks/"+deckB+"/import/"+importID+"/apply", "")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("cross-deck apply = %d, want 404", rec.Code)
+	}
+
+	rec = serveIO(t, a, owner, http.MethodGet, "/decks/"+deckB, "")
+	detail := decode[deckDetailJSON](t, rec)
+	if len(detail.Boards["main"]) != 0 {
+		t.Fatalf("deck B main board not empty after rejected cross-deck apply: %+v", detail.Boards["main"])
+	}
+}
+
+// @spec PORT-006
+func TestImport_ApplyIsOneShot(t *testing.T) {
+	a := testAPI(t)
+	owner := makeUser(t, a)
+	sfx := hex.EncodeToString(randBytes(t, 4))
+	mkCard(t, a, "One Shot Card "+sfx, "Artifact", "{1}", 1, nil, nil, false)
+
+	deckID := newDeck(t, a, owner)
+	raw := "Deck\n2 One Shot Card " + sfx + "\n"
+	body, _ := json.Marshal(map[string]string{"source_format": "plaintext", "raw_text": raw})
+	rec := serveIO(t, a, owner, http.MethodPost, "/decks/"+deckID+"/import", string(body))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("parse import: %d %s", rec.Code, rec.Body.String())
+	}
+	importID := decode[importResponse](t, rec).ImportID
+
+	rec = serveIO(t, a, owner, http.MethodPost, "/decks/"+deckID+"/import/"+importID+"/apply", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("first apply: %d %s", rec.Code, rec.Body.String())
+	}
+	qtyOf := func(d deckDetailJSON) int32 {
+		for _, e := range d.Boards["main"] {
+			if e.Name == "One Shot Card "+sfx {
+				return e.Quantity
+			}
+		}
+		return 0
+	}
+	if got := qtyOf(decode[deckDetailJSON](t, rec)); got != 2 {
+		t.Fatalf("quantity after first apply = %d, want 2", got)
+	}
+
+	// A second apply of the same import is a 409, not a silent quantity double.
+	rec = serveIO(t, a, owner, http.MethodPost, "/decks/"+deckID+"/import/"+importID+"/apply", "")
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("second apply = %d, want 409", rec.Code)
+	}
+
+	rec = serveIO(t, a, owner, http.MethodGet, "/decks/"+deckID, "")
+	if got := qtyOf(decode[deckDetailJSON](t, rec)); got != 2 {
+		t.Fatalf("quantity after rejected second apply = %d, want 2 (unchanged)", got)
+	}
+}
+
 // @spec PORT-007
 func TestExport_PlaintextAndMTGA(t *testing.T) {
 	a := testAPI(t)

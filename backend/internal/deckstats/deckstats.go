@@ -94,9 +94,11 @@ var categorySynonyms = map[string]string{
 // CategoryTargets are the Commander deckbuilding rules-of-thumb (a common
 // starting-point spread for a ~99-card singleton deck) the category roll-up is
 // meant to be read against. They are guidance the UI and ai-assist compare to,
-// not validation — a deck outside a band is not "illegal".
+// not validation — a deck outside a band is not "illegal". Land is deliberately
+// absent: the roll-up only counts cards a user has manually tagged, so a "Land"
+// target would read "under" for almost every deck; the real land signal is
+// LandCount, surfaced separately.
 var CategoryTargets = map[string][2]int{
-	"Land":         {36, 38},
 	"Ramp":         {8, 12},
 	"Card Draw":    {8, 12},
 	"Removal":      {8, 12},
@@ -237,9 +239,9 @@ func canonicalCategory(raw string) string {
 	return t
 }
 
-// SortedCurve returns the curve buckets in display order ("0".."6","7+"),
-// including zero-count buckets up to the deck's highest, so a caller can render
-// a gap-free axis.
+// SortedCurve returns the curve buckets present in the map, sorted into display
+// order ("0".."6" then "7+"). It does not synthesize missing buckets; filling
+// gaps for a hole-free axis is the frontend curveRows helper's job.
 func SortedCurve(curve map[string]int) []string {
 	keys := make([]string, 0, len(curve))
 	for k := range curve {
