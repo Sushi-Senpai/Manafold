@@ -165,11 +165,14 @@ func deriveSingletonLimit(oracleText string) pgtype.Int4 {
 	return pgtype.Int4{}
 }
 
-// deriveCanBeCommander is true when the type line carries both "Legendary" and
-// "Creature", or the Oracle text (on any face) says "can be your commander"
-// (CARD-004).
+// deriveCanBeCommander is true when the front face's type line carries both
+// "Legendary" and "Creature", or the Oracle text (on any face) says "can be
+// your commander" (CARD-004). Scryfall joins a multi-face card's type lines
+// with " // " at the card level, so the card-level type line is reduced to its
+// front face before the legendary-creature test; each back face is checked
+// separately in the loop.
 func deriveCanBeCommander(typeLine, oracleText string, faces []cardFace) bool {
-	if grantsCommand(typeLine, oracleText) {
+	if grantsCommand(frontFace(typeLine), oracleText) {
 		return true
 	}
 	for _, f := range faces {
@@ -178,6 +181,15 @@ func deriveCanBeCommander(typeLine, oracleText string, faces []cardFace) bool {
 		}
 	}
 	return false
+}
+
+// frontFace returns the front-face segment of a Scryfall card-level type line,
+// which joins multi-face cards' type lines with " // ".
+func frontFace(typeLine string) string {
+	if parts := strings.SplitN(typeLine, " // ", 2); len(parts) > 0 {
+		return parts[0]
+	}
+	return typeLine
 }
 
 func grantsCommand(typeLine, oracleText string) bool {

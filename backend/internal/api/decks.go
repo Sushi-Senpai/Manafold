@@ -520,44 +520,53 @@ func (a *API) addCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deck, err := a.Queries.GetDeckForUser(r.Context(), db.GetDeckForUserParams{ID: id, UserID: callerID(r)})
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to reload deck")
-		return
-	}
-	card, err := a.Queries.GetCardByID(r.Context(), cardID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to reload card")
-		return
-	}
-
-	total := 0
-	all, err := a.Queries.ListDeckCardEntries(r.Context(), id)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to reload deck cards")
-		return
-	}
-	for _, e := range all {
-		if uuidString(e.CardID) == uuidString(cardID) && (e.Board == "main" || e.Board == "command") {
-			total += int(e.Quantity)
-		}
-	}
-	if total == 0 {
-		total = int(entry.Quantity)
-	}
-
-	probe := deckrules.Validate(deckrules.ValidationInput{
-		DeckColorIdentity: nonNil(deck.ColorIdentity),
-		Entries: []deckrules.Entry{{
-			Card:     cardFactsFrom(card, nil),
-			Board:    "main",
-			Quantity: total,
-		}},
-	})
-	ciViol := len(probe.ColorIdentityViolations) > 0
+	ciViol := false
+	singletonViol := false
 	offending := []string{}
-	if ciViol {
-		offending = probe.ColorIdentityViolations[0].Offending
+
+	// DECK-004 / DECK-006: the colour-identity and singleton flags are scoped to
+	// the main and command boards — the same boards GET /decks/{id}/validation
+	// counts. A card staged on maybe/sideboard is never flagged, so the probe is
+	// skipped entirely for those boards and the two endpoints stay in agreement.
+	if board == "main" || board == "command" {
+		deck, err := a.Queries.GetDeckForUser(r.Context(), db.GetDeckForUserParams{ID: id, UserID: callerID(r)})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to reload deck")
+			return
+		}
+		card, err := a.Queries.GetCardByID(r.Context(), cardID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to reload card")
+			return
+		}
+		all, err := a.Queries.ListDeckCardEntries(r.Context(), id)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to reload deck cards")
+			return
+		}
+		total := 0
+		for _, e := range all {
+			if uuidString(e.CardID) == uuidString(cardID) && (e.Board == "main" || e.Board == "command") {
+				total += int(e.Quantity)
+			}
+		}
+		if total == 0 {
+			total = int(entry.Quantity)
+		}
+
+		probe := deckrules.Validate(deckrules.ValidationInput{
+			DeckColorIdentity: nonNil(deck.ColorIdentity),
+			Entries: []deckrules.Entry{{
+				Card:     cardFactsFrom(card, nil),
+				Board:    board,
+				Quantity: total,
+			}},
+		})
+		ciViol = len(probe.ColorIdentityViolations) > 0
+		if ciViol {
+			offending = probe.ColorIdentityViolations[0].Offending
+		}
+		singletonViol = len(probe.SingletonViolations) > 0
 	}
 
 	writeJSON(w, http.StatusCreated, map[string]any{
@@ -567,7 +576,7 @@ func (a *API) addCard(w http.ResponseWriter, r *http.Request) {
 		"quantity":                 entry.Quantity,
 		"color_identity_violation": ciViol,
 		"offending_colors":         offending,
-		"singleton_violation":      len(probe.SingletonViolations) > 0,
+		"singleton_violation":      singletonViol,
 	})
 }
 

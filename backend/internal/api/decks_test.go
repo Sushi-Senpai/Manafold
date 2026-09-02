@@ -238,3 +238,58 @@ func TestDeckEndpoints_EndToEnd(t *testing.T) {
 		t.Fatalf("remove card = %d, want 204", rec.Code)
 	}
 }
+
+// @spec DECK-004
+func TestAddCard_ViolationFlagScopedToCountedBoards(t *testing.T) {
+	a := testAPI(t)
+	owner := makeUser(t, a)
+
+	commander := makeCard(t, a, "Test Commander "+hex.EncodeToString(randBytes(t, 4)), "Legendary Creature — Human", []string{"W"}, true)
+	outOfIdentity := makeCard(t, a, "Test Black Blob "+hex.EncodeToString(randBytes(t, 4)), "Creature — Horror", []string{"B"}, false)
+
+	rec := serve(t, a, owner, http.MethodPost, "/decks", map[string]string{"name": "Board Scope Deck"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create deck: %d %s", rec.Code, rec.Body.String())
+	}
+	deckID := decode[deckJSON](t, rec).ID
+
+	rec = serve(t, a, owner, http.MethodPut, "/decks/"+deckID+"/commander", map[string]string{"commander_card_id": uuidString(commander)})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("set commander: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// Staged on the maybeboard: not one of the boards DECK-004 / the validation
+	// endpoint count, so the add response must not flag it.
+	rec = serve(t, a, owner, http.MethodPost, "/decks/"+deckID+"/cards",
+		map[string]string{"card_id": uuidString(outOfIdentity), "board": "maybe"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("add to maybe: %d %s", rec.Code, rec.Body.String())
+	}
+	maybeFlag := decode[map[string]any](t, rec)
+	if maybeFlag["color_identity_violation"] != false {
+		t.Fatalf("out-of-identity card on maybe board flagged: %v", maybeFlag)
+	}
+
+	// The same card on the mainboard is flagged.
+	rec = serve(t, a, owner, http.MethodPost, "/decks/"+deckID+"/cards",
+		map[string]string{"card_id": uuidString(outOfIdentity), "board": "main"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("add to main: %d %s", rec.Code, rec.Body.String())
+	}
+	mainFlag := decode[map[string]any](t, rec)
+	if mainFlag["color_identity_violation"] != true {
+		t.Fatalf("out-of-identity card on main board not flagged: %v", mainFlag)
+	}
+
+	// The add response and GET /validation agree: the violation is the single
+	// main-board copy, not the maybeboard one.
+	rec = serve(t, a, owner, http.MethodGet, "/decks/"+deckID+"/validation", nil)
+	report := decode[struct {
+		ColorIdentityViolations []struct {
+			CardID string `json:"card_id"`
+		} `json:"color_identity_violations"`
+	}](t, rec)
+	if len(report.ColorIdentityViolations) != 1 || report.ColorIdentityViolations[0].CardID != uuidString(outOfIdentity) {
+		t.Fatalf("validation violations = %+v, want exactly the main-board copy", report.ColorIdentityViolations)
+	}
+}

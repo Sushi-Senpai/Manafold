@@ -48,6 +48,14 @@ func TestDeriveCanBeCommander(t *testing.T) {
 			{TypeLine: "Legendary Enchantment", OracleText: ""},
 			{TypeLine: "Legendary Creature — God", OracleText: ""},
 		}, true},
+		{"concatenated type line, no face is a legendary creature", "Legendary Sorcery // Creature — Bear", "", []cardFace{
+			{TypeLine: "Legendary Sorcery", OracleText: "Draw two cards."},
+			{TypeLine: "Creature — Bear", OracleText: "Trample"},
+		}, false},
+		{"front face is a legendary creature on a split card", "Legendary Creature — Elf // Instant", "", []cardFace{
+			{TypeLine: "Legendary Creature — Elf", OracleText: "{T}: Add {G}."},
+			{TypeLine: "Instant", OracleText: "Deal 2 damage."},
+		}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
