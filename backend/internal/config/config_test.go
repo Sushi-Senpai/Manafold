@@ -34,6 +34,34 @@ func TestLoad_RequiresFrontendURL(t *testing.T) {
 	}
 }
 
+// @spec PLATFORM-003
+func TestLoadCardsync_DoesNotRequireFrontendURL(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("DATABASE_URL", "postgres://example")
+
+	cfg, err := LoadCardsync()
+	if err != nil {
+		t.Fatalf("LoadCardsync: %v", err)
+	}
+	if cfg.DatabaseURL != "postgres://example" {
+		t.Fatalf("DatabaseURL = %q, want postgres://example", cfg.DatabaseURL)
+	}
+}
+
+// @spec PLATFORM-003
+func TestLoadCardsync_RequiresDatabaseURL(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("FRONTEND_URL", "http://localhost:3000")
+
+	_, err := LoadCardsync()
+	if err == nil {
+		t.Fatal("expected an error when DATABASE_URL is unset")
+	}
+	if !strings.Contains(err.Error(), "DATABASE_URL") {
+		t.Fatalf("expected the error to name DATABASE_URL, got %v", err)
+	}
+}
+
 func TestLoad_DevAuthAndPortDefault(t *testing.T) {
 	clearEnv(t)
 	t.Setenv("DATABASE_URL", "postgres://example")

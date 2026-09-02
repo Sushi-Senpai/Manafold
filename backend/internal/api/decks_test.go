@@ -274,10 +274,35 @@ func TestDeckEndpoints_EndToEnd(t *testing.T) {
 		}
 	}
 
-	// DECK-010: deleting again, with no matching entry, still responds 204.
+	// DECK-009: deleting again, with no matching entry, is indistinguishable
+	// from a deck the caller does not own — the ownership-scoped DELETE matches
+	// zero rows and the handler returns 404.
 	rec = serve(t, a, owner, http.MethodDelete, "/decks/"+deckID+"/cards/"+uuidString(outOfIdentity), nil)
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("remove absent card = %d, want 204", rec.Code)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("remove absent card = %d, want 404", rec.Code)
+	}
+
+	// DECK-009: a non-owner cannot remove a card — the DELETE is ownership-scoped
+	// in the query, so it affects zero rows and the handler returns 404.
+	rec = serve(t, a, owner, http.MethodPost, "/decks/"+deckID+"/cards",
+		map[string]string{"card_id": uuidString(outOfIdentity)})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("re-add card for non-owner delete test: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = serve(t, a, other, http.MethodDelete, "/decks/"+deckID+"/cards/"+uuidString(outOfIdentity), nil)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("non-owner remove card = %d, want 404", rec.Code)
+	}
+	rec = serve(t, a, owner, http.MethodGet, "/decks/"+deckID, nil)
+	detail = decode[deckDetailJSON](t, rec)
+	found := false
+	for _, e := range detail.Boards["main"] {
+		if e.CardID == uuidString(outOfIdentity) {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("non-owner delete removed the owner's card: %+v", detail.Boards["main"])
 	}
 }
 

@@ -26,8 +26,11 @@ type Querier interface {
 	// @spec CARD-001, CARD-007
 	CreateSyncRun(ctx context.Context, arg CreateSyncRunParams) (SyncRun, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
-	// @spec DECK-010
-	DeleteDeckCard(ctx context.Context, arg DeleteDeckCardParams) error
+	// The DELETE is joined to decks filtered by owner, so removing a card from a
+	// deck the caller does not own matches no row; the handler maps zero rows
+	// affected to 404 (DECK-009).
+	// @spec DECK-009, DECK-010
+	DeleteDeckCard(ctx context.Context, arg DeleteDeckCardParams) (int64, error)
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
 	FailSyncRun(ctx context.Context, arg FailSyncRunParams) error

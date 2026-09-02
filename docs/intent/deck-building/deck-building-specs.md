@@ -11,7 +11,7 @@
 - [x] **DECK-007**: When a client requests a deck, the system shall return its entries grouped by board and by category, each entry carrying the card's Oracle data and its chosen printing, or its newest printing when none is chosen.
 - [x] **DECK-008**: The system shall compute, for any deck, a validation report listing colour-identity violations, singleton violations, the `main`+`command` quantity total and its signed deviation from 100, and any entry whose `legalities.commander` is `banned` (unless a `banlist_overrides` row un-bans it) or whose `banlist_overrides` row bans it.
 - [x] **DECK-009**: When a client mutates or reads a deck it does not own, the system shall respond `404`, with ownership enforced in the query rather than by a separate check.
-- [x] **DECK-010**: When a client removes a card entry from a deck, the system shall scope the deletion through the deck's owner and respond `204` whether or not a matching entry existed.
+- [x] **DECK-010**: When a client removes a card entry from a deck, the system shall scope the deletion through the deck's owner, respond `204` only when a row was actually deleted, and respond `404` when no row matched — whether because the deck is not owned by the caller or the card entry was absent.
 - [x] **DECK-011**: When a client updates a deck's name, description, public flag, or bracket, the system shall persist only those fields and leave the deck's cards and commander untouched.
 
 ## Commander Shape

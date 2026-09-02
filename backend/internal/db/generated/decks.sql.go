@@ -101,7 +101,7 @@ func (q *Queries) CreateDeck(ctx context.Context, arg CreateDeckParams) (Deck, e
 	return i, err
 }
 
-const deleteDeckCard = `-- name: DeleteDeckCard :exec
+const deleteDeckCard = `-- name: DeleteDeckCard :execrows
 DELETE FROM deck_cards dc
 USING decks d
 WHERE dc.deck_id = $1
@@ -118,15 +118,21 @@ type DeleteDeckCardParams struct {
 	UserID pgtype.UUID `json:"user_id"`
 }
 
-// @spec DECK-010
-func (q *Queries) DeleteDeckCard(ctx context.Context, arg DeleteDeckCardParams) error {
-	_, err := q.db.Exec(ctx, deleteDeckCard,
+// The DELETE is joined to decks filtered by owner, so removing a card from a
+// deck the caller does not own matches no row; the handler maps zero rows
+// affected to 404 (DECK-009).
+// @spec DECK-009, DECK-010
+func (q *Queries) DeleteDeckCard(ctx context.Context, arg DeleteDeckCardParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteDeckCard,
 		arg.DeckID,
 		arg.CardID,
 		arg.Board,
 		arg.UserID,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getDeckForUser = `-- name: GetDeckForUser :one

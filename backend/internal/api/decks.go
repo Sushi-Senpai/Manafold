@@ -589,7 +589,7 @@ func (a *API) addCard(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @spec DECK-010
+// @spec DECK-009, DECK-010
 func (a *API) removeCard(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseUUID(chi.URLParam(r, "id"))
 	if !ok {
@@ -605,13 +605,18 @@ func (a *API) removeCard(w http.ResponseWriter, r *http.Request) {
 	if board == "" {
 		board = "main"
 	}
-	if err := a.Queries.DeleteDeckCard(r.Context(), db.DeleteDeckCardParams{
+	rows, err := a.Queries.DeleteDeckCard(r.Context(), db.DeleteDeckCardParams{
 		DeckID: id,
 		CardID: cardID,
 		Board:  board,
 		UserID: callerID(r),
-	}); err != nil {
+	})
+	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to remove card")
+		return
+	}
+	if rows == 0 {
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

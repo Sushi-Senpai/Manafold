@@ -29,17 +29,10 @@ type Config struct {
 }
 
 // Load reads a .env file if present (local dev) then the real environment. Real
-// environment variables always win.
+// environment variables always win. It is the API server's config path and
+// requires both DATABASE_URL and FRONTEND_URL.
 func Load() (Config, error) {
-	_ = godotenv.Load() // a missing .env is expected outside local dev
-
-	cfg := Config{
-		Port:            getEnv("PORT", "8080"),
-		DatabaseURL:     os.Getenv("DATABASE_URL"),
-		FrontendURL:     os.Getenv("FRONTEND_URL"),
-		DevAuth:         os.Getenv("DEV_AUTH") == "true",
-		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
-	}
+	cfg := readEnv()
 
 	// @spec PLATFORM-003
 	if cfg.DatabaseURL == "" {
@@ -50,6 +43,36 @@ func Load() (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// LoadCardsync is the minimal config path for cmd/cardsync, the standalone
+// Scryfall ingestion job (PLATFORM-006). It has no HTTP surface and only needs
+// the database, so it validates DATABASE_URL and deliberately does not require
+// FRONTEND_URL, leaving the PLATFORM-003 fail-fast for the API server's Load.
+func LoadCardsync() (Config, error) {
+	cfg := readEnv()
+
+	// @spec PLATFORM-003
+	if cfg.DatabaseURL == "" {
+		return Config{}, fmt.Errorf("DATABASE_URL is required (see .env.example)")
+	}
+
+	return cfg, nil
+}
+
+// readEnv loads a .env file if present (local dev) then the real environment and
+// returns the populated Config without validation. Real environment variables
+// always win.
+func readEnv() Config {
+	_ = godotenv.Load() // a missing .env is expected outside local dev
+
+	return Config{
+		Port:            getEnv("PORT", "8080"),
+		DatabaseURL:     os.Getenv("DATABASE_URL"),
+		FrontendURL:     os.Getenv("FRONTEND_URL"),
+		DevAuth:         os.Getenv("DEV_AUTH") == "true",
+		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}
 }
 
 func getEnv(key, fallback string) string {

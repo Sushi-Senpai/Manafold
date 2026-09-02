@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load()
+	cfg, err := config.LoadCardsync()
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}

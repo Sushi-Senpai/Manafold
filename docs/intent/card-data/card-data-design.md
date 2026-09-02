@@ -205,11 +205,17 @@ plausible-but-wrong query silently returns the wrong cards.
    single-instance stopgap; revisit before any multi-instance deploy.
 4. **`All Cards` (every language)** — v1 mirrors English-only Default Cards.
    Non-English printing support is a later, larger ingestion.
+5. **Batch the printing ingest** — `ingestPrints` currently issues one
+   oracle-id lookup plus one upsert per printing in the Default Cards export
+   (hundreds of thousands of round trips). Acceptable for the fixture-based
+   test, but the real daily cron could approach the Render cron wall-clock
+   limit. Before the production sync is relied on, batch the oracle-id lookups
+   and bulk-upsert (multi-row `INSERT` or `COPY`) the printings.
 
 ### Gaps
-5. **Prices go stale between daily syncs** — acceptable; prices are advisory and
+6. **Prices go stale between daily syncs** — acceptable; prices are advisory and
    the daily cadence matches Scryfall's own regeneration.
-6. **A `429` during a bulk stream** — retried once after a 30 s back-off; a
+7. **A `429` during a bulk stream** — retried once after a 30 s back-off; a
    second failure fails the `sync_runs` row and the job exits non-zero for the
    cron to surface. No partial-resume of a half-streamed file in v1.
 

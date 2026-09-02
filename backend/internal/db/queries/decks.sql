@@ -57,8 +57,11 @@ DO UPDATE SET quantity = deck_cards.quantity + EXCLUDED.quantity,
               category = COALESCE(EXCLUDED.category, deck_cards.category)
 RETURNING *;
 
--- @spec DECK-010
--- name: DeleteDeckCard :exec
+-- The DELETE is joined to decks filtered by owner, so removing a card from a
+-- deck the caller does not own matches no row; the handler maps zero rows
+-- affected to 404 (DECK-009).
+-- @spec DECK-009, DECK-010
+-- name: DeleteDeckCard :execrows
 DELETE FROM deck_cards dc
 USING decks d
 WHERE dc.deck_id = sqlc.arg(deck_id)
