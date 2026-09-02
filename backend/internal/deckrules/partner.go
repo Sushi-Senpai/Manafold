@@ -11,7 +11,10 @@ import (
 //
 // @spec DECK-020, DECK-021
 func commanderIssues(commander, partner *CardFacts) []string {
-	var issues []string
+	// Start from a non-nil slice so a valid commander configuration serialises
+	// as [] like every other report array, not null — the builder's validation
+	// strip iterates this field directly (DECK-008).
+	issues := []string{}
 
 	if commander == nil {
 		issues = append(issues, "no commander assigned")

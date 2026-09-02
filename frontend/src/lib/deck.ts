@@ -59,7 +59,7 @@ export function formatValidationStrip(report: ValidationReport): string[] {
   for (const v of report.banlist_violations) {
     lines.push(`banned: ${v.card_name}`);
   }
-  for (const issue of report.commander_issues) {
+  for (const issue of report.commander_issues ?? []) {
     lines.push(issue);
   }
   if (lines.length === 1 && report.legal) {

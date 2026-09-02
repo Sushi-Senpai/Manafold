@@ -74,6 +74,21 @@ test("formatValidationStrip renders count, violations, and commander issues", ()
   assert.ok(lines.includes("no commander assigned"));
 });
 
+test("formatValidationStrip tolerates a null commander_issues from the API", () => {
+  // The Go backend serialises an issue-free commander configuration as
+  // `"commander_issues": null`, not `[]`. The builder must still render.
+  const report = {
+    color_identity_violations: [],
+    singleton_violations: [],
+    banlist_violations: [],
+    main_command_count: 3,
+    count_deviation: -97,
+    commander_issues: null,
+    legal: false,
+  } as unknown as ValidationReport;
+  assert.deepEqual(formatValidationStrip(report), ["3/100"]);
+});
+
 test("formatValidationStrip says legal for a clean 100-card deck", () => {
   const report: ValidationReport = {
     color_identity_violations: [],
