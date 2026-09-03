@@ -244,6 +244,7 @@ func TestAuth_LogoutClearsSessionAndSessionEndpointNeverFails(t *testing.T) {
 func TestAuth_LoginRateLimitedPerIP(t *testing.T) {
 	a := testAPI(t)
 	a.LoginLimiter = ratelimit.New(3, time.Hour)
+	a.TrustedProxyCount = 1
 	h := authRouter(a)
 
 	body := map[string]string{"email": uniqueEmail(t), "password": "does-not-matter"}
@@ -267,34 +268,45 @@ func TestAuth_LoginRateLimitedPerIP(t *testing.T) {
 
 // @spec ACCT-017
 func TestClientIP_TrustedProxyCountResistsXFFSpoof(t *testing.T) {
-	const realClient = "203.0.113.50"
+	const realClient = "203.0.113.7"
 	req := func(xff string) *http.Request {
 		r := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
 		if xff != "" {
 			r.Header.Set("X-Forwarded-For", xff)
 		}
-		r.RemoteAddr = "10.0.0.1:4321"
+		r.RemoteAddr = "10.9.9.9:4321"
 		return r
 	}
 
-	// Chain the app sees: forged entries on the left, the real client appended
-	// by the hop before Render's edge, Render's edge last. With one trusted
-	// proxy the key is the real client, not the left-most (forgeable) entry.
-	key := clientIP(req("198.51.100.9, "+realClient+", 10.0.0.2"), 1)
-	if key != realClient {
+	// One trusted proxy (Render's edge): it appends the real client as the
+	// last entry; the caller-supplied "EVIL" is to its left. The key is the
+	// trusted suffix's first entry, not the forgeable left-most one.
+	if key := clientIP(req("EVIL, "+realClient), 1); key != realClient {
 		t.Fatalf("clientIP(N=1) = %q, want %q", key, realClient)
 	}
-	// The attacker rotates position 0 every request; the key must not move.
-	if rotated := clientIP(req("attacker-rotates-me, "+realClient+", 10.0.0.2"), 1); rotated != key {
-		t.Fatalf("clientIP moved when position 0 changed: %q then %q", key, rotated)
+	// Rotating the forged position-0 value does not move the key.
+	if key := clientIP(req("DIFFERENT-EVIL, "+realClient), 1); key != realClient {
+		t.Fatalf("clientIP(N=1) after rotating position 0 = %q, want %q", key, realClient)
+	}
+	// Two trusted proxies (Next.js rewrite + Render edge): the real client is
+	// the first of the last two entries.
+	if key := clientIP(req("EVIL, "+realClient+", 10.0.0.1"), 2); key != realClient {
+		t.Fatalf("clientIP(N=2) = %q, want %q", key, realClient)
+	}
+	if key := clientIP(req("ROTATED, "+realClient+", 10.0.0.1"), 2); key != realClient {
+		t.Fatalf("clientIP(N=2) after rotating position 0 = %q, want %q", key, realClient)
 	}
 	// Chain shorter than the trusted-proxy count: fall back to RemoteAddr host.
-	if fb := clientIP(req(realClient), 3); fb != "10.0.0.1" {
-		t.Fatalf("clientIP short-chain fallback = %q, want 10.0.0.1", fb)
+	if fb := clientIP(req(realClient), 3); fb != "10.9.9.9" {
+		t.Fatalf("clientIP short-chain fallback = %q, want 10.9.9.9", fb)
+	}
+	// Zero trusted proxies: the whole header is untrusted, use RemoteAddr host.
+	if fb := clientIP(req("1.2.3.4"), 0); fb != "10.9.9.9" {
+		t.Fatalf("clientIP(N=0) = %q, want RemoteAddr host 10.9.9.9", fb)
 	}
 	// No header at all: RemoteAddr host.
-	if fb := clientIP(req(""), 1); fb != "10.0.0.1" {
-		t.Fatalf("clientIP no-header fallback = %q, want 10.0.0.1", fb)
+	if fb := clientIP(req(""), 1); fb != "10.9.9.9" {
+		t.Fatalf("clientIP no-header fallback = %q, want 10.9.9.9", fb)
 	}
 }
 

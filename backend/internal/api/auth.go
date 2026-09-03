@@ -46,18 +46,20 @@ func normalizeEmail(raw string) string {
 	return strings.ToLower(strings.TrimSpace(raw))
 }
 
-// clientIP is the rate-limit key. Each reverse proxy in front of the API appends
-// the address it received the connection from to X-Forwarded-For, so the real
-// client sits trustedProxyCount hops from the right of the chain; entries
-// further left are client-supplied and forgeable. With fewer entries than that
-// (or no header) the connection's remote address is used. trustedProxyCount
-// MUST match the deployed stack's true hop count (see
+// clientIP is the rate-limit key. Each of the trustedProxyCount reverse proxies
+// in front of the API appends the address it received the connection from to
+// X-Forwarded-For, so the trusted suffix is the last trustedProxyCount entries
+// and the real client is the first of them: parts[len-trustedProxyCount].
+// Entries further left are caller-supplied and forgeable. When the header is
+// absent, the chain is shorter than trustedProxyCount, or trustedProxyCount is
+// zero, the connection's remote address is used instead. trustedProxyCount MUST
+// match the deployed stack's true hop count (see
 // docs/intent/account-access/account-access-design.md § Rate limiting) or the
 // ACCT-017 guard is only best-effort.
 func clientIP(r *http.Request, trustedProxyCount int) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.Split(xff, ",")
-		if idx := len(parts) - 1 - trustedProxyCount; idx >= 0 {
+		if idx := len(parts) - trustedProxyCount; idx >= 0 && idx < len(parts) {
 			if ip := strings.TrimSpace(parts[idx]); ip != "" {
 				return ip
 			}
