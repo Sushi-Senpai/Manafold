@@ -65,7 +65,7 @@ type Querier interface {
 	// @spec DECK-007
 	ListDeckCardEntries(ctx context.Context, deckID pgtype.UUID) ([]ListDeckCardEntriesRow, error)
 	ListDecksByUser(ctx context.Context, userID pgtype.UUID) ([]Deck, error)
-	MarkImportApplied(ctx context.Context, id pgtype.UUID) error
+	MarkImportApplied(ctx context.Context, id pgtype.UUID) (int64, error)
 	// Resolve a decklist line's card name to one cards row: an exact
 	// case-insensitive match on the whole name, or a match on one face of a
 	// split / double-faced card ("Fire" for "Fire // Ice"), preferring the exact

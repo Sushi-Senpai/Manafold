@@ -21,5 +21,10 @@ JOIN decks d ON d.id = i.deck_id
 WHERE i.id = sqlc.arg(import_id)::uuid
   AND d.user_id = sqlc.arg(user_id)::uuid;
 
--- name: MarkImportApplied :exec
-UPDATE imports SET applied_at = now() WHERE id = $1;
+-- The guard is atomic: the UPDATE claims the row only while applied_at is still
+-- null, so two concurrent applies serialize on the row lock and exactly one sees
+-- a row affected. Zero rows affected means the import was already applied and the
+-- handler returns 409 (PORT-006).
+-- @spec PORT-006
+-- name: MarkImportApplied :execrows
+UPDATE imports SET applied_at = now() WHERE id = $1 AND applied_at IS NULL;

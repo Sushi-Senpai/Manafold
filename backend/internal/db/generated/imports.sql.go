@@ -90,11 +90,19 @@ func (q *Queries) GetImportForOwner(ctx context.Context, arg GetImportForOwnerPa
 	return i, err
 }
 
-const markImportApplied = `-- name: MarkImportApplied :exec
-UPDATE imports SET applied_at = now() WHERE id = $1
+const markImportApplied = `-- name: MarkImportApplied :execrows
+UPDATE imports SET applied_at = now() WHERE id = $1 AND applied_at IS NULL
 `
 
-func (q *Queries) MarkImportApplied(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, markImportApplied, id)
-	return err
+// The guard is atomic: the UPDATE claims the row only while applied_at is still
+// null, so two concurrent applies serialize on the row lock and exactly one sees
+// a row affected. Zero rows affected means the import was already applied and the
+// handler returns 409 (PORT-006).
+// @spec PORT-006
+func (q *Queries) MarkImportApplied(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markImportApplied, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

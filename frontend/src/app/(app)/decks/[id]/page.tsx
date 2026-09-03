@@ -544,6 +544,7 @@ function StatsPanel({ deckId, detail }: { deckId: string; detail: DeckDetail }) 
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
     api
       .getDeckStats(deckId)
       .then((s) => {

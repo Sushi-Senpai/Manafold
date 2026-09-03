@@ -160,7 +160,9 @@ func (a *API) applyImport(w http.ResponseWriter, r *http.Request) {
 	}
 	// Apply is one-shot. AddDeckCard accumulates quantity on conflict, so a
 	// second apply would silently double every card; applied_at records that it
-	// has already run.
+	// has already run. This is a fast path only — the authoritative guard is the
+	// conditional MarkImportApplied claimed inside the transaction below, which
+	// serializes concurrent applies on the row lock.
 	if imp.AppliedAt.Valid {
 		writeError(w, http.StatusConflict, "import has already been applied")
 		return
@@ -182,6 +184,20 @@ func (a *API) applyImport(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 	qtx := a.Queries.WithTx(tx)
+
+	// Claim the import atomically before writing any card. The conditional
+	// UPDATE takes the row lock, so a second concurrent apply blocks here until
+	// this transaction commits and then sees zero rows affected — 409, no
+	// silent quantity doubling.
+	claimed, err := qtx.MarkImportApplied(r.Context(), imp.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to record import")
+		return
+	}
+	if claimed == 0 {
+		writeError(w, http.StatusConflict, "import has already been applied")
+		return
+	}
 
 	for _, l := range resolved {
 		cardID, valid := parseUUID(l.CardID)
@@ -207,10 +223,6 @@ func (a *API) applyImport(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-	}
-	if err := qtx.MarkImportApplied(r.Context(), imp.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to record import")
-		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to commit import")
