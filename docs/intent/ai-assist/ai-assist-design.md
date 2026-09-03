@@ -128,12 +128,19 @@ commander and card text. `ExplainResult` is the prose plus `Usage`.
 Both endpoints, in order: `503` if the assistant is disabled; `403` if the
 caller is an anonymous draft (AI-033); `404` if the deck is not the caller's
 (shared `deckForOwner`, DECK-009); `503` if the global monthly ceiling is hit
-(AI-032); `429` if the caller is at the feature's daily limit (AI-031). Then
-`suggestions` additionally returns `422` if the deck has no commander (AI-024).
-A provider error after all gates pass is `502`. On success, `ai_usage` is
-recorded (AI-030) and the response returned — for `suggestions`, the surviving
-cards as `cardSummary` objects plus their rationale and a `dropped` count
-(AI-013); for `explain`, the prose and the model id.
+(AI-032); `429` if the caller is at the feature's daily limit (AI-031).
+Ownership is checked before the spend and quota gates so a non-owner always gets
+`404` and can never probe the global spend state or their own quota state for a
+deck they cannot see (AI-035). Then `suggestions` additionally returns `422` if
+the deck has no commander (AI-024).
+A provider error after all gates pass is `502` and is not metered. Once the
+model call returns it has incurred cost, so `ai_usage` is recorded (AI-030)
+before the response is assembled — a later failure, such as the
+anti-hallucination gate hitting a database error, then returns `500` without
+under-counting the daily quota (AI-031) or the monthly ceiling (AI-032). On
+success the response is returned — for `suggestions`, the surviving cards as
+`cardSummary` objects plus their rationale and a `dropped` count (AI-013); for
+`explain`, the prose and the model id.
 
 ## The Anti-Hallucination Gate
 
@@ -161,7 +168,7 @@ Reusing `deckrules` here is deliberate — there is exactly one definition of
 | Final answer shape | A `submit_suggestions` tool call | Parse a JSON block out of the model's last text message | A tool call has a schema and an unambiguous stop condition; free-text JSON needs a tolerant extractor and still fails on stray prose. |
 | Models per feature | `claude-sonnet-5` for suggest, `claude-haiku-4-5` for explain | One model for both; Opus-tier throughout | The blurb is a short, low-stakes generation where Haiku holds quality at a fraction of the cost; suggestions need Sonnet's judgement over the pool. Opus-tier is reserved for whole-deck generation if it is ever built. |
 | Suggestions on model failure | Return `502` (no fallback list) | Fall back to the raw `edhrec_rank` pool | An unexplained top-`edhrec` dump is not what the user asked for and reads as a broken feature; better to surface the failure. The M5 deck-health report is the case *with* a real deterministic fallback. |
-| Usage accounting | Write `ai_usage` only after a successful call | Reserve quota before the call | A provider error or a dropped-everything gate result should not cost the user a call; the small risk is a burst of concurrent calls slipping a few over the limit, which is acceptable for v1. |
+| Usage accounting | Write `ai_usage` as soon as the model call returns, before the response is assembled | Reserve quota before the call; write only after the whole handler succeeds | A provider error (no completed call) should not cost the user a call, but any call that actually reached the model has incurred cost and must be metered regardless of how many suggestions survive the gate or whether a later step fails. The small risk is a burst of concurrent calls slipping a few over the limit, which is acceptable for v1. |
 | Quota store | A Postgres `ai_usage` table, checked per request | An in-process counter | Quotas must survive a restart and, when the backend scales past one instance, be shared; a table is both. The month-to-date ceiling sum is a single indexed aggregate. |
 
 ## Open Questions & Future Decisions

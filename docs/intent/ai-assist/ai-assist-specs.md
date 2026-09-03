@@ -32,6 +32,7 @@
 - [x] **AI-032**: While the sum of `ai_usage.cost_micros` for the current calendar month is at or above the configured ceiling, the system shall respond `503` to every AI endpoint until the ceiling is raised or the month rolls over.
 - [x] **AI-033**: When an anonymous-draft caller (no authenticated user) calls any AI endpoint, the system shall respond `403`; AI features unlock on sign-in.
 - [x] **AI-034**: The system shall record `ai_usage` only after the language-model call returns successfully — a failed call is not counted against a quota.
+- [x] **AI-035**: When a caller other than the deck's owner calls an AI endpoint scoped to that deck, the system shall respond `404` before evaluating the per-user daily limit or the global monthly ceiling, so a non-owner cannot probe quota or spend state through the response code.
 
 ## Deferred
 

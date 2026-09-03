@@ -287,14 +287,18 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
     is off-colour, is already in the deck, or repeats an earlier survivor is
     dropped. Nothing is substituted; the drop count is returned. One definition
     of "legal for this deck" — `deckrules` — is reused, not reimplemented.
-  - **Cost control** (`AI-030..034`): `ai_usage` table
+  - **Cost control** (`AI-030..035`): `ai_usage` table
     (`user_id, usage_date, feature` PK; call / token / `cost_micros` totals),
-    written only after a successful call. Per-user daily call caps per feature
-    (`AI_SUGGEST_DAILY_LIMIT` 20, `AI_EXPLAIN_DAILY_LIMIT` 40) → `429`; a global
-    month-to-date estimated-spend ceiling (`AI_MONTHLY_SPEND_USD` 50, 0
-    disables) → `503`; anonymous-draft callers get `403` — AI unlocks on
-    sign-in. Cost is estimated from returned token counts times a per-model
-    price table, in millionths of a USD.
+    written as soon as the model call returns — a call that reached the model
+    has incurred cost and is metered even if a later step (a gate database
+    error) fails the request; only a provider error escapes the meter. Per-user
+    daily call caps per feature (`AI_SUGGEST_DAILY_LIMIT` 20,
+    `AI_EXPLAIN_DAILY_LIMIT` 40) → `429`; a global month-to-date estimated-spend
+    ceiling (`AI_MONTHLY_SPEND_USD` 50, 0 disables) → `503`; anonymous-draft
+    callers get `403` — AI unlocks on sign-in. Ownership is checked before the
+    quota and ceiling gates (`AI-035`) so a non-owner always gets `404` and
+    cannot probe either. Cost is estimated from returned token counts times a
+    per-model price table, in millionths of a USD.
   - **Endpoints**: `POST /api/decks/{id}/suggestions` (`422` with no commander;
     `502` on a provider error — suggestions have no non-model fallback) and
     `POST /api/decks/{id}/cards/{cardId}/explain` (`404` unless the card is on

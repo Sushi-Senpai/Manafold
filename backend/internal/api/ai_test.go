@@ -358,6 +358,69 @@ func TestExplain_CardMustBeInDeck(t *testing.T) {
 	}
 }
 
+// @spec AI-035
+func TestAIEndpoints_NonOwnerGets404BeforeQuotaGates(t *testing.T) {
+	a := testAPI(t)
+	owner := makeUser(t, a)
+	stranger := makeUser(t, a)
+	deckID := setupDeckWithCommander(t, a, owner)
+
+	// A real card on the owner's main board, so the only thing between the
+	// stranger and a 200 is the ownership check.
+	card := makeCard(t, a, "AI Owner Card "+hex.EncodeToString(randBytes(t, 4)), "Creature — Soldier", []string{"W"}, false)
+	if rec := serve(t, a, owner, http.MethodPost, "/decks/"+deckID+"/cards", map[string]string{"card_id": uuidString(card), "board": "main"}); rec.Code != http.StatusCreated {
+		t.Fatalf("add card: %d %s", rec.Code, rec.Body.String())
+	}
+
+	a.AI = fakeAssistant{
+		enabled: true,
+		suggest: func(ai.SuggestRequest) (ai.SuggestResult, error) {
+			t.Fatal("assistant must not be called for a non-owner")
+			return ai.SuggestResult{}, nil
+		},
+		explain: func(ai.ExplainRequest) (ai.ExplainResult, error) {
+			t.Fatal("assistant must not be called for a non-owner")
+			return ai.ExplainResult{}, nil
+		},
+	}
+
+	paths := []string{
+		"/decks/" + deckID + "/suggestions",
+		"/decks/" + deckID + "/cards/" + uuidString(card) + "/explain",
+	}
+	assert404 := func(t *testing.T) {
+		t.Helper()
+		for _, path := range paths {
+			rec := aiServe(t, a, stranger, "", http.MethodPost, path, nil)
+			if rec.Code != http.StatusNotFound {
+				t.Fatalf("non-owner POST %s: %d %s, want 404", path, rec.Code, rec.Body.String())
+			}
+		}
+	}
+
+	t.Run("caller at their per-user daily limit", func(t *testing.T) {
+		a.AIMonthlySpendMicros = 0
+		a.AISuggestDailyLimit = 1
+		a.AIExplainDailyLimit = 1
+		for _, feature := range []string{"suggest", "explain"} {
+			if err := a.Queries.RecordAIUsage(context.Background(), db.RecordAIUsageParams{UserID: stranger, Feature: feature, InputTokens: 1, OutputTokens: 1, CostMicros: 1}); err != nil {
+				t.Fatalf("seed %s usage: %v", feature, err)
+			}
+		}
+		assert404(t)
+	})
+
+	t.Run("global monthly spend ceiling tripped", func(t *testing.T) {
+		a.AISuggestDailyLimit = 20
+		a.AIExplainDailyLimit = 40
+		a.AIMonthlySpendMicros = 1
+		if err := a.Queries.RecordAIUsage(context.Background(), db.RecordAIUsageParams{UserID: stranger, Feature: "suggest", InputTokens: 1, OutputTokens: 1, CostMicros: 5_000_000}); err != nil {
+			t.Fatalf("seed spend: %v", err)
+		}
+		assert404(t)
+	})
+}
+
 // @spec AI-011
 func TestListSuggestionCandidates_PoolFilters(t *testing.T) {
 	a := testAPI(t)

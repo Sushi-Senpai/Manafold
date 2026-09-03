@@ -24,11 +24,11 @@ remain gaps.
 - docs/intent/ai-assist/ai-assist-design.md
 
 ### EARS
-- docs/intent/ai-assist/ai-assist-specs.md (AI-001..004, AI-010..013, AI-020..021, AI-024, AI-030..034; deferred AI-022..023, AI-040..043)
+- docs/intent/ai-assist/ai-assist-specs.md (AI-001..004, AI-010..013, AI-020..021, AI-024, AI-030..035; deferred AI-022..023, AI-040..043)
 
 ### Tests
 - backend/internal/ai/ai_test.go — AI-001 (stub returns not-configured), AI-004 (per-feature model ids), cost estimate
-- backend/internal/api/ai_test.go — AI-010, AI-011, AI-013, AI-020, AI-021, AI-024, AI-031, AI-032, AI-033, AI-034
+- backend/internal/api/ai_test.go — AI-010, AI-011, AI-013, AI-020, AI-021, AI-024, AI-031, AI-032, AI-033, AI-034, AI-035
 - backend/internal/config/config_test.go — AI-002 (fail-fast on AI_ENABLED without a key)
 
 ### Code
@@ -65,11 +65,11 @@ card, never surface an illegal one.
 | Package & config | AI-001..004 | 4 | 0 | 0 |
 | Anti-hallucination gate | AI-010..013 | 4 | 0 | 0 |
 | Features | AI-020..021, AI-024 | 3 | 0 | 0 |
-| Cost control | AI-030..034 | 5 | 0 | 0 |
+| Cost control | AI-030..035 | 6 | 0 | 0 |
 | Deck-health / bracket | AI-022..023 | 0 | 0 | 2 (M5–M6) |
 | EDHREC / constrained gen / cut suggestions / embeddings | AI-040..043 | 0 | 4 | 0 |
 
-**Summary:** 16 of 22 implemented; 2 gaps (M5–M6); 4 deferred.
+**Summary:** 17 of 23 implemented; 2 gaps (M5–M6); 4 deferred.
 
 ## Key Findings
 

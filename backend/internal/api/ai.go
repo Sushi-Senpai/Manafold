@@ -108,7 +108,7 @@ func (a *API) recordUsage(r *http.Request, uid pgtype.UUID, feature string, u ai
 	}
 }
 
-// @spec AI-011, AI-013, AI-020, AI-024, AI-030, AI-031, AI-032, AI-033, AI-034
+// @spec AI-011, AI-013, AI-020, AI-024, AI-030, AI-031, AI-032, AI-033, AI-034, AI-035
 func (a *API) suggestCards(w http.ResponseWriter, r *http.Request) {
 	uid, ok := a.aiGateCaller(w, r)
 	if !ok {
@@ -179,12 +179,13 @@ func (a *API) suggestCards(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	a.recordUsage(r, uid, "suggest", res.Usage)
+
 	kept, dropped, err := a.gateSuggestions(ctx, res.Suggestions, ld)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to validate suggestions")
 		return
 	}
-	a.recordUsage(r, uid, "suggest", res.Usage)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"suggestions": kept,
@@ -193,7 +194,7 @@ func (a *API) suggestCards(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @spec AI-021, AI-030, AI-031, AI-032, AI-033, AI-034
+// @spec AI-021, AI-030, AI-031, AI-032, AI-033, AI-034, AI-035
 func (a *API) explainCard(w http.ResponseWriter, r *http.Request) {
 	uid, ok := a.aiGateCaller(w, r)
 	if !ok {
