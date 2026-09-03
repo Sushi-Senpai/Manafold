@@ -13,11 +13,21 @@ import (
 	"manafold-backend/internal/deckrules"
 )
 
-// callerID returns the authenticated user's ID. The auth middleware fails
-// closed, so any handler that runs at all has one.
-func callerID(r *http.Request) pgtype.UUID {
-	id, _ := authctx.UserID(r.Context())
-	return id
+// callerOwner returns the caller's ownership key as the (user_id, anon_token)
+// pair every deck-building query scopes by: exactly one is valid. An
+// authenticated caller yields a valid UserID; an anonymous-draft caller yields
+// a valid AnonToken. The auth middleware fails closed, so a handler that runs at
+// all has one or the other.
+//
+// @spec DECK-040
+func callerOwner(r *http.Request) (pgtype.UUID, pgtype.Text) {
+	if id, ok := authctx.UserID(r.Context()); ok {
+		return id, pgtype.Text{}
+	}
+	if tok, ok := authctx.AnonToken(r.Context()); ok {
+		return pgtype.UUID{}, pgtype.Text{String: tok, Valid: true}
+	}
+	return pgtype.UUID{}, pgtype.Text{}
 }
 
 func parseUUID(s string) (pgtype.UUID, bool) {

@@ -15,12 +15,23 @@ type Querier interface {
 	// mutations: the INSERT ... SELECT draws deck_id from a decks row filtered by
 	// owner, so adding a card to a deck the caller does not own produces no row and
 	// the handler maps "no rows" to 404 (DECK-009).
-	// @spec DECK-005, DECK-009
+	// @spec DECK-005, DECK-009, DECK-040
 	AddDeckCard(ctx context.Context, arg AddDeckCardParams) (DeckCard, error)
 	// Up to 20 name completions for a prefix, best (lowest edhrec_rank) first.
 	// @spec CARD-020
 	AutocompleteCardNames(ctx context.Context, prefix string) ([]string, error)
-	// @spec DECK-001
+	// When an anonymous caller signs in, claim reassigns every draft owned by the
+	// token to that user and clears the token, in one statement. execrows is the
+	// number of drafts moved.
+	// @spec DECK-041, ACCT-021
+	ClaimAnonDecks(ctx context.Context, arg ClaimAnonDecksParams) (int64, error)
+	// Ownership is a polymorphic owner key: an authenticated caller passes user_id
+	// (and a NULL anon_token), an anonymous-draft caller passes anon_token (and a
+	// NULL user_id). Exactly one is non-null (the decks CHECK enforces it); a
+	// comparison against the NULL argument is itself NULL, so each query resolves
+	// to the single active predicate. See
+	// docs/intent/deck-building/deck-building-design.md § Ownership.
+	// @spec DECK-001, DECK-040
 	CreateDeck(ctx context.Context, arg CreateDeckParams) (Deck, error)
 	// @spec PORT-001
 	CreateImport(ctx context.Context, arg CreateImportParams) (Import, error)
@@ -31,7 +42,7 @@ type Querier interface {
 	// The DELETE is joined to decks filtered by owner, so removing a card from a
 	// deck the caller does not own matches no row; the handler maps zero rows
 	// affected to 404 (DECK-009).
-	// @spec DECK-009, DECK-010
+	// @spec DECK-009, DECK-010, DECK-040
 	DeleteDeckCard(ctx context.Context, arg DeleteDeckCardParams) (int64, error)
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
@@ -40,10 +51,10 @@ type Querier interface {
 	GetCardByID(ctx context.Context, id pgtype.UUID) (Card, error)
 	GetCardByScryfallOracleID(ctx context.Context, scryfallOracleID pgtype.UUID) (Card, error)
 	GetCardsByIDs(ctx context.Context, ids []pgtype.UUID) ([]Card, error)
-	// Ownership is scoped in the query: a deck the caller does not own returns no
-	// row, which the handler maps to 404 (DECK-009).
-	// @spec DECK-009
-	GetDeckForUser(ctx context.Context, arg GetDeckForUserParams) (Deck, error)
+	// A deck the caller does not own returns no row, which the handler maps to 404
+	// (DECK-009) — identical for a wrong user and a wrong token (DECK-040).
+	// @spec DECK-009, DECK-040
+	GetDeckForOwner(ctx context.Context, arg GetDeckForOwnerParams) (Deck, error)
 	// Ownership is scoped through the deck: an import for a deck the caller does not
 	// own returns no row, which the handler maps to 404 (DECK-009).
 	// @spec PORT-006, DECK-009
@@ -64,7 +75,12 @@ type Querier interface {
 	ListBanlistOverrides(ctx context.Context) ([]ListBanlistOverridesRow, error)
 	// @spec DECK-007
 	ListDeckCardEntries(ctx context.Context, deckID pgtype.UUID) ([]ListDeckCardEntriesRow, error)
-	ListDecksByUser(ctx context.Context, userID pgtype.UUID) ([]Deck, error)
+	ListDecksForOwner(ctx context.Context, arg ListDecksForOwnerParams) ([]Deck, error)
+	// The guard is atomic: the UPDATE claims the row only while applied_at is still
+	// null, so two concurrent applies serialize on the row lock and exactly one sees
+	// a row affected. Zero rows affected means the import was already applied and the
+	// handler returns 409 (PORT-006).
+	// @spec PORT-006
 	MarkImportApplied(ctx context.Context, id pgtype.UUID) (int64, error)
 	// Resolve a decklist line's card name to one cards row: an exact
 	// case-insensitive match on the whole name, or a match on one face of a

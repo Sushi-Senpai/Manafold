@@ -8,7 +8,9 @@ write, and the read-only public deck view.
 ## Status
 
 **MAPPED** — authored with the M1 slice (2026-09-02); deck stats (`DECK-051`,
-`DECK-052`) and the import bulk-add (`DECK-060`) implemented at M2.
+`DECK-052`) and the import bulk-add (`DECK-060`) implemented at M2; polymorphic
+owner-key scoping and `ClaimAnonDecks` for anonymous drafts (`DECK-040`,
+`DECK-041`) implemented at M3.
 
 ## References
 
@@ -26,12 +28,14 @@ write, and the read-only public deck view.
 - backend/internal/api/decks_test.go — DECK-001, DECK-002, DECK-003, DECK-004, DECK-005, DECK-008, DECK-009, DECK-010, DECK-030, DECK-031
 - backend/internal/api/stats_test.go — DECK-051, DECK-052 (curve / pips / sources / category roll-up end to end; non-owner 404)
 - backend/internal/api/imports_test.go — DECK-060 (bulk write in one transaction, board + category preserved)
+- backend/internal/api/auth_test.go — DECK-040, DECK-041 (anonymous deck create/read scoped to the token; claim reassigns and nulls the token)
 - backend/internal/deckstats/deckstats_test.go — DECK-050, DECK-051 (curve buckets, hybrid/Phyrexian pip counting, source counts), DECK-052 (vocabulary + synonym roll-up, free-text passthrough)
 
 ### Code
 - backend/internal/deckrules/ (`Validate`, partner-variant parsing)
 - backend/internal/deckstats/ (`Analyze` — type counts, curve, pips vs sources, category roll-up, `CategoryTargets`)
-- backend/internal/api/decks.go (`RegisterDeckRoutes` + all deck handlers, ownership scoped in queries)
+- backend/internal/api/decks.go (`RegisterDeckRoutes` + all deck handlers, ownership scoped in queries to a polymorphic owner key — `user_id` OR `anon_token`)
+- backend/internal/db/queries/decks.sql (`ClaimAnonDecks` — DECK-041)
 - backend/internal/api/stats.go (`getDeckStats` — assembles `CardStat`s over main+command, echoes `CategoryTargets`)
 - backend/internal/db/migrations/000003_create_decks.up.sql / .down.sql
 - backend/internal/db/queries/decks.sql (`ListDeckCardEntries` now also selects `produced_mana`)
@@ -69,17 +73,19 @@ write, and the read-only public deck view.
 | Deck CRUD | DECK-001..011 | 11 | 0 | 0 |
 | Commander shape | DECK-020..021 | 2 | 0 | 0 |
 | Public deck view | DECK-030..031 | 2 | 0 | 0 |
-| Anonymous drafts | DECK-040..041 | 0 | 0 | 2 (M3) |
+| Anonymous drafts | DECK-040..041 | 2 | 0 | 0 |
 | Deck stats | DECK-050..052 | 3 | 0 | 0 |
 | Import bulk-add | DECK-060 | 1 | 0 | 0 |
 
-**Summary:** 19 of 21 implemented; 2 gaps, both anonymous drafts (DECK-040/041, M3).
+**Summary:** 21 of 21 implemented; 0 gaps.
 
 ## Key Findings
 
-1. Ownership is enforced in the SQL (`AND decks.user_id = $n`), so a new
-   endpoint cannot forget the check, and "not found" and "not yours" collapse to
-   `404` (DECK-009).
+1. Ownership is enforced in the SQL — every query scopes to a polymorphic owner
+   key (`decks.user_id = narg(user_id) OR decks.anon_token = narg(anon_token)`,
+   one non-null), so a new endpoint cannot forget the check, "not found" and
+   "not yours" collapse to `404`, and the same predicate covers an authenticated
+   user and an anonymous-draft token (DECK-009, DECK-040).
 2. Adding an out-of-identity card records it flagged rather than rejecting —
    the builder must let you see an illegal state while you decide (DECK-004).
 3. `internal/deckrules` is pure (no DB, no AI), so it is exhaustively
@@ -91,7 +97,7 @@ write, and the read-only public deck view.
 (none)
 
 ### Should Fix
-1. Anonymous drafts + claim-on-sign-in (DECK-040/041) — M3, with `account-access`.
+(none)
 
 ### Nice to Have
 1. Deck-bootstrapping wizard, functional-subtype auto-categorizer, low-friction

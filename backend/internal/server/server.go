@@ -4,6 +4,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -13,6 +14,7 @@ import (
 	"manafold-backend/internal/api"
 	db "manafold-backend/internal/db/generated"
 	mw "manafold-backend/internal/middleware"
+	"manafold-backend/internal/ratelimit"
 )
 
 // Deps bundles everything the router needs.
@@ -41,11 +43,19 @@ func New(d Deps) http.Handler {
 	// @spec PLATFORM-002
 	r.Get("/health", healthHandler(d.Pool))
 
-	h := &api.API{Pool: d.Pool, Queries: d.Queries, AI: d.AI}
+	// Per-IP token bucket for the auth endpoints: a burst of 10, then ~1 per
+	// 6s (ACCT-017).
+	h := &api.API{
+		Pool:         d.Pool,
+		Queries:      d.Queries,
+		AI:           d.AI,
+		LoginLimiter: ratelimit.New(10, 6*time.Second),
+	}
 
-	// Unauthenticated read-only routes (public deck view).
+	// Unauthenticated routes: the public deck view and the /api/auth/* flow.
 	r.Group(func(r chi.Router) {
 		h.RegisterPublicRoutes(r)
+		h.RegisterAuthRoutes(r)
 	})
 
 	// Protected /api group.
@@ -53,7 +63,7 @@ func New(d Deps) http.Handler {
 		if d.DevAuth {
 			r.Use(mw.DevAuth(d.Queries))
 		} else {
-			r.Use(mw.SessionAuth(d.Queries))
+			r.Use(mw.AnonOrSession(d.Queries))
 		}
 		// @spec PLATFORM-005 — per-domain registration helpers, not a flat list.
 		h.RegisterCardRoutes(r)

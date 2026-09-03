@@ -293,7 +293,8 @@ func entryJSONFromCard(entryID string, c db.Card, print db.CardPrint, havePrint 
 
 // @spec DECK-001
 func (a *API) listDecks(w http.ResponseWriter, r *http.Request) {
-	decks, err := a.Queries.ListDecksByUser(r.Context(), callerID(r))
+	uid, tok := callerOwner(r)
+	decks, err := a.Queries.ListDecksForOwner(r.Context(), db.ListDecksForOwnerParams{UserID: uid, AnonToken: tok})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list decks")
 		return
@@ -318,7 +319,8 @@ func (a *API) createDeck(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "Untitled deck"
 	}
-	deck, err := a.Queries.CreateDeck(r.Context(), db.CreateDeckParams{UserID: callerID(r), Name: name})
+	uid, tok := callerOwner(r)
+	deck, err := a.Queries.CreateDeck(r.Context(), db.CreateDeckParams{UserID: uid, AnonToken: tok, Name: name})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create deck")
 		return
@@ -334,7 +336,8 @@ func (a *API) deckForOwner(w http.ResponseWriter, r *http.Request) (db.Deck, boo
 		writeError(w, http.StatusNotFound, "deck not found")
 		return db.Deck{}, false
 	}
-	deck, err := a.Queries.GetDeckForUser(r.Context(), db.GetDeckForUserParams{ID: id, UserID: callerID(r)})
+	uid, tok := callerOwner(r)
+	deck, err := a.Queries.GetDeckForOwner(r.Context(), db.GetDeckForOwnerParams{ID: id, UserID: uid, AnonToken: tok})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "deck not found")
@@ -377,13 +380,15 @@ func (a *API) updateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uid, tok := callerOwner(r)
 	params := db.UpdateDeckMetaParams{
 		Name:        deck.Name,
 		Description: deck.Description,
 		IsPublic:    deck.IsPublic,
 		Bracket:     deck.Bracket,
 		ID:          deck.ID,
-		UserID:      callerID(r),
+		UserID:      uid,
+		AnonToken:   tok,
 	}
 	if body.Name != nil {
 		params.Name = strings.TrimSpace(*body.Name)
@@ -428,7 +433,7 @@ func (a *API) setCommander(w http.ResponseWriter, r *http.Request) {
 
 	var params db.SetDeckCommanderParams
 	params.ID = id
-	params.UserID = callerID(r)
+	params.UserID, params.AnonToken = callerOwner(r)
 	params.ColorIdentity = []string{}
 
 	var commander, partner *db.Card
@@ -529,12 +534,14 @@ func (a *API) addCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uid, tok := callerOwner(r)
 	params := db.AddDeckCardParams{
-		CardID:   cardID,
-		Quantity: 1,
-		Board:    board,
-		DeckID:   id,
-		UserID:   callerID(r),
+		CardID:    cardID,
+		Quantity:  1,
+		Board:     board,
+		DeckID:    id,
+		UserID:    uid,
+		AnonToken: tok,
 	}
 	if strings.TrimSpace(body.Category) != "" {
 		params.Category = pgtype.Text{String: body.Category, Valid: true}
@@ -559,7 +566,7 @@ func (a *API) addCard(w http.ResponseWriter, r *http.Request) {
 	// counts. A card staged on maybe/sideboard is never flagged, so the probe is
 	// skipped entirely for those boards and the two endpoints stay in agreement.
 	if countedBoard(board) {
-		deck, err := a.Queries.GetDeckForUser(r.Context(), db.GetDeckForUserParams{ID: id, UserID: callerID(r)})
+		deck, err := a.Queries.GetDeckForOwner(r.Context(), db.GetDeckForOwnerParams{ID: id, UserID: uid, AnonToken: tok})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to reload deck")
 			return
@@ -626,11 +633,13 @@ func (a *API) removeCard(w http.ResponseWriter, r *http.Request) {
 	if board == "" {
 		board = "main"
 	}
+	uid, tok := callerOwner(r)
 	rows, err := a.Queries.DeleteDeckCard(r.Context(), db.DeleteDeckCardParams{
-		DeckID: id,
-		CardID: cardID,
-		Board:  board,
-		UserID: callerID(r),
+		DeckID:    id,
+		CardID:    cardID,
+		Board:     board,
+		UserID:    uid,
+		AnonToken: tok,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to remove card")

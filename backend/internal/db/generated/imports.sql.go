@@ -21,7 +21,7 @@ SELECT d.id,
        $4
 FROM decks d
 WHERE d.id = $5::uuid
-  AND d.user_id = $6::uuid
+  AND (d.user_id = $6::uuid OR d.anon_token = $7::text)
 RETURNING id, deck_id, source_format, raw_text, parsed, unresolved, applied_at, created_at
 `
 
@@ -32,6 +32,7 @@ type CreateImportParams struct {
 	Unresolved   json.RawMessage `json:"unresolved"`
 	DeckID       pgtype.UUID     `json:"deck_id"`
 	UserID       pgtype.UUID     `json:"user_id"`
+	AnonToken    pgtype.Text     `json:"anon_token"`
 }
 
 // @spec PORT-001
@@ -43,6 +44,7 @@ func (q *Queries) CreateImport(ctx context.Context, arg CreateImportParams) (Imp
 		arg.Unresolved,
 		arg.DeckID,
 		arg.UserID,
+		arg.AnonToken,
 	)
 	var i Import
 	err := row.Scan(
@@ -63,19 +65,20 @@ SELECT i.id, i.deck_id, i.source_format, i.raw_text, i.parsed, i.unresolved, i.a
 FROM imports i
 JOIN decks d ON d.id = i.deck_id
 WHERE i.id = $1::uuid
-  AND d.user_id = $2::uuid
+  AND (d.user_id = $2::uuid OR d.anon_token = $3::text)
 `
 
 type GetImportForOwnerParams struct {
-	ImportID pgtype.UUID `json:"import_id"`
-	UserID   pgtype.UUID `json:"user_id"`
+	ImportID  pgtype.UUID `json:"import_id"`
+	UserID    pgtype.UUID `json:"user_id"`
+	AnonToken pgtype.Text `json:"anon_token"`
 }
 
 // Ownership is scoped through the deck: an import for a deck the caller does not
 // own returns no row, which the handler maps to 404 (DECK-009).
 // @spec PORT-006, DECK-009
 func (q *Queries) GetImportForOwner(ctx context.Context, arg GetImportForOwnerParams) (Import, error) {
-	row := q.db.QueryRow(ctx, getImportForOwner, arg.ImportID, arg.UserID)
+	row := q.db.QueryRow(ctx, getImportForOwner, arg.ImportID, arg.UserID, arg.AnonToken)
 	var i Import
 	err := row.Scan(
 		&i.ID,

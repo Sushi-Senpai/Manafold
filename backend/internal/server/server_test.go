@@ -59,14 +59,32 @@ func TestHealth_ServiceUnavailableWithoutDatabase(t *testing.T) {
 }
 
 // @spec ACCT-003
-func TestProtectedRoute_SessionAuth_RejectsUnauthenticatedRequest(t *testing.T) {
+func TestProtectedRoute_AnonOrSession_RejectsRequestWithNeitherSessionNorToken(t *testing.T) {
 	handler := New(Deps{DevAuth: false})
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/decks", nil))
 
 	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("unauthenticated GET /api/decks = %d, want 401: %s", rec.Code, rec.Body.String())
+		t.Fatalf("GET /api/decks with no session and no X-Anon-Token = %d, want 401: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// @spec ACCT-014
+func TestAuthSessionRoute_UnauthenticatedIsTwoHundredNotFourOhOne(t *testing.T) {
+	// /api/auth/session sits outside the protected group and must never 401,
+	// even with no cookie and no database.
+	handler := New(Deps{Pool: nil, DevAuth: false})
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/auth/session", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /api/auth/session unauthenticated = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil || body["authenticated"] != false {
+		t.Fatalf("GET /api/auth/session body = %q, want {\"authenticated\":false}", rec.Body.String())
 	}
 }
 

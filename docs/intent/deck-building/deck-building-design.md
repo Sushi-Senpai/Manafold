@@ -17,9 +17,21 @@ to the user. This segment owns `decks`, `deck_cards`, the pure validator
 CRUD, and the read-only public deck view.
 
 Ownership is enforced **in the SQL**, not by a per-handler check: every deck
-mutation query includes `AND decks.user_id = $n` (or a join to `decks` for
-`deck_cards` rows), so a request against a deck the caller does not own returns
-zero rows, which the handler maps to `404`.
+query scopes to the caller's *owner key* — their user ID when authenticated, or
+their anonymous-draft token when not (`account-access` resolves which, per
+ACCT-020). The scope clause is `AND (decks.user_id = sqlc.narg(user_id) OR
+decks.anon_token = sqlc.narg(anon_token))` (or a join to `decks` for `deck_cards`
+rows) with exactly one of the two arguments non-null; because a comparison
+against a `NULL` argument is itself `NULL`, this resolves to the single active
+predicate. A request against a deck the caller does not own returns zero rows,
+which the handler maps to `404` — identical for a wrong user and a wrong token.
+`CreateDeck` likewise inserts whichever of `user_id` / `anon_token` is set,
+satisfying the exactly-one-owner CHECK.
+
+When an anonymous caller signs in, `account-access`'s claim endpoint (ACCT-021)
+runs `ClaimAnonDecks`, a single `UPDATE decks SET user_id = $caller, anon_token
+= NULL WHERE anon_token = $token`, transferring every draft in one statement
+(DECK-041).
 
 ## Schema
 
@@ -210,7 +222,7 @@ outside colour identity — it does not silently reject or silently accept
 
 | Decision | Chosen | Alternatives Considered | Rationale |
 |---|---|---|---|
-| Ownership enforcement | Scoped in every mutation query (`AND decks.user_id = $n`, or a join for `deck_cards`); zero rows → `404` | A per-handler `if deck.UserID != caller` check | The check cannot be forgotten on a new endpoint if it lives in the query, and "not found" and "not yours" collapse to one indistinguishable response, which is the correct security posture. |
+| Ownership enforcement | Scoped in every query to a polymorphic owner key (`decks.user_id = narg(user_id) OR decks.anon_token = narg(anon_token)`, exactly one non-null, or a join for `deck_cards`); zero rows → `404` | A per-handler `if deck.UserID != caller` check; two parallel query sets (one keyed by user, one by token) | The check cannot be forgotten on a new endpoint if it lives in the query, and "not found" and "not yours" collapse to one indistinguishable response. One `OR` predicate over both owner columns keeps a single query per operation instead of doubling the surface for the anonymous-draft case. |
 | Card outside colour identity on add | Record the entry, return it flagged, surface it in `/validation` | Reject the add with `422`; accept silently | A builder needs to let you add a card and *see* it is illegal while you decide — rejecting outright blocks legitimate mid-build states; accepting silently defeats the point of the product. |
 | Colour-identity computation | Store Scryfall's per-card `color_identity`; the deck's identity is the union of its commander(s)' `commander_color_identity`, recomputed by the handler on commander change | Recompute the deck identity on every validation call; compute per-card identity ourselves | Per-card identity is `card-data`'s job (verbatim from Scryfall). The deck identity changes only on a commander change, so recomputing it then and denormalising onto `decks` keeps validation a pure function of already-loaded data. |
 | Validator purity | `internal/deckrules` takes plain structs, no DB, no AI; the handler assembles the input | The validator queries the DB itself | A pure function is exhaustively table-testable (partner identity, DFC identity, `singleton_limit` cards, basics, banlist, count) with no fixtures, and `ai-assist` can reuse it to gate model output without a DB round trip. |

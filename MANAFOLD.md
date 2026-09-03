@@ -16,8 +16,12 @@ for Waystone.
 Go/Next.js repo skeleton, and the M1 vertical slice were stood up in one
 scaffold task. M1 is: create a deck → set a commander → search & add cards with
 live color-identity + singleton + count + banlist validation → view the
-decklist. M1 runs on the `DEV_AUTH` stub only; the real email + password login
-flow is designed in `account-access` now and implemented at M3.
+decklist. **M2** added import/export + deterministic deck stats + the Slate &
+Signet palette. **M3** added Manafold's own email + password accounts (argon2id),
+server-side sessions, per-IP rate limiting on login/register, and anonymous deck
+drafts claimable on sign-in; `AnonOrSession` replaces the `DEV_AUTH` stub as the
+default auth path (the stub stays available for local/CI). All milestones land on
+one branch as a single growing PR.
 
 ## Vision
 
@@ -206,3 +210,47 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
     wizard, EDHREC high-synergy, constrained deck prompts, functional-subtype
     grouping, cut suggestions) — design notes only, folded into the relevant
     LLDs.
+
+- **2026-09-03** — M3 increment (same branch, same growing PR). Manafold's own
+  email + password accounts, per captain decision D4 (not Google OAuth).
+  - **Password hashing** (`internal/passwordhash`, `ACCT-010`, `ACCT-011`,
+    `ACCT-018`): argon2id (`m=19456` KiB, `t=2`, `p=1`, 16-byte salt, 32-byte
+    key — the OWASP second-choice profile, deliberately low on memory for the
+    Render free tier), parameters written into the encoded hash string so they
+    can rise later with no schema change. `Verify` also accepts a bcrypt hash
+    (`$2a/$2b/$2y`), keeping bcrypt a drop-in fallback and old hashes valid.
+  - **Rate limiting** (`internal/ratelimit`, `ACCT-017`): in-process per-IP
+    token bucket (capacity 10, +1 token / 6 s), checked before any DB work on
+    `POST /api/auth/login` and `POST /api/auth/register`; `429` on an empty
+    bucket. Client IP = left-most `X-Forwarded-For`, then `RemoteAddr`. A shared
+    store is only needed past one backend instance (LLD open question).
+  - **Sessions + endpoints** (`ACCT-003`, `ACCT-012..014`, `ACCT-019..021`):
+    server-side `sessions` rows (30-day expiry, revocable), session cookie
+    (`HttpOnly`, `Secure`, `SameSite=Lax`). `POST /api/auth/register|login`
+    (email trimmed + lowercased; a dummy verify runs for an unknown email so
+    timing does not leak account existence; one generic `401` on any login
+    failure), `POST /api/auth/logout` (`204`, no-op if the cookie names no live
+    session), `GET /api/auth/session` (never `401`), `POST
+    /api/auth/claim-drafts` (needs a live session, idempotent).
+  - **`AnonOrSession` middleware** (`ACCT-003`, `ACCT-020`): the default
+    protected-group auth — session cookie first, then a non-empty `X-Anon-Token`
+    header, else `401`; a valid session always wins over a supplied token.
+    `DevAuth` stays available behind `DEV_AUTH=true` for local dev and CI (the
+    deck integration tests inject identity through `authctx` directly).
+  - **Anonymous drafts + claim** (`DECK-040`, `DECK-041`): every
+    `deck-building` query now scopes to a polymorphic owner key
+    (`decks.user_id = narg(user_id) OR decks.anon_token = narg(anon_token)`, one
+    non-null); `CreateDeck` inserts whichever is set; `ClaimAnonDecks`
+    reassigns a token's drafts to the signed-in user in one `UPDATE`. The
+    frontend mints `manafold_anon` (`crypto.randomUUID()`) in `localStorage`,
+    sends it as `X-Anon-Token` on every request, and calls `claim-drafts` on
+    login and register.
+  - **Frontend**: `(auth)` route group with `/login` and `/register` pages, a
+    `lib/auth.ts` helper, and header session state (email + "Sign out" when
+    authenticated, "Sign in" / "Create account" when anonymous). The app stays
+    fully usable anonymously — that is the point of the draft flow.
+  - **Deferred out of M3** and recorded in `account-access`'s future-decisions:
+    OAuth providers (`ACCT-030`); email verification + password reset
+    (`ACCT-031`, waits on a transactional email sender — `email_verified_at` is
+    stored but not enforced); sign-out-everywhere (`ACCT-032`); a shared
+    rate-limit store for a multi-instance deploy.

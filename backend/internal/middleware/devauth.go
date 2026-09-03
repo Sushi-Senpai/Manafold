@@ -1,6 +1,7 @@
-// Package middleware holds the auth middleware. M1 ships DevAuth only; the
-// session-backed SessionAuth is wired in for M3 (see
-// docs/intent/account-access/).
+// Package middleware holds the auth middleware: AnonOrSession (the default —
+// session cookie, then anonymous-draft token, else 401) and DevAuth (a fixed
+// local-dev / CI user, active only when DEV_AUTH=true). See
+// docs/intent/account-access/.
 package middleware
 
 import (
@@ -18,9 +19,9 @@ const (
 
 // DevAuth stands in for real authentication: it upserts one fixed user and
 // attaches its ID to every request via authctx. No login flow, no cookie, no
-// token. It runs only when DEV_AUTH=true (off by default — see
-// internal/config); the real email + password login (M3) replaces it with
-// SessionAuth.
+// token. It runs only when DEV_AUTH=true (off by default, and never in a
+// deployed environment — see internal/config); AnonOrSession is the real
+// default.
 //
 // @spec ACCT-001
 func DevAuth(queries *db.Queries) func(http.Handler) http.Handler {

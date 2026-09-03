@@ -8,31 +8,40 @@ import (
 	"manafold-backend/internal/sessioncookie"
 )
 
-// SessionAuth reads the session cookie, validates it against GetSession (whose
-// SQL filters expires_at > now(), so "no rows" covers missing and expired in
-// one check), and attaches the user ID via authctx. It fails closed: any
-// failure responds 401 and returns without calling next, because every handler
-// downstream trusts that authctx.UserID was set and never checks the ok-bool.
+// AnonTokenHeader carries an anonymous-draft token for a caller with no session
+// (ACCT-020).
+const AnonTokenHeader = "X-Anon-Token"
+
+// AnonOrSession is the default protected-group middleware. It resolves the
+// caller in priority order:
 //
-// M1 runs on DevAuth; SessionAuth is exercised by tests (an unauthenticated
-// request must 401) and is the default path from M3.
+//  1. a valid, unexpired session cookie -> authctx.WithUserID (GetSession's SQL
+//     filters expires_at > now(), so "no rows" covers missing and expired);
+//  2. otherwise a non-empty X-Anon-Token header -> authctx.WithAnonToken;
+//  3. otherwise 401, without calling next.
 //
-// @spec ACCT-003
-func SessionAuth(queries *db.Queries) func(http.Handler) http.Handler {
+// A valid session always wins over a supplied token. The middleware fails
+// closed: every handler downstream trusts that exactly one identity is set.
+//
+// @spec ACCT-003, ACCT-020
+func AnonOrSession(queries *db.Queries) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			sessionID, ok := sessioncookie.FromRequest(r)
-			if !ok {
-				http.Error(w, "not authenticated", http.StatusUnauthorized)
+			if sessionID, ok := sessioncookie.FromRequest(r); ok {
+				if session, err := queries.GetSession(r.Context(), sessionID); err == nil {
+					ctx := authctx.WithUserID(r.Context(), session.UserID)
+					next.ServeHTTP(w, r.WithContext(ctx))
+					return
+				}
+			}
+
+			if token := r.Header.Get(AnonTokenHeader); token != "" {
+				ctx := authctx.WithAnonToken(r.Context(), token)
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
-			session, err := queries.GetSession(r.Context(), sessionID)
-			if err != nil {
-				http.Error(w, "not authenticated", http.StatusUnauthorized)
-				return
-			}
-			ctx := authctx.WithUserID(r.Context(), session.UserID)
-			next.ServeHTTP(w, r.WithContext(ctx))
+
+			http.Error(w, "not authenticated", http.StatusUnauthorized)
 		})
 	}
 }

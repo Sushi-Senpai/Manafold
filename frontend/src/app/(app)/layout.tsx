@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { HeaderAuth } from "@/components/HeaderAuth";
 import { Wordmark } from "@/components/Wordmark";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -10,11 +11,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Link href="/" className="text-lg">
             <Wordmark />
           </Link>
-          <nav className="flex gap-4 text-sm">
+          <nav className="flex flex-1 gap-4 text-sm">
             <Link href="/decks" className="text-muted hover:text-foreground">
               Decks
             </Link>
           </nav>
+          <HeaderAuth />
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>

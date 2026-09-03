@@ -21,7 +21,7 @@ SELECT d.id,
        $5::text
 FROM decks d
 WHERE d.id = $6::uuid
-  AND d.user_id = $7::uuid
+  AND (d.user_id = $7::uuid OR d.anon_token = $8::text)
 ON CONFLICT (deck_id, card_id, board)
 DO UPDATE SET quantity = deck_cards.quantity + EXCLUDED.quantity,
               category = COALESCE(EXCLUDED.category, deck_cards.category)
@@ -29,20 +29,21 @@ RETURNING id, deck_id, card_id, print_id, quantity, board, category, added_at
 `
 
 type AddDeckCardParams struct {
-	CardID   pgtype.UUID `json:"card_id"`
-	PrintID  pgtype.UUID `json:"print_id"`
-	Quantity int32       `json:"quantity"`
-	Board    string      `json:"board"`
-	Category pgtype.Text `json:"category"`
-	DeckID   pgtype.UUID `json:"deck_id"`
-	UserID   pgtype.UUID `json:"user_id"`
+	CardID    pgtype.UUID `json:"card_id"`
+	PrintID   pgtype.UUID `json:"print_id"`
+	Quantity  int32       `json:"quantity"`
+	Board     string      `json:"board"`
+	Category  pgtype.Text `json:"category"`
+	DeckID    pgtype.UUID `json:"deck_id"`
+	UserID    pgtype.UUID `json:"user_id"`
+	AnonToken pgtype.Text `json:"anon_token"`
 }
 
 // Ownership is scoped in the query, exactly like the other deck_cards
 // mutations: the INSERT ... SELECT draws deck_id from a decks row filtered by
 // owner, so adding a card to a deck the caller does not own produces no row and
 // the handler maps "no rows" to 404 (DECK-009).
-// @spec DECK-005, DECK-009
+// @spec DECK-005, DECK-009, DECK-040
 func (q *Queries) AddDeckCard(ctx context.Context, arg AddDeckCardParams) (DeckCard, error) {
 	row := q.db.QueryRow(ctx, addDeckCard,
 		arg.CardID,
@@ -52,6 +53,7 @@ func (q *Queries) AddDeckCard(ctx context.Context, arg AddDeckCardParams) (DeckC
 		arg.Category,
 		arg.DeckID,
 		arg.UserID,
+		arg.AnonToken,
 	)
 	var i DeckCard
 	err := row.Scan(
@@ -67,20 +69,51 @@ func (q *Queries) AddDeckCard(ctx context.Context, arg AddDeckCardParams) (DeckC
 	return i, err
 }
 
+const claimAnonDecks = `-- name: ClaimAnonDecks :execrows
+UPDATE decks
+SET user_id = $1, anon_token = NULL
+WHERE anon_token = $2
+`
+
+type ClaimAnonDecksParams struct {
+	UserID    pgtype.UUID `json:"user_id"`
+	AnonToken pgtype.Text `json:"anon_token"`
+}
+
+// When an anonymous caller signs in, claim reassigns every draft owned by the
+// token to that user and clears the token, in one statement. execrows is the
+// number of drafts moved.
+// @spec DECK-041, ACCT-021
+func (q *Queries) ClaimAnonDecks(ctx context.Context, arg ClaimAnonDecksParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimAnonDecks, arg.UserID, arg.AnonToken)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createDeck = `-- name: CreateDeck :one
-INSERT INTO decks (user_id, name)
-VALUES ($1, $2)
+
+INSERT INTO decks (user_id, anon_token, name)
+VALUES ($1, $2, $3)
 RETURNING id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at
 `
 
 type CreateDeckParams struct {
-	UserID pgtype.UUID `json:"user_id"`
-	Name   string      `json:"name"`
+	UserID    pgtype.UUID `json:"user_id"`
+	AnonToken pgtype.Text `json:"anon_token"`
+	Name      string      `json:"name"`
 }
 
-// @spec DECK-001
+// Ownership is a polymorphic owner key: an authenticated caller passes user_id
+// (and a NULL anon_token), an anonymous-draft caller passes anon_token (and a
+// NULL user_id). Exactly one is non-null (the decks CHECK enforces it); a
+// comparison against the NULL argument is itself NULL, so each query resolves
+// to the single active predicate. See
+// docs/intent/deck-building/deck-building-design.md § Ownership.
+// @spec DECK-001, DECK-040
 func (q *Queries) CreateDeck(ctx context.Context, arg CreateDeckParams) (Deck, error) {
-	row := q.db.QueryRow(ctx, createDeck, arg.UserID, arg.Name)
+	row := q.db.QueryRow(ctx, createDeck, arg.UserID, arg.AnonToken, arg.Name)
 	var i Deck
 	err := row.Scan(
 		&i.ID,
@@ -108,26 +141,28 @@ WHERE dc.deck_id = $1
   AND dc.card_id = $2
   AND dc.board = $3
   AND dc.deck_id = d.id
-  AND d.user_id = $4
+  AND (d.user_id = $4 OR d.anon_token = $5)
 `
 
 type DeleteDeckCardParams struct {
-	DeckID pgtype.UUID `json:"deck_id"`
-	CardID pgtype.UUID `json:"card_id"`
-	Board  string      `json:"board"`
-	UserID pgtype.UUID `json:"user_id"`
+	DeckID    pgtype.UUID `json:"deck_id"`
+	CardID    pgtype.UUID `json:"card_id"`
+	Board     string      `json:"board"`
+	UserID    pgtype.UUID `json:"user_id"`
+	AnonToken pgtype.Text `json:"anon_token"`
 }
 
 // The DELETE is joined to decks filtered by owner, so removing a card from a
 // deck the caller does not own matches no row; the handler maps zero rows
 // affected to 404 (DECK-009).
-// @spec DECK-009, DECK-010
+// @spec DECK-009, DECK-010, DECK-040
 func (q *Queries) DeleteDeckCard(ctx context.Context, arg DeleteDeckCardParams) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteDeckCard,
 		arg.DeckID,
 		arg.CardID,
 		arg.Board,
 		arg.UserID,
+		arg.AnonToken,
 	)
 	if err != nil {
 		return 0, err
@@ -135,20 +170,23 @@ func (q *Queries) DeleteDeckCard(ctx context.Context, arg DeleteDeckCardParams) 
 	return result.RowsAffected(), nil
 }
 
-const getDeckForUser = `-- name: GetDeckForUser :one
-SELECT id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at FROM decks WHERE id = $1 AND user_id = $2
+const getDeckForOwner = `-- name: GetDeckForOwner :one
+SELECT id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at FROM decks
+WHERE id = $1
+  AND (user_id = $2 OR anon_token = $3)
 `
 
-type GetDeckForUserParams struct {
-	ID     pgtype.UUID `json:"id"`
-	UserID pgtype.UUID `json:"user_id"`
+type GetDeckForOwnerParams struct {
+	ID        pgtype.UUID `json:"id"`
+	UserID    pgtype.UUID `json:"user_id"`
+	AnonToken pgtype.Text `json:"anon_token"`
 }
 
-// Ownership is scoped in the query: a deck the caller does not own returns no
-// row, which the handler maps to 404 (DECK-009).
-// @spec DECK-009
-func (q *Queries) GetDeckForUser(ctx context.Context, arg GetDeckForUserParams) (Deck, error) {
-	row := q.db.QueryRow(ctx, getDeckForUser, arg.ID, arg.UserID)
+// A deck the caller does not own returns no row, which the handler maps to 404
+// (DECK-009) — identical for a wrong user and a wrong token (DECK-040).
+// @spec DECK-009, DECK-040
+func (q *Queries) GetDeckForOwner(ctx context.Context, arg GetDeckForOwnerParams) (Deck, error) {
+	row := q.db.QueryRow(ctx, getDeckForOwner, arg.ID, arg.UserID, arg.AnonToken)
 	var i Deck
 	err := row.Scan(
 		&i.ID,
@@ -302,12 +340,19 @@ func (q *Queries) ListDeckCardEntries(ctx context.Context, deckID pgtype.UUID) (
 	return items, nil
 }
 
-const listDecksByUser = `-- name: ListDecksByUser :many
-SELECT id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at FROM decks WHERE user_id = $1 ORDER BY updated_at DESC
+const listDecksForOwner = `-- name: ListDecksForOwner :many
+SELECT id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at FROM decks
+WHERE (user_id = $1 OR anon_token = $2)
+ORDER BY updated_at DESC
 `
 
-func (q *Queries) ListDecksByUser(ctx context.Context, userID pgtype.UUID) ([]Deck, error) {
-	rows, err := q.db.Query(ctx, listDecksByUser, userID)
+type ListDecksForOwnerParams struct {
+	UserID    pgtype.UUID `json:"user_id"`
+	AnonToken pgtype.Text `json:"anon_token"`
+}
+
+func (q *Queries) ListDecksForOwner(ctx context.Context, arg ListDecksForOwnerParams) ([]Deck, error) {
+	rows, err := q.db.Query(ctx, listDecksForOwner, arg.UserID, arg.AnonToken)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +391,8 @@ UPDATE decks
 SET commander_card_id = $1,
     partner_card_id = $2,
     color_identity = $3
-WHERE id = $4 AND user_id = $5
+WHERE id = $4
+  AND (user_id = $5 OR anon_token = $6)
 RETURNING id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at
 `
 
@@ -356,6 +402,7 @@ type SetDeckCommanderParams struct {
 	ColorIdentity   []string    `json:"color_identity"`
 	ID              pgtype.UUID `json:"id"`
 	UserID          pgtype.UUID `json:"user_id"`
+	AnonToken       pgtype.Text `json:"anon_token"`
 }
 
 // @spec DECK-002, DECK-003
@@ -366,6 +413,7 @@ func (q *Queries) SetDeckCommander(ctx context.Context, arg SetDeckCommanderPara
 		arg.ColorIdentity,
 		arg.ID,
 		arg.UserID,
+		arg.AnonToken,
 	)
 	var i Deck
 	err := row.Scan(
@@ -393,7 +441,8 @@ SET name = $1,
     description = $2,
     is_public = $3,
     bracket = $4
-WHERE id = $5 AND user_id = $6
+WHERE id = $5
+  AND (user_id = $6 OR anon_token = $7)
 RETURNING id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at
 `
 
@@ -404,6 +453,7 @@ type UpdateDeckMetaParams struct {
 	Bracket     pgtype.Int4 `json:"bracket"`
 	ID          pgtype.UUID `json:"id"`
 	UserID      pgtype.UUID `json:"user_id"`
+	AnonToken   pgtype.Text `json:"anon_token"`
 }
 
 // @spec DECK-011
@@ -415,6 +465,7 @@ func (q *Queries) UpdateDeckMeta(ctx context.Context, arg UpdateDeckMetaParams) 
 		arg.Bracket,
 		arg.ID,
 		arg.UserID,
+		arg.AnonToken,
 	)
 	var i Deck
 	err := row.Scan(

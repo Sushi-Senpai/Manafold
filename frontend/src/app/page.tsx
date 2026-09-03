@@ -2,9 +2,9 @@ import Link from "next/link";
 
 import { Wordmark } from "@/components/Wordmark";
 
-// M1 landing page. The plain-text wordmark is the approved mark (the captain's
-// vector artwork is still pending, PLATFORM-024); the real email + password
-// sign-in flow is M3. The one action is to open the deck list.
+// Landing page. The plain-text wordmark is the approved mark (the captain's
+// vector artwork is still pending, PLATFORM-024). A visitor can jump straight
+// into building (anonymous drafts, ACCT-020) or sign in / create an account.
 export default function Home() {
   return (
     <main className="relative flex flex-1 flex-col items-center justify-center gap-6 px-6 py-24 text-center">
@@ -16,12 +16,24 @@ export default function Home() {
         format&apos;s rules while you build — colour identity, singleton, the
         100-card count, and the banlist, validated live.
       </p>
-      <Link
-        href="/decks"
-        className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-ink transition hover:opacity-90"
-      >
-        Open your decks
-      </Link>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <Link
+          href="/decks"
+          className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-ink transition hover:opacity-90"
+        >
+          Start building
+        </Link>
+        <Link
+          href="/login"
+          className="rounded-lg border border-foreground/20 px-6 py-3 text-sm font-semibold transition hover:border-foreground/40"
+        >
+          Sign in
+        </Link>
+      </div>
+      <p className="text-xs text-foreground/40">
+        No account needed to start — your deck is saved to this browser and
+        follows you in when you sign up.
+      </p>
       <footer className="mt-16 max-w-2xl text-xs leading-relaxed text-foreground/40">
         Card data and images © Wizards of the Coast, provided by{" "}
         <a href="https://scryfall.com" className="underline">

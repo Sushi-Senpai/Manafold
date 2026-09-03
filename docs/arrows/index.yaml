@@ -1,8 +1,10 @@
 schema_version: 2
-last_updated: 2026-09-02
+last_updated: 2026-09-03
 # M1: LID bootstrap + Waystone-mirrored skeleton + Commander deck vertical slice.
 # M2: import/export (deckio + parse-then-apply endpoints) + deterministic deck
 #     stats + the Slate & Signet palette wire-in.
+# M3: email + password accounts (argon2id) + server-side sessions + per-IP rate
+#     limiting + anonymous drafts + claim-on-sign-in.
 
 taxonomy:
   features:
@@ -28,7 +30,7 @@ arrows:
     drift: null
 
   account-access:
-    status: DRAFT
+    status: MAPPED
     parent: null
     sampled: 2026-09-02
     audited: null
@@ -36,7 +38,7 @@ arrows:
     blocks: [deck-building]
     blockedBy: [platform-shell]
     detail: account-access.md
-    next: "M1 uses the DevAuth stub only (ACCT-001). M3: implement email + password (argon2id) + server-side sessions + anonymous drafts + claim-on-sign-in. Design must not preclude OAuth providers later."
+    next: "M3 landed: internal/passwordhash (argon2id, bcrypt-verify fallback); internal/ratelimit (per-IP token bucket); POST /api/auth/register|login|logout + GET /api/auth/session + POST /api/auth/claim-drafts; AnonOrSession middleware is the default protected-group auth (ACCT-003, ACCT-010..021); anonymous drafts via X-Anon-Token + ClaimAnonDecks (DECK-040/041); frontend (auth) login/register pages + header session state. Deferred: OAuth providers (ACCT-030), email verification + password reset (ACCT-031), sign-out-everywhere (ACCT-032), shared rate-limit store."
     drift: null
 
   card-data:
@@ -60,7 +62,7 @@ arrows:
     blocks: [ai-assist, import-export]
     blockedBy: [card-data, account-access]
     detail: deck-building.md
-    next: "M1 landed: decks / deck_cards schema; internal/deckrules; deck CRUD + commander assignment + add/remove cards + GET /validation; ownership in-query (404); read-only public deck view; /decks list + /decks/[id] builder. M2 landed: internal/deckstats (curve / pips-vs-sources / category roll-up + CategoryTargets) + GET /decks/{id}/stats + stats panel (DECK-051, DECK-052); DECK-060 bulk import write. Deferred: anonymous drafts + claim (DECK-040/041, M3); auto-categorizer, bootstrapping wizard, swap UX, cut suggestions (M4+)."
+    next: "M1 landed: decks / deck_cards schema; internal/deckrules; deck CRUD + commander assignment + add/remove cards + GET /validation; ownership in-query (404); read-only public deck view; /decks list + /decks/[id] builder. M2 landed: internal/deckstats (curve / pips-vs-sources / category roll-up + CategoryTargets) + GET /decks/{id}/stats + stats panel (DECK-051, DECK-052); DECK-060 bulk import write. M3 landed: deck queries scoped to a polymorphic owner key (user_id OR anon_token); CreateDeck takes either; ClaimAnonDecks reassignment (DECK-040/041). Deferred: auto-categorizer, bootstrapping wizard, swap UX, cut suggestions (M4+)."
     drift: null
 
   import-export:

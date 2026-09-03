@@ -104,13 +104,15 @@ func (a *API) parseImport(w http.ResponseWriter, r *http.Request) {
 	parsedJSON, _ := json.Marshal(parsed)
 	unresolvedJSON, _ := json.Marshal(nonNil(unresolved))
 
+	uid, tok := callerOwner(r)
 	imp, err := a.Queries.CreateImport(r.Context(), db.CreateImportParams{
 		SourceFormat: string(format),
 		RawText:      body.RawText,
 		Parsed:       parsedJSON,
 		Unresolved:   unresolvedJSON,
 		DeckID:       deck.ID,
-		UserID:       callerID(r),
+		UserID:       uid,
+		AnonToken:    tok,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -140,9 +142,11 @@ func (a *API) applyImport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "import not found")
 		return
 	}
+	uid, tok := callerOwner(r)
 	imp, err := a.Queries.GetImportForOwner(r.Context(), db.GetImportForOwnerParams{
-		ImportID: importID,
-		UserID:   callerID(r),
+		ImportID:  importID,
+		UserID:    uid,
+		AnonToken: tok,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -206,11 +210,12 @@ func (a *API) applyImport(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		params := db.AddDeckCardParams{
-			CardID:   cardID,
-			Quantity: int32(l.Quantity),
-			Board:    l.Board,
-			DeckID:   deck.ID,
-			UserID:   callerID(r),
+			CardID:    cardID,
+			Quantity:  int32(l.Quantity),
+			Board:     l.Board,
+			DeckID:    deck.ID,
+			UserID:    uid,
+			AnonToken: tok,
 		}
 		if strings.TrimSpace(l.Category) != "" {
 			params.Category = pgtype.Text{String: l.Category, Valid: true}

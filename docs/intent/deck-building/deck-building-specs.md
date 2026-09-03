@@ -26,8 +26,8 @@
 
 ## Anonymous Drafts
 
-- [ ] **DECK-040**: Where a request carries no session but carries an anonymous-draft token, the system shall let the caller create and edit decks owned by that token.
-- [ ] **DECK-041**: When a client signs in while holding an anonymous-draft token, the system shall reassign every deck owned by that token to the signed-in user and clear the token.
+- [x] **DECK-040**: Where a request carries an accepted anonymous-draft token and no valid session, the system shall scope deck creation, reads, and mutations to that token, mapping a deck the token does not own to `404` exactly as it does for an authenticated user.
+- [x] **DECK-041**: When the claim endpoint runs for an authenticated caller holding an anonymous-draft token, the system shall, in one statement, set `user_id` to that caller and null `anon_token` on every deck currently owned by the token, and shall not touch decks owned by any other token or user.
 
 ## Deck Stats
 

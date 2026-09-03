@@ -11,6 +11,30 @@ export class ApiError extends Error {
   }
 }
 
+const ANON_TOKEN_KEY = "manafold_anon";
+
+// getAnonToken returns this browser's anonymous-draft token, minting and
+// persisting one on first use. It is sent as X-Anon-Token on every request so a
+// visitor with no session still owns the decks they build; on sign-in the token
+// is handed to POST /api/auth/claim-drafts (ACCT-020, ACCT-021).
+//
+// @spec ACCT-020
+export function getAnonToken(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    let tok = window.localStorage.getItem(ANON_TOKEN_KEY);
+    if (!tok) {
+      tok = crypto.randomUUID();
+      window.localStorage.setItem(ANON_TOKEN_KEY, tok);
+    }
+    return tok;
+  } catch {
+    // Private-mode / storage-disabled: fall back to a per-tab token so the
+    // session at least holds within one page's lifetime.
+    return "";
+  }
+}
+
 // A 401 means the session is missing or expired server-side. Redirect once,
 // here, so pages carry no per-page logged-out logic (ACCT-015). M1 runs on the
 // DevAuth stub so this rarely fires, but the contract is in place for M3.
@@ -28,14 +52,27 @@ function handleUnauthorized(status: number): boolean {
   return true;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+type RequestOptions = {
+  // When true, a 401 is returned to the caller as an ApiError instead of
+  // triggering the redirect-to-"/" session-expiry handler. The /api/auth/*
+  // endpoints set this: a wrong password is a normal outcome there, not a
+  // dead session.
+  isAuthEndpoint?: boolean;
+};
+
+async function request<T>(path: string, init?: RequestInit, opts?: RequestOptions): Promise<T> {
+  const anon = getAnonToken();
   const res = await fetch(path, {
     ...init,
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(anon ? { "X-Anon-Token": anon } : {}),
+      ...init?.headers,
+    },
   });
 
-  if (handleUnauthorized(res.status)) {
+  if (!opts?.isAuthEndpoint && handleUnauthorized(res.status)) {
     throw new ApiError(res.status, "Not authenticated");
   }
   if (!res.ok) {
@@ -162,6 +199,13 @@ export type ImportPreview = {
   rejected: string[];
 };
 
+// ---- account-access ------------------------------------------------
+
+export type SessionState = {
+  authenticated: boolean;
+  email?: string;
+};
+
 // ---- deck stats ----------------------------------------------------
 
 export type DeckStats = {
@@ -177,6 +221,30 @@ export type DeckStats = {
 };
 
 export const api = {
+  // ---- account-access ----
+  register: (email: string, password: string) =>
+    request<SessionState>(
+      "/api/auth/register",
+      { method: "POST", body: JSON.stringify({ email, password }) },
+      { isAuthEndpoint: true },
+    ),
+  login: (email: string, password: string) =>
+    request<SessionState>(
+      "/api/auth/login",
+      { method: "POST", body: JSON.stringify({ email, password }) },
+      { isAuthEndpoint: true },
+    ),
+  logout: () =>
+    request<void>("/api/auth/logout", { method: "POST" }, { isAuthEndpoint: true }),
+  getSession: () =>
+    request<SessionState>("/api/auth/session", undefined, { isAuthEndpoint: true }),
+  claimDrafts: (anonToken: string) =>
+    request<{ claimed: number }>(
+      "/api/auth/claim-drafts",
+      { method: "POST", body: JSON.stringify({ anon_token: anonToken }) },
+      { isAuthEndpoint: true },
+    ),
+
   searchCards: (q: string, page = 0) =>
     request<CardSearchResult>(`/api/cards/search?q=${encodeURIComponent(q)}&page=${page}`),
   autocompleteCards: (q: string) =>
@@ -218,8 +286,10 @@ export const api = {
   // Export returns text/plain, not JSON, so it bypasses the shared request()
   // helper and its JSON Content-Type / body handling.
   exportDeck: async (id: string, format: "plaintext" | "mtga"): Promise<string> => {
+    const anon = getAnonToken();
     const res = await fetch(`/api/decks/${id}/export?format=${format}`, {
       credentials: "include",
+      headers: anon ? { "X-Anon-Token": anon } : {},
     });
     if (handleUnauthorized(res.status)) {
       throw new ApiError(res.status, "Not authenticated");
