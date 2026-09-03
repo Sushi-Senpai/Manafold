@@ -1,0 +1,150 @@
+Manafold M2 — parse step for each of the four supported decklist formats
+(real POST /api/decks/{id}/import against the running server + Postgres)
+Every parse writes a row to the imports audit table; unresolved names are
+reported verbatim and never dropped (PORT-004).
+
+==================================================================
+source_format = plaintext
+------ raw_text --------------------------------------------------
+Commander
+1 Manafold Test Goblin Boss
+
+Deck
+1 Manafold Test Septet
+1 Bogus Card That Does Not Exist
+------ POST /api/decks/89895fbc-26ef-427e-ae2d-d690d62ab318/import  response --------------------
+{
+    "import_id": "fb8ca32a-c5ad-4d6c-96f4-1c7e1b51e5d9",
+    "resolved": [
+        {
+            "card_id": "cb0f52ae-6cc6-4c89-ab30-01c3bbae1d92",
+            "name": "Manafold Test Goblin Boss",
+            "quantity": 1,
+            "board": "command"
+        },
+        {
+            "card_id": "ffb027b7-b403-49d7-9f92-42105dd378b0",
+            "name": "Manafold Test Septet",
+            "quantity": 1,
+            "board": "main"
+        }
+    ],
+    "unresolved": [
+        {
+            "name": "Bogus Card That Does Not Exist",
+            "quantity": 1,
+            "board": "main",
+            "raw": "1 Bogus Card That Does Not Exist"
+        }
+    ],
+    "rejected": []
+}
+
+==================================================================
+source_format = mtga
+------ raw_text --------------------------------------------------
+Deck
+1 Manafold Test Goblin Boss (TST) 1
+3 Manafold Test Rat Swarm (TST) 2
+
+Sideboard
+1 Manafold Test Walker (TST) 9
+------ POST /api/decks/89895fbc-26ef-427e-ae2d-d690d62ab318/import  response --------------------
+{
+    "import_id": "ac6edc2a-3007-4e50-accf-7824b1789743",
+    "resolved": [
+        {
+            "card_id": "cb0f52ae-6cc6-4c89-ab30-01c3bbae1d92",
+            "name": "Manafold Test Goblin Boss",
+            "quantity": 1,
+            "board": "main"
+        },
+        {
+            "card_id": "2d71e5de-33a3-4752-b5e7-c959d1636d11",
+            "name": "Manafold Test Rat Swarm",
+            "quantity": 3,
+            "board": "main"
+        },
+        {
+            "card_id": "963058d2-9628-440c-ac63-23ca208166b0",
+            "name": "Manafold Test Walker",
+            "quantity": 1,
+            "board": "sideboard"
+        }
+    ],
+    "unresolved": [],
+    "rejected": []
+}
+
+==================================================================
+source_format = moxfield
+------ raw_text --------------------------------------------------
+1 Manafold Test Goblin Boss (LTC) 284 *F*
+1 Manafold Test Septet (RNA) 22
+SB: 1 Manafold Test Rat Swarm (2X2) 26
+------ POST /api/decks/89895fbc-26ef-427e-ae2d-d690d62ab318/import  response --------------------
+{
+    "import_id": "618aba2a-5891-4e16-baad-19efa4ecbf81",
+    "resolved": [
+        {
+            "card_id": "cb0f52ae-6cc6-4c89-ab30-01c3bbae1d92",
+            "name": "Manafold Test Goblin Boss",
+            "quantity": 1,
+            "board": "main"
+        },
+        {
+            "card_id": "ffb027b7-b403-49d7-9f92-42105dd378b0",
+            "name": "Manafold Test Septet",
+            "quantity": 1,
+            "board": "main"
+        },
+        {
+            "card_id": "2d71e5de-33a3-4752-b5e7-c959d1636d11",
+            "name": "Manafold Test Rat Swarm",
+            "quantity": 1,
+            "board": "sideboard"
+        }
+    ],
+    "unresolved": [],
+    "rejected": []
+}
+
+==================================================================
+source_format = archidekt
+------ raw_text --------------------------------------------------
+Commander (1)
+1 Manafold Test Goblin Boss
+
+Deck (2)
+1 Manafold Test Septet [Ramp]
+1 Manafold Test Rat Swarm [Removal{top}]
+------ POST /api/decks/89895fbc-26ef-427e-ae2d-d690d62ab318/import  response --------------------
+{
+    "import_id": "56b4a0cc-6613-4a1a-97b2-2180fe4175fd",
+    "resolved": [
+        {
+            "card_id": "cb0f52ae-6cc6-4c89-ab30-01c3bbae1d92",
+            "name": "Manafold Test Goblin Boss",
+            "quantity": 1,
+            "board": "command"
+        },
+        {
+            "card_id": "ffb027b7-b403-49d7-9f92-42105dd378b0",
+            "name": "Manafold Test Septet",
+            "quantity": 1,
+            "board": "main",
+            "category": "Ramp"
+        },
+        {
+            "card_id": "2d71e5de-33a3-4752-b5e7-c959d1636d11",
+            "name": "Manafold Test Rat Swarm",
+            "quantity": 1,
+            "board": "main",
+            "category": "Removal"
+        }
+    ],
+    "unresolved": [],
+    "rejected": []
+}
+
+DONE

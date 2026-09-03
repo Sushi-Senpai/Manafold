@@ -1,0 +1,366 @@
+############################################################
+# Manafold M2 end-to-end: real API server + Postgres 16     #
+# DEV_AUTH stub user; cards seeded via cmd/cardsync fixture #
+############################################################
+
+>>> POST /api/decks
+{
+    "id": "89895fbc-26ef-427e-ae2d-d690d62ab318",
+    "name": "M2 Demo Deck",
+    "description": "",
+    "format": "commander",
+    "bracket": null,
+    "is_public": false,
+    "color_identity": []
+}
+deck id = 89895fbc-26ef-427e-ae2d-d690d62ab318
+
+>>> PUT /api/decks/89895fbc-26ef-427e-ae2d-d690d62ab318/commander  (Manafold Test Goblin Boss, mono-R)
+{
+    "id": "89895fbc-26ef-427e-ae2d-d690d62ab318",
+    "name": "M2 Demo Deck",
+    "description": "",
+    "format": "commander",
+    "bracket": null,
+    "is_public": false,
+    "color_identity": [
+        "R"
+    ],
+    "commander": {
+        "id": "cb0f52ae-6cc6-4c89-ab30-01c3bbae1d92",
+        "name": "Manafold Test Goblin Boss",
+        "mana_cost": "{2}{R}",
+        "mana_value": 3,
+        "type_line": "Legendary Creature \u2014 Goblin",
+        "oracle_text": "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.",
+        "colors": [
+            "R"
+        ],
+        "color_identity": [
+            "R"
+        ],
+        "keywords": [],
+        "can_be_commander": true,
+        "edhrec_rank": 120,
+        "layout": "normal",
+        "image_uris": {
+            "small": "https://cards.scryfall.io/small/test1.jpg",
+            "normal": "https://cards.scryfall.io/normal/test1.jpg"
+        },
+        "prices": {
+            "eur": "1.05",
+            "usd": "1.23"
+        },
+        "set_code": "tst",
+        "collector_number": "1"
+    },
+    "partner": null,
+    "boards": {
+        "command": [
+            {
+                "entry_id": "commander",
+                "card_id": "cb0f52ae-6cc6-4c89-ab30-01c3bbae1d92",
+                "name": "Manafold Test Goblin Boss",
+                "mana_cost": "{2}{R}",
+                "mana_value": 3,
+                "type_line": "Legendary Creature \u2014 Goblin",
+                "color_identity": [
+                    "R"
+                ],
+                "quantity": 1,
+                "board": "command",
+                "category": null,
+                "image_uris": {
+                    "small": "https://cards.scryfall.io/small/test1.jpg",
+                    "normal": "https://cards.scryfall.io/normal/test1.jpg"
+                },
+                "prices": {
+                    "eur": "1.05",
+                    "usd": "1.23"
+                },
+                "set_code": "tst",
+                "collector_number": "1",
+                "color_identity_violation": false,
+                "offending_colors": [],
+                "singleton_violation": false
+            }
+        ],
+        "main": [],
+        "maybe": [],
+        "sideboard": []
+    }
+}
+
+>>> POST /api/decks/89895fbc-26ef-427e-ae2d-d690d62ab318/cards  add Rat Swarm (mono-B, OUT of commander identity)
+{
+    "board": "main",
+    "card_id": "2d71e5de-33a3-4752-b5e7-c959d1636d11",
+    "color_identity_violation": true,
+    "entry_id": "9fdfd950-6a29-4e95-8242-717d9fc14f3c",
+    "offending_colors": [
+        "B"
+    ],
+    "quantity": 1,
+    "singleton_violation": false
+}
+
+>>> GET /api/decks/89895fbc-26ef-427e-ae2d-d690d62ab318/validation   (expect colour-identity violation + count short of 100)
+{
+    "color_identity_violations": [
+        {
+            "card_id": "2d71e5de-33a3-4752-b5e7-c959d1636d11",
+            "card_name": "Manafold Test Rat Swarm",
+            "offending": [
+                "B"
+            ]
+        }
+    ],
+    "singleton_violations": [],
+    "main_command_count": 2,
+    "count_deviation": -98,
+    "banlist_violations": [],
+    "commander_issues": [],
+    "legal": false
+}
+
+>>> GET /api/decks/89895fbc-26ef-427e-ae2d-d690d62ab318/stats   (M2 deterministic deck stats: curve / pips / categories)
+{
+    "type_counts": {
+        "Creature": 2
+    },
+    "avg_mana_value": 2.5,
+    "mana_curve": {
+        "2": 1,
+        "3": 1
+    },
+    "color_pips": {
+        "B": 1,
+        "R": 1
+    },
+    "color_sources": {},
+    "category_counts": {},
+    "land_count": 0,
+    "nonland_count": 2,
+    "category_targets": {
+        "Board Wipe": [
+            3,
+            5
+        ],
+        "Card Draw": [
+            8,
+            12
+        ],
+        "Counterspell": [
+            0,
+            8
+        ],
+        "Ramp": [
+            8,
+            12
+        ],
+        "Removal": [
+            8,
+            12
+        ]
+    }
+}
+
+
+############################################################
+# M2 import/export: round-trip all four decklist formats   #
+############################################################
+
+==================================================================
+>>> POST /decks/89895fbc-26ef-427e-ae2d-d690d62ab318/import/8321c306-8594-462b-8447-e16c41e1ae8a/apply   (apply the plaintext import in one tx)
+{
+    "id": "89895fbc-26ef-427e-ae2d-d690d62ab318",
+    "name": "M2 Demo Deck",
+    "description": "",
+    "format": "commander",
+    "bracket": null,
+    "is_public": false,
+    "color_identity": [
+        "R"
+    ],
+    "commander": {
+        "id": "cb0f52ae-6cc6-4c89-ab30-01c3bbae1d92",
+        "name": "Manafold Test Goblin Boss",
+        "mana_cost": "{2}{R}",
+        "mana_value": 3,
+        "type_line": "Legendary Creature \u2014 Goblin",
+        "oracle_text": "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.",
+        "colors": [
+            "R"
+        ],
+        "color_identity": [
+            "R"
+        ],
+        "keywords": [],
+        "can_be_commander": true,
+        "edhrec_rank": 120,
+        "layout": "normal",
+        "image_uris": {
+            "small": "https://cards.scryfall.io/small/test1.jpg",
+            "normal": "https://cards.scryfall.io/normal/test1.jpg"
+        },
+        "prices": {
+            "eur": "1.05",
+            "usd": "1.23"
+        },
+        "set_code": "tst",
+        "collector_number": "1"
+    },
+    "partner": null,
+    "boards": {
+        "command": [
+            {
+                "entry_id": "commander",
+                "card_id": "cb0f52ae-6cc6-4c89-ab30-01c3bbae1d92",
+                "name": "Manafold Test Goblin Boss",
+                "mana_cost": "{2}{R}",
+                "mana_value": 3,
+                "type_line": "Legendary Creature \u2014 Goblin",
+                "color_identity": [
+                    "R"
+                ],
+                "quantity": 1,
+                "board": "command",
+                "category": null,
+                "image_uris": {
+                    "small": "https://cards.scryfall.io/small/test1.jpg",
+                    "normal": "https://cards.scryfall.io/normal/test1.jpg"
+                },
+                "prices": {
+                    "eur": "1.05",
+                    "usd": "1.23"
+                },
+                "set_code": "tst",
+                "collector_number": "1",
+                "color_identity_violation": false,
+                "offending_colors": [],
+                "singleton_violation": false
+            }
+        ],
+        "main": [
+            {
+                "entry_id": "9fdfd950-6a29-4e95-8242-717d9fc14f3c",
+                "card_id": "2d71e5de-33a3-4752-b5e7-c959d1636d11",
+                "name": "Manafold Test Rat Swarm",
+                "mana_cost": "{1}{B}",
+                "mana_value": 2,
+                "type_line": "Creature \u2014 Rat",
+                "color_identity": [
+                    "B"
+                ],
+                "quantity": 1,
+                "board": "main",
+                "category": null,
+                "image_uris": {
+                    "small": "https://cards.scryfall.io/small/test2.jpg",
+                    "normal": "https://cards.scryfall.io/normal/test2.jpg"
+                },
+                "prices": {
+                    "usd": "0.10"
+                },
+                "set_code": "tst",
+                "collector_number": "2",
+                "color_identity_violation": true,
+                "offending_colors": [
+                    "B"
+                ],
+                "singleton_violation": false
+            },
+            {
+                "entry_id": "b7d73fdf-3bd4-4f53-b949-f124ca1e264a",
+                "card_id": "ffb027b7-b403-49d7-9f92-42105dd378b0",
+                "name": "Manafold Test Septet",
+                "mana_cost": "{4}{W}",
+                "mana_value": 5,
+                "type_line": "Creature \u2014 Dwarf",
+                "color_identity": [
+                    "W"
+                ],
+                "quantity": 1,
+                "board": "main",
+                "category": null,
+                "image_uris": null,
+                "prices": null,
+                "set_code": "",
+                "collector_number": "",
+                "color_identity_violation": true,
+                "offending_colors": [
+                    "W"
+                ],
+                "singleton_violation": false
+            }
+        ],
+        "maybe": [],
+        "sideboard": []
+    }
+}
+
+>>> POST .../apply AGAIN  (one-shot guard -> 409)
+HTTP 409
+{
+    "error": "import has already been applied"
+}
+
+>>> GET /decks/89895fbc-26ef-427e-ae2d-d690d62ab318/export?format=plaintext
+Commander
+1 Manafold Test Goblin Boss
+
+Deck
+1 Manafold Test Rat Swarm
+1 Manafold Test Septet
+
+>>> GET /decks/89895fbc-26ef-427e-ae2d-d690d62ab318/export?format=mtga
+Commander
+1 Manafold Test Goblin Boss (TST) 1
+
+Deck
+1 Manafold Test Rat Swarm (TST) 2
+1 Manafold Test Septet
+
+>>> GET /decks/89895fbc-26ef-427e-ae2d-d690d62ab318/stats   (after apply: curve/pips/categories updated deterministically)
+{
+    "type_counts": {
+        "Creature": 3
+    },
+    "avg_mana_value": 3.3333333333333335,
+    "mana_curve": {
+        "2": 1,
+        "3": 1,
+        "5": 1
+    },
+    "color_pips": {
+        "B": 1,
+        "R": 1,
+        "W": 1
+    },
+    "color_sources": {},
+    "category_counts": {},
+    "land_count": 0,
+    "nonland_count": 3,
+    "category_targets": {
+        "Board Wipe": [
+            3,
+            5
+        ],
+        "Card Draw": [
+            8,
+            12
+        ],
+        "Counterspell": [
+            0,
+            8
+        ],
+        "Ramp": [
+            8,
+            12
+        ],
+        "Removal": [
+            8,
+            12
+        ]
+    }
+}
