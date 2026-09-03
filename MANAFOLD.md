@@ -222,8 +222,11 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   - **Rate limiting** (`internal/ratelimit`, `ACCT-017`): in-process per-IP
     token bucket (capacity 10, +1 token / 6 s), checked before any DB work on
     `POST /api/auth/login` and `POST /api/auth/register`; `429` on an empty
-    bucket. Client IP = left-most `X-Forwarded-For`, then `RemoteAddr`. A shared
-    store is only needed past one backend instance (LLD open question).
+    bucket. The IP key is the first entry of the trusted `X-Forwarded-For`
+    suffix — `TRUSTED_PROXY_COUNT` hops from the right (default `1`), else
+    `RemoteAddr` — so a forged left-most entry cannot mint a fresh bucket; see
+    `account-access` design § Rate limiting. A shared store is only needed past
+    one backend instance (LLD open question).
   - **Sessions + endpoints** (`ACCT-003`, `ACCT-012..014`, `ACCT-019..021`):
     server-side `sessions` rows (30-day expiry, revocable), session cookie
     (`HttpOnly`, `Secure`, `SameSite=Lax`). `POST /api/auth/register|login`
