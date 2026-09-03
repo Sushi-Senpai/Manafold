@@ -257,3 +257,56 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
     (`ACCT-031`, waits on a transactional email sender — `email_verified_at` is
     stored but not enforced); sign-out-everywhere (`ACCT-032`); a shared
     rate-limit store for a multi-instance deploy.
+
+- **2026-09-03** — M4 increment (same branch, same growing PR). AI assist v1:
+  "suggest & explain" and the single-card fit blurb, per captain decision D1
+  (Anthropic Claude, developer-held key, no BYOK).
+  - **`internal/ai`** (`AI-001`, `AI-003`, `AI-004`): an `Assistant` interface
+    (`Enabled` / `Suggest` / `Explain`) with two implementations —
+    `NewAnthropic(key)`, one shared `anthropic-sdk-go` client reused per
+    request, and `Disabled()`, a stub whose methods return `ErrNotConfigured`.
+    `claude-sonnet-5` for suggestions, `claude-haiku-4-5` for the blurb — the
+    cheap tiers the design assigns each feature. The package holds no database
+    dependency: the handler passes it plain data plus, for suggest, a
+    `SearchFunc` closure over the mirror.
+  - **Enable switch** (`AI-002`): `AI_ENABLED` (default false). When true and
+    `ANTHROPIC_API_KEY` is missing, startup fails naming the key; when unset,
+    the wired assistant is `Disabled()` and every AI endpoint answers `503`, so
+    dev and CI build and boot with no key. Explicit rather than inferred from
+    the key's presence, so an accidental key never turns paid features on.
+  - **Suggest loop** (`AI-011`, `AI-012`, `AI-020`): the candidate pool is a
+    `cards` query ordered by `edhrec_rank`, filtered to the deck's colour
+    identity, non-banned, and not already in the deck — never the model's own
+    enumeration. The model runs a bounded `Messages.New` tool loop with a
+    `search_cards` tool (results forced through the same identity + legality
+    filter) and a `submit_suggestions` tool that ends the loop; a final forced
+    `submit_suggestions` call bounds the worst case.
+  - **Anti-hallucination gate** (`AI-010`, `AI-013`): every model-named card is
+    resolved with `ResolveCardByName` and re-validated by `internal/deckrules`
+    for the deck's colour identity; anything that does not resolve, is banned,
+    is off-colour, is already in the deck, or repeats an earlier survivor is
+    dropped. Nothing is substituted; the drop count is returned. One definition
+    of "legal for this deck" — `deckrules` — is reused, not reimplemented.
+  - **Cost control** (`AI-030..034`): `ai_usage` table
+    (`user_id, usage_date, feature` PK; call / token / `cost_micros` totals),
+    written only after a successful call. Per-user daily call caps per feature
+    (`AI_SUGGEST_DAILY_LIMIT` 20, `AI_EXPLAIN_DAILY_LIMIT` 40) → `429`; a global
+    month-to-date estimated-spend ceiling (`AI_MONTHLY_SPEND_USD` 50, 0
+    disables) → `503`; anonymous-draft callers get `403` — AI unlocks on
+    sign-in. Cost is estimated from returned token counts times a per-model
+    price table, in millionths of a USD.
+  - **Endpoints**: `POST /api/decks/{id}/suggestions` (`422` with no commander;
+    `502` on a provider error — suggestions have no non-model fallback) and
+    `POST /api/decks/{id}/cards/{cardId}/explain` (`404` unless the card is on
+    the deck's main or command board). Both behind the shared precheck:
+    `503` disabled → `403` anonymous → `404` not the caller's deck → `503`
+    ceiling → `429` daily limit.
+  - **Frontend**: a "Suggest cards" panel on the builder that shows only
+    gate-approved cards with the model's rationale and an inline "Add", plus the
+    dropped count and the model id.
+  - **Known gap** (LLD open question): both quotas are check-then-act, so
+    concurrent requests can slip a few calls over a limit; immaterial on one
+    small instance, a stricter design reserves the slot in the read statement.
+  - **Deferred / unchanged**: deck-health prose (`AI-022`, M5) and the bracket
+    estimate (`AI-023`, M6) remain gaps; EDHREC high-synergy data (`AI-040`) is
+    still blocked on a Terms-of-Service decision.

@@ -25,6 +25,10 @@ type Querier interface {
 	// number of drafts moved.
 	// @spec DECK-041, ACCT-021
 	ClaimAnonDecks(ctx context.Context, arg ClaimAnonDecksParams) (int64, error)
+	// Calls this user has already made of one feature today. Wrapped in COALESCE so
+	// a user with no row yet returns 0 rather than no rows.
+	// @spec AI-031
+	CountAIFeatureCallsToday(ctx context.Context, arg CountAIFeatureCallsTodayParams) (int32, error)
 	// Ownership is a polymorphic owner key: an authenticated caller passes user_id
 	// (and a NULL anon_token), an anonymous-draft caller passes anon_token (and a
 	// NULL user_id). Exactly one is non-null (the decks CHECK enforces it); a
@@ -76,12 +80,20 @@ type Querier interface {
 	// @spec DECK-007
 	ListDeckCardEntries(ctx context.Context, deckID pgtype.UUID) ([]ListDeckCardEntriesRow, error)
 	ListDecksForOwner(ctx context.Context, arg ListDecksForOwnerParams) ([]Deck, error)
+	// The AI "suggest & explain" candidate pool: real cards ranked by edhrec_rank,
+	// inside the deck's colour identity, not banned in Commander, and not already in
+	// the deck (exclude_ids carries the deck's card ids plus its commander/partner).
+	// The language model curates this pool; it never enumerates cards itself.
+	// @spec AI-011
+	ListSuggestionCandidates(ctx context.Context, arg ListSuggestionCandidatesParams) ([]Card, error)
 	// The guard is atomic: the UPDATE claims the row only while applied_at is still
 	// null, so two concurrent applies serialize on the row lock and exactly one sees
 	// a row affected. Zero rows affected means the import was already applied and the
 	// handler returns 409 (PORT-006).
 	// @spec PORT-006
 	MarkImportApplied(ctx context.Context, id pgtype.UUID) (int64, error)
+	// @spec AI-030, AI-034
+	RecordAIUsage(ctx context.Context, arg RecordAIUsageParams) error
 	// Resolve a decklist line's card name to one cards row: an exact
 	// case-insensitive match on the whole name, or a match on one face of a
 	// split / double-faced card ("Fire" for "Fire // Ice"), preferring the exact
@@ -90,6 +102,9 @@ type Querier interface {
 	ResolveCardByName(ctx context.Context, name string) (Card, error)
 	// @spec DECK-002, DECK-003
 	SetDeckCommander(ctx context.Context, arg SetDeckCommanderParams) (Deck, error)
+	// Month-to-date estimated spend across every user, in micro-USD.
+	// @spec AI-032
+	SumAICostMicrosSince(ctx context.Context, since pgtype.Date) (int64, error)
 	// @spec DECK-011
 	UpdateDeckMeta(ctx context.Context, arg UpdateDeckMetaParams) (Deck, error)
 	// @spec CARD-001

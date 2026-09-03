@@ -45,6 +45,20 @@ LIMIT 1;
 -- name: ListBanlistOverrides :many
 SELECT card_name, banned FROM banlist_overrides;
 
+-- The AI "suggest & explain" candidate pool: real cards ranked by edhrec_rank,
+-- inside the deck's colour identity, not banned in Commander, and not already in
+-- the deck (exclude_ids carries the deck's card ids plus its commander/partner).
+-- The language model curates this pool; it never enumerates cards itself.
+-- @spec AI-011
+-- name: ListSuggestionCandidates :many
+SELECT * FROM cards
+WHERE color_identity <@ sqlc.arg(deck_identity)::text[]
+  AND COALESCE(legalities->>'commander', '') <> 'banned'
+  AND edhrec_rank IS NOT NULL
+  AND id <> ALL(sqlc.arg(exclude_ids)::uuid[])
+ORDER BY edhrec_rank ASC
+LIMIT sqlc.arg(lim);
+
 -- @spec CARD-001
 -- name: UpsertCard :one
 INSERT INTO cards (

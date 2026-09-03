@@ -5,6 +5,9 @@ last_updated: 2026-09-03
 #     stats + the Slate & Signet palette wire-in.
 # M3: email + password accounts (argon2id) + server-side sessions + per-IP rate
 #     limiting + anonymous drafts + claim-on-sign-in.
+# M4: AI assist — Anthropic Claude wrapper (sonnet-5 suggest / haiku-4-5 explain)
+#     + search_cards tool + suggest-&-explain + single-card blurb + the
+#     validate-every-returned-card gate + ai_usage quotas + global spend ceiling.
 
 taxonomy:
   features:
@@ -78,7 +81,7 @@ arrows:
     drift: null
 
   ai-assist:
-    status: DRAFT
+    status: MAPPED
     parent: null
     sampled: 2026-09-02
     audited: null
@@ -86,7 +89,7 @@ arrows:
     blocks: []
     blockedBy: [card-data, deck-building]
     detail: ai-assist.md
-    next: "No AI code in M1 beyond an internal/ai stub wired into server.Deps. M4: Anthropic Claude wrapper + search_cards tool + suggest-&-explain + the validate-every-returned-card gate. EDHREC synergy data (AI-040) blocked on a ToS decision."
+    next: "M4 landed: internal/ai (Assistant interface + anthropic-backed impl with a search_cards / submit_suggestions tool loop on claude-sonnet-5, a claude-haiku-4-5 explain call, a Disabled() stub for AI_ENABLED unset); POST /api/decks/{id}/suggestions + POST /api/decks/{id}/cards/{cardId}/explain behind the validate-every-returned-card gate (reuses internal/deckrules); ai_usage table + per-user daily quotas (429) + global monthly spend ceiling (503) + anon 403 (AI-001..034). Gaps: deck-health prose (AI-022, M5), bracket estimate (AI-023, M6). EDHREC synergy data (AI-040) blocked on a ToS decision."
     drift: null
 
 unmapped:

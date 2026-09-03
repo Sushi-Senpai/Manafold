@@ -21,13 +21,20 @@ import (
 type API struct {
 	Pool         *pgxpool.Pool
 	Queries      *db.Queries
-	AI           *ai.Client
+	AI           ai.Assistant
 	LoginLimiter *ratelimit.Limiter
 
 	// TrustedProxyCount is how many reverse proxies in front of the API append
 	// to X-Forwarded-For; clientIP reads the rate-limit key that many hops from
 	// the right of the chain (see config.Config.TrustedProxyCount).
 	TrustedProxyCount int
+
+	// AISuggestDailyLimit / AIExplainDailyLimit are the per-user, per-day call
+	// caps for each AI feature (AI-031); AIMonthlySpendMicros is the global
+	// month-to-date estimated-spend ceiling in micro-USD (AI-032), 0 to disable.
+	AISuggestDailyLimit  int
+	AIExplainDailyLimit  int
+	AIMonthlySpendMicros int64
 }
 
 // RegisterCardRoutes mounts the card-data read endpoints. It is called inside

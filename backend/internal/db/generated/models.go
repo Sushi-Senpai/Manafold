@@ -10,6 +10,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AiUsage struct {
+	UserID       pgtype.UUID `json:"user_id"`
+	UsageDate    pgtype.Date `json:"usage_date"`
+	Feature      string      `json:"feature"`
+	Calls        int32       `json:"calls"`
+	InputTokens  int64       `json:"input_tokens"`
+	OutputTokens int64       `json:"output_tokens"`
+	CostMicros   int64       `json:"cost_micros"`
+}
+
 type BanlistOverride struct {
 	ID        pgtype.UUID        `json:"id"`
 	CardName  string             `json:"card_name"`

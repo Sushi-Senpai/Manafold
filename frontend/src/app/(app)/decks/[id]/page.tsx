@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import {
   api,
   ApiError,
+  type AISuggestResponse,
   type CardSummary,
   type DeckDetail,
   type DeckStats,
@@ -82,6 +83,8 @@ export default function BuilderPage() {
         <ImportExportPanel deckId={id} onImported={reload} />
         <StatsPanel deckId={id} detail={detail} />
       </section>
+
+      <SuggestionsPanel deckId={id} detail={detail} onChange={reload} />
 
       <ValidationStrip report={report} />
     </div>
@@ -646,6 +649,109 @@ function StatsPanel({ deckId, detail }: { deckId: string; detail: DeckDetail }) 
               </li>
             ))}
           </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---- ai suggestions ----------------------------------------------------
+
+// "Suggest & explain" (@spec AI-020): one button runs the deck through the
+// model; every card shown here has already passed the server-side
+// anti-hallucination gate, so it is real, legal, in colour identity, and not
+// already in the deck. Dropped cards are counted, never replaced.
+function SuggestionsPanel({
+  deckId,
+  detail,
+  onChange,
+}: {
+  deckId: string;
+  detail: DeckDetail;
+  onChange: () => void;
+}) {
+  const [result, setResult] = useState<AISuggestResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [adding, setAdding] = useState<string | null>(null);
+
+  const hasCommander = detail.commander !== null;
+
+  async function run() {
+    setLoading(true);
+    setMessage(null);
+    try {
+      setResult(await api.suggestDeck(deckId));
+    } catch (e) {
+      setMessage(e instanceof ApiError ? e.message : "Suggestions failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function add(cardId: string) {
+    setAdding(cardId);
+    try {
+      await api.addCard(deckId, cardId, "main");
+      setResult((r) =>
+        r ? { ...r, suggestions: r.suggestions.filter((s) => s.card.id !== cardId) } : r,
+      );
+      onChange();
+    } catch (e) {
+      setMessage(e instanceof ApiError ? e.message : "Could not add card");
+    } finally {
+      setAdding(null);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">AI suggestions</h2>
+        <button
+          type="button"
+          onClick={run}
+          disabled={!hasCommander || loading}
+          className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+        >
+          {loading ? "Thinking…" : result ? "Refresh" : "Suggest cards"}
+        </button>
+      </div>
+
+      {!hasCommander && (
+        <p className="mt-3 text-sm text-muted">Assign a commander to get suggestions.</p>
+      )}
+      {message && <p className="mt-3 text-sm text-danger">{message}</p>}
+
+      {result && (
+        <>
+          {result.suggestions.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">No suggestions survived the legality check.</p>
+          ) : (
+            <ul className="mt-3 flex flex-col gap-2">
+              {result.suggestions.map((s) => (
+                <li key={s.card.id} className="flex items-start justify-between gap-3 text-sm">
+                  <div>
+                    <span className="font-medium">{s.card.name}</span>{" "}
+                    <span className="text-xs text-muted">{s.card.type_line}</span>
+                    <p className="text-xs text-foreground/70">{s.reason}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => add(s.card.id)}
+                    disabled={adding === s.card.id}
+                    className="shrink-0 rounded-md border border-border px-2 py-1 text-xs disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-xs text-muted">
+            {result.model}
+            {result.dropped > 0 && ` · ${result.dropped} dropped by the legality check`}
+          </p>
         </>
       )}
     </div>
