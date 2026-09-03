@@ -337,7 +337,9 @@ function Decklist({
                             </button>
                           )}
                         </div>
-                        <ExplainFit deckId={deckId} cardId={e.card_id} />
+                        {(board === "main" || board === "command") && (
+                          <ExplainFit deckId={deckId} cardId={e.card_id} />
+                        )}
                       </li>
                     ))}
                   </ul>
