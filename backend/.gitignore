@@ -1,0 +1,11 @@
+# build output
+/bin/
+manafold-backend
+/cmd/api/api
+/cmd/cardsync/cardsync
+*.exe
+*.test
+
+# env files
+.env*
+!.env.example

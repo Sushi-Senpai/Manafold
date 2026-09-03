@@ -1,0 +1,94 @@
+schema_version: 2
+last_updated: 2026-09-03
+# M1: LID bootstrap + Waystone-mirrored skeleton + Commander deck vertical slice.
+# M2: import/export (deckio + parse-then-apply endpoints) + deterministic deck
+#     stats + the Slate & Signet palette wire-in.
+# M3: email + password accounts (argon2id) + server-side sessions + per-IP rate
+#     limiting + anonymous drafts + claim-on-sign-in.
+
+taxonomy:
+  features:
+    - card-data
+    - deck-building
+    - ai-assist
+    - import-export
+  platform:
+    - platform-shell
+    - account-access
+
+arrows:
+  platform-shell:
+    status: MAPPED
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: [account-access, card-data, deck-building]
+    blockedBy: []
+    detail: platform-shell.md
+    next: "M1 landed: chi router + per-domain register helpers + config fail-fast + embedded migrations at startup + /health + cmd/cardsync binary + Next.js app-router shell + same-origin proxy. Deferred: graceful shutdown (PLATFORM-007)."
+    drift: null
+
+  account-access:
+    status: MAPPED
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: [deck-building]
+    blockedBy: [platform-shell]
+    detail: account-access.md
+    next: "M3 landed: internal/passwordhash (argon2id, bcrypt-verify fallback); internal/ratelimit (per-IP token bucket); POST /api/auth/register|login|logout + GET /api/auth/session + POST /api/auth/claim-drafts; AnonOrSession middleware is the default protected-group auth (ACCT-003, ACCT-010..021); anonymous drafts via X-Anon-Token + ClaimAnonDecks (DECK-040/041); frontend (auth) login/register pages + header session state. Deferred: OAuth providers (ACCT-030), email verification + password reset (ACCT-031), sign-out-everywhere (ACCT-032), shared rate-limit store."
+    drift: null
+
+  card-data:
+    status: MAPPED
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: [deck-building, import-export, ai-assist]
+    blockedBy: [platform-shell]
+    detail: card-data.md
+    next: "M1 landed: cards / card_prints / card_rulings / sync_runs / banlist_overrides schema; internal/cardsync ingests the Oracle + Default bulk exports with derived singleton_limit / can_be_commander and color_identity verbatim; GET /api/cards/search + /autocomplete over the mirror. M2: CARD-006 etiquette-header + 429-backoff test closed; ResolveCardByName (exact / DFC face) added for import. Deferred: single-printing fallback (CARD-009, with printing-selection UI), oracle_tags ingestion (CARD-010)."
+    drift: null
+
+  deck-building:
+    status: MAPPED
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: [ai-assist, import-export]
+    blockedBy: [card-data, account-access]
+    detail: deck-building.md
+    next: "M1 landed: decks / deck_cards schema; internal/deckrules; deck CRUD + commander assignment + add/remove cards + GET /validation; ownership in-query (404); read-only public deck view; /decks list + /decks/[id] builder. M2 landed: internal/deckstats (curve / pips-vs-sources / category roll-up + CategoryTargets) + GET /decks/{id}/stats + stats panel (DECK-051, DECK-052); DECK-060 bulk import write. M3 landed: deck queries scoped to a polymorphic owner key (user_id OR anon_token); CreateDeck takes either; ClaimAnonDecks reassignment (DECK-040/041). Deferred: auto-categorizer, bootstrapping wizard, swap UX, cut suggestions (M4+)."
+    drift: null
+
+  import-export:
+    status: MAPPED
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: []
+    blockedBy: [card-data, deck-building]
+    detail: import-export.md
+    next: "M2 landed: internal/deckio (one tolerant grammar for plain-text / MTGA / Moxfield / Archidekt; plain-text + MTGA emitters); imports audit table; POST /import (parse + audit) + POST /import/{id}/apply (one txn, DECK-060) + GET /export; exact / DFC-face name resolution; unresolved + rejected reporting (PORT-001..007). Gap: PORT-008 single-printing fallback waits on CARD-009. Deferred: .dec / .cod (PORT-020), paste-to-new-deck (PORT-021), printing export (PORT-022)."
+    drift: null
+
+  ai-assist:
+    status: DRAFT
+    parent: null
+    sampled: 2026-09-02
+    audited: null
+    audited_sha: null
+    blocks: []
+    blockedBy: [card-data, deck-building]
+    detail: ai-assist.md
+    next: "No AI code in M1 beyond an internal/ai stub wired into server.Deps. M4: Anthropic Claude wrapper + search_cards tool + suggest-&-explain + the validate-every-returned-card gate. EDHREC synergy data (AI-040) blocked on a ToS decision."
+    drift: null
+
+unmapped:
+  docs:
+    intent: [collections, social]
