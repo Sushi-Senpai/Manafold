@@ -265,6 +265,39 @@ func TestAuth_LoginRateLimitedPerIP(t *testing.T) {
 	}
 }
 
+// @spec ACCT-017
+func TestClientIP_TrustedProxyCountResistsXFFSpoof(t *testing.T) {
+	const realClient = "203.0.113.50"
+	req := func(xff string) *http.Request {
+		r := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+		if xff != "" {
+			r.Header.Set("X-Forwarded-For", xff)
+		}
+		r.RemoteAddr = "10.0.0.1:4321"
+		return r
+	}
+
+	// Chain the app sees: forged entries on the left, the real client appended
+	// by the hop before Render's edge, Render's edge last. With one trusted
+	// proxy the key is the real client, not the left-most (forgeable) entry.
+	key := clientIP(req("198.51.100.9, "+realClient+", 10.0.0.2"), 1)
+	if key != realClient {
+		t.Fatalf("clientIP(N=1) = %q, want %q", key, realClient)
+	}
+	// The attacker rotates position 0 every request; the key must not move.
+	if rotated := clientIP(req("attacker-rotates-me, "+realClient+", 10.0.0.2"), 1); rotated != key {
+		t.Fatalf("clientIP moved when position 0 changed: %q then %q", key, rotated)
+	}
+	// Chain shorter than the trusted-proxy count: fall back to RemoteAddr host.
+	if fb := clientIP(req(realClient), 3); fb != "10.0.0.1" {
+		t.Fatalf("clientIP short-chain fallback = %q, want 10.0.0.1", fb)
+	}
+	// No header at all: RemoteAddr host.
+	if fb := clientIP(req(""), 1); fb != "10.0.0.1" {
+		t.Fatalf("clientIP no-header fallback = %q, want 10.0.0.1", fb)
+	}
+}
+
 // @spec ACCT-003, ACCT-020, DECK-040
 func TestAuth_AnonymousDraftScopedToToken(t *testing.T) {
 	a := testAPI(t)

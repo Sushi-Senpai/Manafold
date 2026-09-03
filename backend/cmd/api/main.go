@@ -41,10 +41,11 @@ func main() {
 	defer pool.Close()
 
 	handler := server.New(server.Deps{
-		Pool:    pool,
-		Queries: db.New(pool),
-		AI:      ai.NewClient(),
-		DevAuth: cfg.DevAuth,
+		Pool:              pool,
+		Queries:           db.New(pool),
+		AI:                ai.NewClient(),
+		DevAuth:           cfg.DevAuth,
+		TrustedProxyCount: cfg.TrustedProxyCount,
 	})
 
 	srv := &http.Server{

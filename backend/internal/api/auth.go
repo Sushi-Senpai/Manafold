@@ -27,8 +27,8 @@ const minPasswordLen = 10
 // dummyHash is verified against the supplied password when login finds no user,
 // so an unknown email and a wrong password take the same time and the response
 // does not become an account-existence oracle (ACCT-011). Computed once at
-// startup.
-var dummyHash, _ = passwordhash.Hash("account-access timing equalizer")
+// startup; MustHash panics rather than leave this empty if hashing ever fails.
+var dummyHash = passwordhash.MustHash("account-access timing equalizer")
 
 type authCredentials struct {
 	Email    string `json:"email"`
@@ -46,14 +46,21 @@ func normalizeEmail(raw string) string {
 	return strings.ToLower(strings.TrimSpace(raw))
 }
 
-// clientIP is the rate-limit key: the left-most X-Forwarded-For entry (the
-// closest available approximation of the real client past Vercel's rewrite and
-// Render's load balancer), falling back to the connection's remote address.
-func clientIP(r *http.Request) string {
+// clientIP is the rate-limit key. Each reverse proxy in front of the API appends
+// the address it received the connection from to X-Forwarded-For, so the real
+// client sits trustedProxyCount hops from the right of the chain; entries
+// further left are client-supplied and forgeable. With fewer entries than that
+// (or no header) the connection's remote address is used. trustedProxyCount
+// MUST match the deployed stack's true hop count (see
+// docs/intent/account-access/account-access-design.md § Rate limiting) or the
+// ACCT-017 guard is only best-effort.
+func clientIP(r *http.Request, trustedProxyCount int) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		first := strings.TrimSpace(strings.SplitN(xff, ",", 2)[0])
-		if first != "" {
-			return first
+		parts := strings.Split(xff, ",")
+		if idx := len(parts) - 1 - trustedProxyCount; idx >= 0 {
+			if ip := strings.TrimSpace(parts[idx]); ip != "" {
+				return ip
+			}
 		}
 	}
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
@@ -67,7 +74,7 @@ func clientIP(r *http.Request) string {
 // that do not exercise limiting) is a pass-through.
 func (a *API) rateLimitByIP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if a.LoginLimiter != nil && !a.LoginLimiter.Allow(clientIP(r)) {
+		if a.LoginLimiter != nil && !a.LoginLimiter.Allow(clientIP(r, a.TrustedProxyCount)) {
 			writeError(w, http.StatusTooManyRequests, "too many attempts; try again shortly")
 			return
 		}

@@ -7,7 +7,7 @@ import (
 
 func clearEnv(t *testing.T) {
 	t.Helper()
-	for _, k := range []string{"PORT", "DATABASE_URL", "FRONTEND_URL", "DEV_AUTH", "ANTHROPIC_API_KEY"} {
+	for _, k := range []string{"PORT", "DATABASE_URL", "FRONTEND_URL", "DEV_AUTH", "ANTHROPIC_API_KEY", "TRUSTED_PROXY_COUNT"} {
 		t.Setenv(k, "")
 	}
 }
@@ -59,6 +59,36 @@ func TestLoadCardsync_RequiresDatabaseURL(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "DATABASE_URL") {
 		t.Fatalf("expected the error to name DATABASE_URL, got %v", err)
+	}
+}
+
+func TestLoad_TrustedProxyCountFailSafe(t *testing.T) {
+	// unset -> default 1; a valid non-negative int is honoured (0 included);
+	// non-numeric or negative falls back to 1 so a bad value never widens trust.
+	cases := []struct {
+		raw  string
+		want int
+	}{
+		{"", 1},
+		{"2", 2},
+		{"0", 0},
+		{"garbage", 1},
+		{"-3", 1},
+	}
+	for _, c := range cases {
+		clearEnv(t)
+		t.Setenv("DATABASE_URL", "postgres://example")
+		t.Setenv("FRONTEND_URL", "http://localhost:3000")
+		if c.raw != "" {
+			t.Setenv("TRUSTED_PROXY_COUNT", c.raw)
+		}
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load(%q): %v", c.raw, err)
+		}
+		if cfg.TrustedProxyCount != c.want {
+			t.Fatalf("TRUSTED_PROXY_COUNT=%q -> %d, want %d", c.raw, cfg.TrustedProxyCount, c.want)
+		}
 	}
 }
 

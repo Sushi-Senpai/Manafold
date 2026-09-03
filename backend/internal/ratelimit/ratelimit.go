@@ -13,12 +13,12 @@ import (
 	"time"
 )
 
-// defaultMaxKeys caps the live bucket map. The rate-limit key is a client-
-// controlled X-Forwarded-For value and account-access runs a single small
-// instance, so an unbounded map is a memory-exhaustion vector. When the map
-// reaches this size Allow first drops every bucket that has refilled to
-// capacity (those hold no state a fresh bucket would not) and, failing that,
-// evicts the least-recently-touched entry.
+// defaultMaxKeys caps the live bucket map. The rate-limit key is derived from a
+// partly client-influenced X-Forwarded-For chain and account-access runs a
+// single small instance, so an unbounded map is a memory-exhaustion vector.
+// When the map reaches this size Allow first drops every bucket that has
+// refilled to capacity (those hold no state a fresh bucket would not) and,
+// failing that, evicts the least-recently-touched entry.
 const defaultMaxKeys = 20000
 
 // Limiter hands out tokens from a bucket per key. Each key's bucket starts full

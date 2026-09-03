@@ -6,6 +6,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -22,6 +23,15 @@ type Config struct {
 	// default so it can never silently activate in a deployed environment. M1
 	// runs on this stub only; the real email + password login flow is M3.
 	DevAuth bool
+
+	// TrustedProxyCount is how many reverse proxies in front of the API append
+	// the client address to X-Forwarded-For. The per-IP auth rate limiter
+	// (ACCT-017) reads its key that many hops from the right of the chain, so a
+	// caller cannot mint a fresh bucket by prepending a forged entry. Defaults
+	// to 1 (Render's own edge). It MUST be set to the deployed stack's true hop
+	// count — 2 if the Next.js rewrite also appends — and verified before the
+	// credential-stuffing / signup-spam guard is relied on in production.
+	TrustedProxyCount int
 
 	// AnthropicAPIKey is the developer-held key for the AI features. Unused and
 	// unvalidated in M1 (no AI code ships); becomes required at M4.
@@ -67,11 +77,12 @@ func readEnv() Config {
 	_ = godotenv.Load() // a missing .env is expected outside local dev
 
 	return Config{
-		Port:            getEnv("PORT", "8080"),
-		DatabaseURL:     os.Getenv("DATABASE_URL"),
-		FrontendURL:     os.Getenv("FRONTEND_URL"),
-		DevAuth:         os.Getenv("DEV_AUTH") == "true",
-		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+		Port:              getEnv("PORT", "8080"),
+		DatabaseURL:       os.Getenv("DATABASE_URL"),
+		FrontendURL:       os.Getenv("FRONTEND_URL"),
+		DevAuth:           os.Getenv("DEV_AUTH") == "true",
+		AnthropicAPIKey:   os.Getenv("ANTHROPIC_API_KEY"),
+		TrustedProxyCount: getEnvNonNegInt("TRUSTED_PROXY_COUNT", 1),
 	}
 }
 
@@ -80,4 +91,19 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// getEnvNonNegInt reads a non-negative integer env var, returning fallback when
+// it is unset, empty, non-numeric, or negative — the fail-safe direction for
+// TRUSTED_PROXY_COUNT, where a bad value must not silently widen trust.
+func getEnvNonNegInt(key string, fallback int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return fallback
+	}
+	return n
 }

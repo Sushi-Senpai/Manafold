@@ -57,7 +57,9 @@ surface and never needs the frontend origin. Required unless `DEV_AUTH=true`:
 nothing in M1 (the real login flow is M3, at which point the argon2id/session
 config becomes required unless `DEV_AUTH=true`). `ANTHROPIC_API_KEY` becomes
 required at M4. `PORT` defaults to `8080`; `.env.example` documents the same
-value — no mismatch.
+value — no mismatch. `TRUSTED_PROXY_COUNT` defaults to `1` and is parsed
+fail-safe (a non-numeric or negative value falls back to `1`); `account-access`
+owns its meaning (see that segment's design § Rate limiting).
 
 `internal/api/api.go` + `internal/api/convert.go` are the shared foundation:
 the `API` struct, `writeJSON` / `writeError`, and `pgtype` conversion helpers

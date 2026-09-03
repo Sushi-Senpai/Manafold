@@ -52,6 +52,17 @@ func Hash(password string) (string, error) {
 	), nil
 }
 
+// MustHash is Hash for package-level initializers that cannot return an error.
+// It panics if hashing fails (only a crypto/rand read failure), so a
+// security-sensitive constant is never silently left empty.
+func MustHash(password string) string {
+	h, err := Hash(password)
+	if err != nil {
+		panic(fmt.Sprintf("passwordhash: MustHash: %v", err))
+	}
+	return h
+}
+
 // Verify reports whether password matches encoded. It dispatches on the encoded
 // prefix: an argon2id string is checked against its own embedded parameters; a
 // bcrypt string ($2a$/$2b$/$2y$) is checked with the bcrypt package. A wrong

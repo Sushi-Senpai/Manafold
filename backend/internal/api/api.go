@@ -23,6 +23,11 @@ type API struct {
 	Queries      *db.Queries
 	AI           *ai.Client
 	LoginLimiter *ratelimit.Limiter
+
+	// TrustedProxyCount is how many reverse proxies in front of the API append
+	// to X-Forwarded-For; clientIP reads the rate-limit key that many hops from
+	// the right of the chain (see config.Config.TrustedProxyCount).
+	TrustedProxyCount int
 }
 
 // RegisterCardRoutes mounts the card-data read endpoints. It is called inside

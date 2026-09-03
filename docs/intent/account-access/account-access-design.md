@@ -97,10 +97,21 @@ session row). `SameSite=Lax` is sufficient because the same-origin proxy
 `/api/auth/login` and `/api/auth/register` are rate-limited per client IP by
 `internal/ratelimit` — an in-process token bucket, capacity 10, refilling 1
 token every 6 seconds (so a burst of 10 then ~10/min sustained). The check runs
-before any database work; an empty bucket returns `429`. The client IP is the
-left-most `X-Forwarded-For` entry (the browser, as seen past the Vercel proxy
-and Render's load balancer) falling back to `RemoteAddr`. A shared store is
-needed only if the backend scales past one instance (Open Question 4).
+before any database work; an empty bucket returns `429`.
+
+The client IP is read `TRUSTED_PROXY_COUNT` entries from the **right** of the
+`X-Forwarded-For` chain, falling back to `RemoteAddr` when the chain is shorter
+than that or the header is absent. Each proxy in front of the API appends the
+address it saw; entries further left are supplied by the caller and forgeable,
+so keying on the left-most entry lets an attacker mint a fresh full bucket per
+request by rotating one header value. `TRUSTED_PROXY_COUNT` defaults to `1`
+(Render's own edge — the one guaranteed hop) and **MUST** be set to the deployed
+stack's true hop count (`2` if the Next.js rewrite also appends `X-Forwarded-For`)
+and verified before the ACCT-017 credential-stuffing / signup-spam guard is
+relied on in production; until verified, treat the guard as best-effort. A bad
+value (non-numeric, negative) falls back to `1` rather than widening trust. A
+shared store is needed only if the backend scales past one instance (Open
+Question 4).
 
 ## Same-Origin Proxy
 
@@ -163,7 +174,7 @@ now owns nothing; a later anonymous deck reuses it).
 | Anonymous drafts | `decks.user_id` nullable + `anon_token` + a claim endpoint; CHECK enforces exactly one owner | Require sign-in before creating a deck; store anon decks only in `localStorage` | Lowering the barrier matters for a hobby tool; a server-side anon row means the draft survives a browser change once claimed and is the same `decks` row throughout. |
 | Dev auth | Keep a `DEV_AUTH=true` fixed-user stub, off by default | Only ever run real auth locally | Contributors and CI exercise every other segment without standing up a session store; the deck integration tests inject identity through `authctx` directly and never need it, but it keeps the app runnable end to end without email + password. |
 | One middleware for session + anon | `AnonOrSession` tries the session cookie, then the `X-Anon-Token` header | Two middlewares chained; a separate `/api/anon/*` route tree | The two paths differ only in which `authctx` setter they call and share the "else 401" tail; one middleware keeps the protected group's wiring a single `r.Use`. |
-| Client IP source | Left-most `X-Forwarded-For`, then `RemoteAddr` | `RemoteAddr` only; a signed forwarded header | Behind Vercel's rewrite and Render's load balancer `RemoteAddr` is always an infrastructure hop; the left-most XFF entry is the closest available approximation of the real client for a rate-limit key. Not security-critical — worst case a shared NAT shares a bucket. |
+| Client IP source | `X-Forwarded-For` entry `TRUSTED_PROXY_COUNT` hops from the right, then `RemoteAddr` | Left-most `X-Forwarded-For` entry; `RemoteAddr` only; a signed forwarded header | `RemoteAddr` is always an infrastructure hop behind Render's edge. The left-most XFF entry is caller-supplied: an attacker rotating one header value would mint a fresh full rate-limit bucket per request, nullifying the ACCT-017 guard. Counting a fixed number of trusted hops from the right pins the key to the address Render's edge actually observed. Worst case with the count set correctly is a shared NAT sharing a bucket. |
 
 ## Open Questions & Future Decisions
 

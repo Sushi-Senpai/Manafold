@@ -16,6 +16,13 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      # True hop count of proxies that append X-Forwarded-For in front of this
+      # service. Gates the ACCT-017 per-IP auth rate limiter — see
+      # docs/intent/account-access/account-access-design.md § Rate limiting.
+      # Set to 1 for Render's edge alone, 2 if the Next.js rewrite also appends.
+      # Verify before relying on the credential-stuffing / signup-spam guard.
+      - key: TRUSTED_PROXY_COUNT
+        value: "1"
 
   # Daily Scryfall bulk-data sync. Runs the standalone cmd/cardsync binary
   # built into the same image; downloads the Oracle Cards + Default Cards
