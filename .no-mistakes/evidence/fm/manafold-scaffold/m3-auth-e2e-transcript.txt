@@ -1,0 +1,121 @@
+==================================================================
+ Manafold M3 - email + password accounts, server-side sessions,
+ per-IP auth rate limiting, anonymous drafts + claim-on-login
+==================================================================
+Backend: real build of ./cmd/api (git a4e1a15) on a throwaway
+Postgres 16 with all 4 embedded migrations applied.
+Server env: DEV_AUTH=false  -> the real SessionAuth/AnonOrSession path
+            TRUSTED_PROXY_COUNT=1
+Rate limiter (from server.New): token bucket, burst 10, ~1 / 6s per IP.
+Date (UTC): Thu Sep  3 14:20:05 UTC 2026
+
+### 1. Anonymous draft - create a deck with ONLY an X-Anon-Token, no account
+    X-Anon-Token: anon-1383213134598
+{"id":"dcb0b02b-0e94-4e5d-8d3b-9641c412c3b4","name":"Voyager (anon draft)","description":"","format":"commander","bracket":null,"is_public":false,"color_identity":[]}
+
+<< HTTP 201 >>
+    deck id = dcb0b02b-0e94-4e5d-8d3b-9641c412c3b4
+    DB row (user_id NULL, anon_token set):
+      name	user_id	anon_token	
+      Voyager (anon draft)	<nil>	anon-1383213134598	
+
+### 2. Register a brand-new account  ->  argon2id hash + session cookie
+    HTTP/1.1 200 OK
+    Set-Cookie: manafold_session=5532d0fe-6cdf-44c2-be31-b67f207f44e9; Path=/; Expires=Sat, 03 Oct 2026 14:20:06 GMT; HttpOnly; Secure; SameSite=Lax
+    body: {"authenticated":true,"email":"riker-270969258@manafold.test"}
+
+### 3. GET /api/auth/session
+  3a. with the session cookie:
+    {"authenticated":true,"email":"riker-270969258@manafold.test"}
+    
+    << HTTP 200 >>
+  3b. with NO cookie (must be 200 + authenticated:false, never 401):
+    {"authenticated":false}
+    
+    << HTTP 200 >>
+
+### 4. Claim-on-login - one call, attaching the anon token to the account
+    {"claimed":1}
+    
+    << HTTP 200 >>
+  4b. second identical call is idempotent (claimed:0):
+    {"claimed":0}
+    
+    << HTTP 200 >>
+  4c. claim-drafts with no session -> 401:
+    {"error":"not authenticated"}
+    
+    << HTTP 401 >>
+    DB row after claim (user_id now set, anon_token cleared):
+      name	owned_by_user	anon_token	
+      Voyager (anon draft)	true	<nil>	
+
+### 5. The claimed deck is now reachable by the session cookie alone
+    {"decks":[{"id":"dcb0b02b-0e94-4e5d-8d3b-9641c412c3b4","name":"Voyager (anon draft)","description":"","format":"commander","bracket":null,"is_public":false,"color_identity":[]}]}
+    
+    << HTTP 200 >>
+
+### 6. Login - correct / wrong password / unknown email
+  6a. correct password:
+    HTTP/1.1 200 OK
+    Set-Cookie: manafold_session=176d6864-9083-4dd7-b680-c66f4c88b27b; Path=/; Expires=Sat, 03 Oct 2026 14:20:06 GMT; HttpOnly; Secure; SameSite=Lax
+      body: {"authenticated":true,"email":"riker-270969258@manafold.test"}
+  6b. wrong password:
+    {"error":"invalid email or password"}
+    
+    << HTTP 401 >>
+  6c. unknown email:
+    {"error":"invalid email or password"}
+    
+    << HTTP 401 >>
+  -> 6b and 6c bodies are byte-identical: no account-existence oracle.
+
+### 7. Email hygiene
+  7a. duplicate email, padded + upper-cased -> 409 (case/space-insensitive):
+    {"error":"an account with that email already exists"}
+    
+    << HTTP 409 >>
+  7b. display-name-style email -> 422 (rejected, review-round fix):
+    {"error":"a valid email is required"}
+    
+    << HTTP 422 >>
+  7c. password under 10 chars -> 422:
+    {"error":"password must be at least 10 characters"}
+    
+    << HTTP 422 >>
+
+### 8. Per-IP rate limit on POST /api/auth/login (burst 10, then 429)
+    attempt  1 -> 401
+    attempt  2 -> 401
+    attempt  3 -> 401
+    attempt  4 -> 401
+    attempt  5 -> 401
+    attempt  6 -> 401
+    attempt  7 -> 401
+    attempt  8 -> 401
+    attempt  9 -> 401
+    attempt 10 -> 401
+    attempt 11 -> 429
+    attempt 12 -> 429
+    attempt 13 -> 429
+    different client IP 198.51.100.9 -> 401  (its own bucket, not rate limited)
+
+### 9. Logout revokes the server-side session row
+    HTTP/1.1 204 No Content
+    Set-Cookie: manafold_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax
+  GET /api/auth/session with the revoked cookie:
+    {"authenticated":false}
+    
+    << HTTP 200 >>
+  GET /api/decks with the revoked cookie -> 401 (session truly gone):
+    << HTTP 401 >>
+
+### 10. Persisted database state for this account
+  users row - argon2id hash stored, plaintext password never persisted:
+    email	password_hash_prefix	
+    riker-270969258@manafold.test	$argon2id$v=19$m=19456,t=2,p=1$xy895SG	
+  sessions rows for this user (login 6a issued one; register's was deleted at logout):
+    live_sessions	
+    1	
+
+=========================== END ==========================
