@@ -12,6 +12,31 @@ export class ApiError extends Error {
 }
 
 const ANON_TOKEN_KEY = "manafold_anon";
+const AUTHED_KEY = "manafold_authed";
+
+// setAuthed records whether this browser currently believes a session is live.
+// request() suppresses the anonymous-draft token while this is set, so an
+// expired session surfaces as a 401 and the ACCT-015 redirect fires instead of
+// the caller being silently downgraded to the anonymous identity.
+export function setAuthed(on: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (on) window.localStorage.setItem(AUTHED_KEY, "1");
+    else window.localStorage.removeItem(AUTHED_KEY);
+  } catch {
+    // Storage disabled: nothing to persist; isAuthed() then reads false and the
+    // anon token is sent, which a valid session cookie still overrides server-side.
+  }
+}
+
+function isAuthed(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(AUTHED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 // getAnonToken returns this browser's anonymous-draft token, minting and
 // persisting one on first use. It is sent as X-Anon-Token on every request so a
@@ -42,6 +67,7 @@ export function getAnonToken(): string {
 // @spec ACCT-015
 function handleUnauthorized(status: number): boolean {
   if (status !== 401) return false;
+  setAuthed(false);
   if (typeof window !== "undefined") {
     // A hard navigation is deliberate: this is a plain utility module with no
     // router context, and a full reload also clears client state tied to the
@@ -61,7 +87,7 @@ type RequestOptions = {
 };
 
 async function request<T>(path: string, init?: RequestInit, opts?: RequestOptions): Promise<T> {
-  const anon = getAnonToken();
+  const anon = isAuthed() ? "" : getAnonToken();
   const res = await fetch(path, {
     ...init,
     credentials: "include",
@@ -222,22 +248,38 @@ export type DeckStats = {
 
 export const api = {
   // ---- account-access ----
-  register: (email: string, password: string) =>
-    request<SessionState>(
+  register: async (email: string, password: string) => {
+    const state = await request<SessionState>(
       "/api/auth/register",
       { method: "POST", body: JSON.stringify({ email, password }) },
       { isAuthEndpoint: true },
-    ),
-  login: (email: string, password: string) =>
-    request<SessionState>(
+    );
+    setAuthed(state.authenticated);
+    return state;
+  },
+  login: async (email: string, password: string) => {
+    const state = await request<SessionState>(
       "/api/auth/login",
       { method: "POST", body: JSON.stringify({ email, password }) },
       { isAuthEndpoint: true },
-    ),
-  logout: () =>
-    request<void>("/api/auth/logout", { method: "POST" }, { isAuthEndpoint: true }),
-  getSession: () =>
-    request<SessionState>("/api/auth/session", undefined, { isAuthEndpoint: true }),
+    );
+    setAuthed(state.authenticated);
+    return state;
+  },
+  logout: async () => {
+    try {
+      await request<void>("/api/auth/logout", { method: "POST" }, { isAuthEndpoint: true });
+    } finally {
+      setAuthed(false);
+    }
+  },
+  getSession: async () => {
+    const state = await request<SessionState>("/api/auth/session", undefined, {
+      isAuthEndpoint: true,
+    });
+    setAuthed(state.authenticated);
+    return state;
+  },
   claimDrafts: (anonToken: string) =>
     request<{ claimed: number }>(
       "/api/auth/claim-drafts",
@@ -286,7 +328,7 @@ export const api = {
   // Export returns text/plain, not JSON, so it bypasses the shared request()
   // helper and its JSON Content-Type / body handling.
   exportDeck: async (id: string, format: "plaintext" | "mtga"): Promise<string> => {
-    const anon = getAnonToken();
+    const anon = isAuthed() ? "" : getAnonToken();
     const res = await fetch(`/api/decks/${id}/export?format=${format}`, {
       credentials: "include",
       headers: anon ? { "X-Anon-Token": anon } : {},

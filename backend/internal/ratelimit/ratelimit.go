@@ -13,12 +13,21 @@ import (
 	"time"
 )
 
+// defaultMaxKeys caps the live bucket map. The rate-limit key is a client-
+// controlled X-Forwarded-For value and account-access runs a single small
+// instance, so an unbounded map is a memory-exhaustion vector. When the map
+// reaches this size Allow first drops every bucket that has refilled to
+// capacity (those hold no state a fresh bucket would not) and, failing that,
+// evicts the least-recently-touched entry.
+const defaultMaxKeys = 20000
+
 // Limiter hands out tokens from a bucket per key. Each key's bucket starts full
 // at capacity and refills one token every interval. Allow is safe for
 // concurrent use.
 type Limiter struct {
 	capacity int
 	interval time.Duration
+	maxKeys  int
 	now      func() time.Time
 
 	mu      sync.Mutex
@@ -39,6 +48,7 @@ func New(capacity int, interval time.Duration) *Limiter {
 	return &Limiter{
 		capacity: capacity,
 		interval: interval,
+		maxKeys:  defaultMaxKeys,
 		now:      time.Now,
 		buckets:  make(map[string]*bucket),
 	}
@@ -53,6 +63,9 @@ func (l *Limiter) Allow(key string) bool {
 	now := l.now()
 	b, ok := l.buckets[key]
 	if !ok {
+		if l.maxKeys > 0 && len(l.buckets) >= l.maxKeys {
+			l.prune(now)
+		}
 		b = &bucket{tokens: float64(l.capacity), lastRefill: now}
 		l.buckets[key] = b
 	}
@@ -73,4 +86,37 @@ func (l *Limiter) Allow(key string) bool {
 	}
 	b.tokens--
 	return true
+}
+
+// prune keeps the bucket map bounded. The caller holds l.mu. It first deletes
+// every bucket that would be at (or above) capacity as of now — for those keys
+// a freshly minted bucket is identical, so nothing is lost. If that frees
+// nothing (every bucket is mid-refill) it evicts the single least-recently-
+// refilled entry so the map can still admit the new key.
+func (l *Limiter) prune(now time.Time) {
+	freed := false
+	for k, b := range l.buckets {
+		tokens := b.tokens
+		if l.interval > 0 {
+			tokens += float64(now.Sub(b.lastRefill)) / float64(l.interval)
+		}
+		if tokens >= float64(l.capacity) {
+			delete(l.buckets, k)
+			freed = true
+		}
+	}
+	if freed {
+		return
+	}
+
+	var oldestKey string
+	var oldest time.Time
+	for k, b := range l.buckets {
+		if oldestKey == "" || b.lastRefill.Before(oldest) {
+			oldestKey, oldest = k, b.lastRefill
+		}
+	}
+	if oldestKey != "" {
+		delete(l.buckets, oldestKey)
+	}
 }

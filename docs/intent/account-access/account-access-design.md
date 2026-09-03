@@ -120,11 +120,25 @@ trade-off is a brief flash of a protected page's shell before the redirect;
 no protected *data* renders, since every API call still 401s without a valid
 session.
 
+For this redirect to stay reachable, `lib/api.ts` must not let the anonymous
+draft token (below) mask an expired session. It keeps a boolean
+`manafold_authed` flag in `localStorage`, set true after a successful
+`register`/`login` and after a `GET /api/auth/session` that reports
+`authenticated`, and cleared on `logout`, on a `session` call that reports
+not-authenticated, and whenever a `401` is seen. While the flag is set,
+`request()` omits the `X-Anon-Token` header, so a lapsed session's next
+protected call reaches `AnonOrSession` with no caller, returns `401`, and
+triggers the redirect rather than silently resolving as the anonymous
+identity.
+
 ## Anonymous Deck Drafts
 
 A first-time visitor can build a deck without signing in. `lib/api.ts` mints an
 opaque token (`crypto.randomUUID()`, stored in `localStorage` as
-`manafold_anon`) and sends it as an `X-Anon-Token` header on every API request.
+`manafold_anon`) and sends it as an `X-Anon-Token` header on every API request
+*except* while the `manafold_authed` flag is set (see § Client-Side Route
+Protection) — a signed-in browser withholds the token so an expired session
+still 401s.
 `AnonOrSession` resolves an unauthenticated caller to that token; `deck-building`
 scopes its queries to a polymorphic owner key — `user_id` or `anon_token`, one
 non-null (the `decks` CHECK enforces exactly one). See

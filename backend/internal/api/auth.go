@@ -112,7 +112,8 @@ func (a *API) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	email := normalizeEmail(body.Email)
-	if _, err := mail.ParseAddress(email); err != nil || email == "" {
+	addr, err := mail.ParseAddress(email)
+	if err != nil || email == "" || addr.Address != email {
 		writeError(w, http.StatusUnprocessableEntity, "a valid email is required")
 		return
 	}
