@@ -312,32 +312,32 @@ function Decklist({
                   )}
                   <ul className="flex flex-col">
                     {group.entries.map((e) => (
-                      <li
-                        key={e.entry_id}
-                        className="flex items-center justify-between gap-2 py-1 text-sm"
-                      >
-                        <span className="truncate">
-                          {e.quantity > 1 && <span className="text-foreground/50">{e.quantity}× </span>}
-                          {e.name}
-                          {e.color_identity_violation && (
-                            <span className="ml-2 rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-600">
-                              outside identity{e.offending_colors.length > 0 && `: ${e.offending_colors.join("")}`}
-                            </span>
+                      <li key={e.entry_id} className="py-1 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate">
+                            {e.quantity > 1 && <span className="text-foreground/50">{e.quantity}× </span>}
+                            {e.name}
+                            {e.color_identity_violation && (
+                              <span className="ml-2 rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-600">
+                                outside identity{e.offending_colors.length > 0 && `: ${e.offending_colors.join("")}`}
+                              </span>
+                            )}
+                            {e.singleton_violation && (
+                              <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                                singleton
+                              </span>
+                            )}
+                          </span>
+                          {board !== "command" && (
+                            <button
+                              onClick={() => remove(e.card_id, e.board)}
+                              className="shrink-0 text-xs text-foreground/40 hover:text-red-600"
+                            >
+                              remove
+                            </button>
                           )}
-                          {e.singleton_violation && (
-                            <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                              singleton
-                            </span>
-                          )}
-                        </span>
-                        {board !== "command" && (
-                          <button
-                            onClick={() => remove(e.card_id, e.board)}
-                            className="shrink-0 text-xs text-foreground/40 hover:text-red-600"
-                          >
-                            remove
-                          </button>
-                        )}
+                        </div>
+                        <ExplainFit deckId={deckId} cardId={e.card_id} />
                       </li>
                     ))}
                   </ul>
@@ -350,6 +350,46 @@ function Decklist({
           <p className="text-sm text-foreground/40">Empty. Set a commander and add some cards.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+// ---- ai explain fit --------------------------------------------------
+
+// Single-card fit blurb (@spec AI-021): a per-card action on the decklist that
+// asks the model why this card belongs alongside the deck's commander. The card
+// is already on a deck board, so the server accepts it; the blurb, its loading
+// state, and any error render inline under the card.
+function ExplainFit({ deckId, cardId }: { deckId: string; cardId: string }) {
+  const [text, setText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.explainCard(deckId, cardId);
+      setText(res.explanation);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not explain this card");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mt-0.5">
+      <button
+        type="button"
+        onClick={run}
+        disabled={loading}
+        className="text-xs text-foreground/40 hover:text-primary disabled:opacity-50"
+      >
+        {loading ? "Explaining…" : text ? "Explain fit again" : "Explain fit"}
+      </button>
+      {error && <p className="mt-0.5 text-xs text-danger">{error}</p>}
+      {text && <p className="mt-0.5 text-xs text-foreground/70">{text}</p>}
     </div>
   );
 }

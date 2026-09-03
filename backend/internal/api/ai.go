@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -37,12 +38,13 @@ func (a *API) RegisterAIRoutes(r chi.Router) {
 	r.Post("/decks/{id}/cards/{cardId}/explain", a.explainCard)
 }
 
-// aiPrecheck runs the gates every AI endpoint shares, in order: 503 if the
-// assistant is disabled; 403 if the caller is an anonymous draft (AI-033); 503
-// if the global month-to-date ceiling is hit (AI-032); 429 if the caller is at
-// the feature's daily limit (AI-031). It returns the authenticated user id and
-// ok=true only when all gates pass.
-func (a *API) aiPrecheck(w http.ResponseWriter, r *http.Request, feature string, dailyLimit int) (pgtype.UUID, bool) {
+// aiGateCaller runs the caller-level gates every AI endpoint shares, in order:
+// 503 if the assistant is disabled; 403 if the caller is an anonymous draft
+// (AI-033). It returns the authenticated user id and ok=true only when both
+// pass. Deck ownership (DECK-009, via deckForOwner) and then the spend/quota
+// gates (aiGateQuota) run after this, in that order, so a caller learns nothing
+// about global spend or their own quota for a deck they cannot access.
+func (a *API) aiGateCaller(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
 	if a.AI == nil || !a.AI.Enabled() {
 		writeError(w, http.StatusServiceUnavailable, "AI features are not configured")
 		return pgtype.UUID{}, false
@@ -57,54 +59,66 @@ func (a *API) aiPrecheck(w http.ResponseWriter, r *http.Request, feature string,
 		}
 		return pgtype.UUID{}, false
 	}
+	return uid, true
+}
 
+// aiGateQuota runs the cost gates after deck ownership is confirmed, in order:
+// 503 if the global month-to-date ceiling is hit (AI-032); 429 if the caller is
+// at the feature's daily limit (AI-031). It returns ok=true only when both pass.
+func (a *API) aiGateQuota(w http.ResponseWriter, r *http.Request, feature string, dailyLimit int, uid pgtype.UUID) bool {
 	ctx := r.Context()
 	if a.AIMonthlySpendMicros > 0 {
 		spent, err := a.Queries.SumAICostMicrosSince(ctx, firstOfMonth())
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to check AI spend")
-			return pgtype.UUID{}, false
+			return false
 		}
 		if spent >= a.AIMonthlySpendMicros {
 			writeError(w, http.StatusServiceUnavailable, "AI features are temporarily unavailable (monthly limit reached)")
-			return pgtype.UUID{}, false
+			return false
 		}
 	}
 
 	used, err := a.Queries.CountAIFeatureCallsToday(ctx, db.CountAIFeatureCallsTodayParams{UserID: uid, Feature: feature})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to check AI quota")
-		return pgtype.UUID{}, false
+		return false
 	}
 	if int(used) >= dailyLimit {
 		writeError(w, http.StatusTooManyRequests, "daily AI limit reached; try again tomorrow")
-		return pgtype.UUID{}, false
+		return false
 	}
-
-	return uid, true
+	return true
 }
 
 // recordUsage writes the ai_usage row after a successful model call (AI-030,
-// AI-034). A write failure is logged by the caller's error path but must not
-// fail the response the user already earned.
+// AI-034). A write failure is logged and swallowed: it must not fail the
+// response the user already earned, but a persistent failure silently starves
+// the daily quota (AI-031) and the monthly ceiling (AI-032), so it is logged
+// loudly rather than dropped.
 func (a *API) recordUsage(r *http.Request, uid pgtype.UUID, feature string, u ai.Usage) {
-	_ = a.Queries.RecordAIUsage(r.Context(), db.RecordAIUsageParams{
+	if err := a.Queries.RecordAIUsage(r.Context(), db.RecordAIUsageParams{
 		UserID:       uid,
 		Feature:      feature,
 		InputTokens:  u.InputTokens,
 		OutputTokens: u.OutputTokens,
 		CostMicros:   u.CostMicros,
-	})
+	}); err != nil {
+		log.Printf("ai: failed to record %s usage for user %s: %v", feature, uuidString(uid), err)
+	}
 }
 
 // @spec AI-011, AI-013, AI-020, AI-024, AI-030, AI-031, AI-032, AI-033, AI-034
 func (a *API) suggestCards(w http.ResponseWriter, r *http.Request) {
-	uid, ok := a.aiPrecheck(w, r, "suggest", a.AISuggestDailyLimit)
+	uid, ok := a.aiGateCaller(w, r)
 	if !ok {
 		return
 	}
 	deck, ok := a.deckForOwner(w, r)
 	if !ok {
+		return
+	}
+	if !a.aiGateQuota(w, r, "suggest", a.AISuggestDailyLimit, uid) {
 		return
 	}
 	ld, err := a.loadDeck(r, deck)
@@ -165,7 +179,11 @@ func (a *API) suggestCards(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	kept, dropped := a.gateSuggestions(ctx, res.Suggestions, ld)
+	kept, dropped, err := a.gateSuggestions(ctx, res.Suggestions, ld)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to validate suggestions")
+		return
+	}
 	a.recordUsage(r, uid, "suggest", res.Usage)
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -177,12 +195,15 @@ func (a *API) suggestCards(w http.ResponseWriter, r *http.Request) {
 
 // @spec AI-021, AI-030, AI-031, AI-032, AI-033, AI-034
 func (a *API) explainCard(w http.ResponseWriter, r *http.Request) {
-	uid, ok := a.aiPrecheck(w, r, "explain", a.AIExplainDailyLimit)
+	uid, ok := a.aiGateCaller(w, r)
 	if !ok {
 		return
 	}
 	deck, ok := a.deckForOwner(w, r)
 	if !ok {
+		return
+	}
+	if !a.aiGateQuota(w, r, "explain", a.AIExplainDailyLimit, uid) {
 		return
 	}
 	cardID, ok := parseUUID(chi.URLParam(r, "cardId"))
@@ -249,13 +270,16 @@ func (a *API) explainCard(w http.ResponseWriter, r *http.Request) {
 // model-named card in the mirror, re-validate it with internal/deckrules for the
 // deck's colour identity, and drop anything that does not resolve, is banned, is
 // outside the identity, is already in the deck, or repeats an earlier survivor.
-// Nothing is substituted for a dropped card; the drop count is returned.
+// Nothing is substituted for a dropped card; the drop count is returned. A
+// failure loading the manual banlist overrides aborts the gate with an error
+// rather than degrading it to "no overrides", so a transient DB error can never
+// let a manually-banned card through (AI-010).
 //
 // @spec AI-010, AI-013
-func (a *API) gateSuggestions(ctx context.Context, suggestions []ai.Suggestion, ld *loadedDeck) ([]map[string]any, int) {
+func (a *API) gateSuggestions(ctx context.Context, suggestions []ai.Suggestion, ld *loadedDeck) ([]map[string]any, int, error) {
 	overrides, err := a.Queries.ListBanlistOverrides(ctx)
 	if err != nil {
-		overrides = nil
+		return nil, 0, err
 	}
 	banned := make(map[string]bool, len(overrides))
 	for _, o := range overrides {
@@ -317,7 +341,7 @@ func (a *API) gateSuggestions(ctx context.Context, suggestions []ai.Suggestion, 
 			"reason": strings.TrimSpace(s.Reason),
 		})
 	}
-	return kept, dropped
+	return kept, dropped, nil
 }
 
 // mirrorSearch backs the search_cards tool: it parses Manafold's mini-Scryfall
