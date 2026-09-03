@@ -311,6 +311,104 @@ func TestSuggest_ProviderErrorIsNotMetered(t *testing.T) {
 	}
 }
 
+// A Suggest call that reached the model but produced nothing parseable is still
+// billed, so it must be metered even though the handler answers 502.
+//
+// @spec AI-030, AI-034
+func TestSuggest_BilledCallMeteredWhenModelReturnsError(t *testing.T) {
+	a := testAPI(t)
+	owner := makeUser(t, a)
+	deckID := setupDeckWithCommander(t, a, owner)
+
+	a.AI = fakeAssistant{enabled: true, suggest: func(ai.SuggestRequest) (ai.SuggestResult, error) {
+		return ai.SuggestResult{Usage: ai.Usage{Model: "claude-sonnet-5", InputTokens: 220, OutputTokens: 80, CostMicros: 1240}}, errors.New("ai: model returned no suggestions")
+	}}
+	a.AISuggestDailyLimit = 20
+
+	rec := aiServe(t, a, owner, "", http.MethodPost, "/decks/"+deckID+"/suggestions", nil)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("unproductive suggest: %d %s, want 502", rec.Code, rec.Body.String())
+	}
+	used, err := a.Queries.CountAIFeatureCallsToday(context.Background(), db.CountAIFeatureCallsTodayParams{UserID: owner, Feature: "suggest"})
+	if err != nil {
+		t.Fatalf("count usage: %v", err)
+	}
+	if used != 1 {
+		t.Fatalf("a billed model call was not metered: recorded %d, want 1", used)
+	}
+}
+
+// A gate database failure after a successful, billed model call must still meter
+// that call (recordUsage runs before gateSuggestions) while the handler answers
+// 500.
+//
+// @spec AI-030, AI-031, AI-032
+func TestSuggest_BilledCallMeteredWhenGateErrors(t *testing.T) {
+	a := testAPI(t)
+	owner := makeUser(t, a)
+	deckID := setupDeckWithCommander(t, a, owner)
+
+	suffix := hex.EncodeToString(randBytes(t, 4))
+	card := "AI Gate Err Card " + suffix
+	makeCard(t, a, card, "Creature — Soldier", []string{"W"}, false)
+
+	a.AI = fakeAssistant{enabled: true, suggest: func(ai.SuggestRequest) (ai.SuggestResult, error) {
+		return ai.SuggestResult{
+			Suggestions: []ai.Suggestion{{Name: card, Reason: "fits"}},
+			Usage:       ai.Usage{Model: "claude-sonnet-5", InputTokens: 300, OutputTokens: 120, CostMicros: 1800},
+		}, nil
+	}}
+	a.AISuggestDailyLimit = 20
+	a.overridesLoader = func(context.Context) ([]db.ListBanlistOverridesRow, error) {
+		return nil, errors.New("banlist_overrides unavailable")
+	}
+
+	rec := aiServe(t, a, owner, "", http.MethodPost, "/decks/"+deckID+"/suggestions", nil)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("gate DB error: %d %s, want 500", rec.Code, rec.Body.String())
+	}
+	used, err := a.Queries.CountAIFeatureCallsToday(context.Background(), db.CountAIFeatureCallsTodayParams{UserID: owner, Feature: "suggest"})
+	if err != nil {
+		t.Fatalf("count usage: %v", err)
+	}
+	if used != 1 {
+		t.Fatalf("the completed model call was not metered before the gate ran: recorded %d, want 1", used)
+	}
+}
+
+// An Explain call that reached the model but returned empty prose is billed, so
+// it must be metered even though the handler answers 502.
+//
+// @spec AI-030, AI-034
+func TestExplain_BilledCallMeteredWhenModelReturnsError(t *testing.T) {
+	a := testAPI(t)
+	owner := makeUser(t, a)
+	deckID := setupDeckWithCommander(t, a, owner)
+
+	suffix := hex.EncodeToString(randBytes(t, 4))
+	cardID := makeCard(t, a, "AI Explain Err "+suffix, "Creature — Soldier", []string{"W"}, false)
+	if rec := serve(t, a, owner, http.MethodPost, "/decks/"+deckID+"/cards", map[string]string{"card_id": uuidString(cardID), "board": "main"}); rec.Code != http.StatusCreated {
+		t.Fatalf("add card: %d %s", rec.Code, rec.Body.String())
+	}
+
+	a.AI = fakeAssistant{enabled: true, explain: func(ai.ExplainRequest) (ai.ExplainResult, error) {
+		return ai.ExplainResult{Usage: ai.Usage{Model: "claude-haiku-4-5", InputTokens: 60, OutputTokens: 25, CostMicros: 185}}, errors.New("ai: model returned an empty explanation")
+	}}
+	a.AIExplainDailyLimit = 40
+
+	rec := aiServe(t, a, owner, "", http.MethodPost, "/decks/"+deckID+"/cards/"+uuidString(cardID)+"/explain", nil)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("empty explanation: %d %s, want 502", rec.Code, rec.Body.String())
+	}
+	used, err := a.Queries.CountAIFeatureCallsToday(context.Background(), db.CountAIFeatureCallsTodayParams{UserID: owner, Feature: "explain"})
+	if err != nil {
+		t.Fatalf("count usage: %v", err)
+	}
+	if used != 1 {
+		t.Fatalf("a billed explain call was not metered: recorded %d, want 1", used)
+	}
+}
+
 // @spec AI-021
 func TestExplain_CardMustBeInDeck(t *testing.T) {
 	a := testAPI(t)

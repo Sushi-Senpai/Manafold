@@ -86,6 +86,13 @@ func (a *anthropicAssistant) Suggest(ctx context.Context, req SuggestRequest) (S
 	messages := []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(suggestPrompt(req)))}
 
 	usage := Usage{Model: suggestModel}
+	// finalize stamps the running token totals with their estimated cost. Every
+	// return path — success, parse failure, no-submit_suggestions — sends the
+	// Usage back so the handler can meter a call that reached the model.
+	finalize := func() Usage {
+		usage.CostMicros = estimateCostMicros(usage.Model, usage.InputTokens, usage.OutputTokens)
+		return usage
+	}
 	newParams := func(forceSubmit bool) anthropic.MessageNewParams {
 		p := anthropic.MessageNewParams{
 			Model:     suggestModel,
@@ -103,7 +110,7 @@ func (a *anthropicAssistant) Suggest(ctx context.Context, req SuggestRequest) (S
 	for i := 0; i <= maxToolIterations; i++ {
 		resp, err := a.client.Messages.New(ctx, newParams(i == maxToolIterations))
 		if err != nil {
-			return SuggestResult{}, err
+			return SuggestResult{Usage: finalize()}, err
 		}
 		usage.InputTokens += resp.Usage.InputTokens
 		usage.OutputTokens += resp.Usage.OutputTokens
@@ -121,10 +128,9 @@ func (a *anthropicAssistant) Suggest(ctx context.Context, req SuggestRequest) (S
 					Suggestions []Suggestion `json:"suggestions"`
 				}
 				if err := json.Unmarshal(tu.Input, &in); err != nil {
-					return SuggestResult{}, fmt.Errorf("ai: parsing submit_suggestions: %w", err)
+					return SuggestResult{Usage: finalize()}, fmt.Errorf("ai: parsing submit_suggestions: %w", err)
 				}
-				usage.CostMicros = estimateCostMicros(usage.Model, usage.InputTokens, usage.OutputTokens)
-				return SuggestResult{Suggestions: capSuggestions(in.Suggestions, want), Usage: usage}, nil
+				return SuggestResult{Suggestions: capSuggestions(in.Suggestions, want), Usage: finalize()}, nil
 			case "search_cards":
 				var in struct {
 					Query string `json:"query"`
@@ -147,8 +153,7 @@ func (a *anthropicAssistant) Suggest(ctx context.Context, req SuggestRequest) (S
 		messages = append(messages, anthropic.NewUserMessage(toolResults...))
 	}
 
-	usage.CostMicros = estimateCostMicros(usage.Model, usage.InputTokens, usage.OutputTokens)
-	return SuggestResult{}, errNoSuggestions
+	return SuggestResult{Usage: finalize()}, errNoSuggestions
 }
 
 // @spec AI-021
@@ -169,6 +174,7 @@ func (a *anthropicAssistant) Explain(ctx context.Context, req ExplainRequest) (E
 	}
 	b.WriteString("\nWhy does this card fit the deck?")
 
+	usage := Usage{Model: explainModel}
 	resp, err := a.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     explainModel,
 		MaxTokens: 512,
@@ -176,14 +182,11 @@ func (a *anthropicAssistant) Explain(ctx context.Context, req ExplainRequest) (E
 		Messages:  []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(b.String()))},
 	})
 	if err != nil {
-		return ExplainResult{}, err
+		return ExplainResult{Usage: usage}, err
 	}
 
-	usage := Usage{
-		Model:        explainModel,
-		InputTokens:  resp.Usage.InputTokens,
-		OutputTokens: resp.Usage.OutputTokens,
-	}
+	usage.InputTokens = resp.Usage.InputTokens
+	usage.OutputTokens = resp.Usage.OutputTokens
 	usage.CostMicros = estimateCostMicros(usage.Model, usage.InputTokens, usage.OutputTokens)
 
 	var text strings.Builder
@@ -194,7 +197,7 @@ func (a *anthropicAssistant) Explain(ctx context.Context, req ExplainRequest) (E
 	}
 	out := strings.TrimSpace(text.String())
 	if out == "" {
-		return ExplainResult{}, errors.New("ai: model returned an empty explanation")
+		return ExplainResult{Usage: usage}, errors.New("ai: model returned an empty explanation")
 	}
 	return ExplainResult{Text: out, Usage: usage}, nil
 }

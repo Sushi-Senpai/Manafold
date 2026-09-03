@@ -27,11 +27,11 @@
 
 ## Cost Control
 
-- [x] **AI-030**: On every successful language-model call, the system shall add one call plus its input-token, output-token, and estimated-cost totals to an `ai_usage` row keyed by user, calendar day, and feature.
+- [x] **AI-030**: When a language-model call returns token usage, the system shall add one call plus its input-token, output-token, and estimated-cost totals to an `ai_usage` row keyed by user, calendar day, and feature, and shall do so before mapping any downstream error or gate failure to a response.
 - [x] **AI-031**: While a user has reached the configured daily call limit for a feature, the system shall respond `429` to further calls of that feature for that user until the calendar day rolls over.
 - [x] **AI-032**: While the sum of `ai_usage.cost_micros` for the current calendar month is at or above the configured ceiling, the system shall respond `503` to every AI endpoint until the ceiling is raised or the month rolls over.
 - [x] **AI-033**: When an anonymous-draft caller (no authenticated user) calls any AI endpoint, the system shall respond `403`; AI features unlock on sign-in.
-- [x] **AI-034**: The system shall record `ai_usage` only after the language-model call returns successfully — a failed call is not counted against a quota.
+- [x] **AI-034**: The system shall meter a language-model call in `ai_usage` when and only when that call returned token usage: a call that never reached the model (the assistant disabled, or a transport failure before any response) is not counted, while a call that reached the model is counted even if its result is unusable — no parseable suggestions, a truncated payload, empty prose — or a later step fails.
 - [x] **AI-035**: When a caller other than the deck's owner calls an AI endpoint scoped to that deck, the system shall respond `404` before evaluating the per-user daily limit or the global monthly ceiling, so a non-owner cannot probe quota or spend state through the response code.
 
 ## Deferred

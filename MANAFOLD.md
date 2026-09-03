@@ -289,9 +289,13 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
     of "legal for this deck" — `deckrules` — is reused, not reimplemented.
   - **Cost control** (`AI-030..035`): `ai_usage` table
     (`user_id, usage_date, feature` PK; call / token / `cost_micros` totals),
-    written as soon as the model call returns — a call that reached the model
-    has incurred cost and is metered even if a later step (a gate database
-    error) fails the request; only a provider error escapes the meter. Per-user
+    written whenever a model call comes back with token counts — a call that
+    reached the model has incurred cost and is metered even if its result is
+    unusable (no parseable suggestions, a truncated payload, empty prose) or a
+    later step (a gate database error) fails the request; only a call that never
+    reached the model escapes the meter. The assistant returns its accumulated
+    `Usage` on every error path and the handler meters it before mapping the
+    error to a status. Per-user
     daily call caps per feature (`AI_SUGGEST_DAILY_LIMIT` 20,
     `AI_EXPLAIN_DAILY_LIMIT` 40) → `429`; a global month-to-date estimated-spend
     ceiling (`AI_MONTHLY_SPEND_USD` 50, 0 disables) → `503`; anonymous-draft

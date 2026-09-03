@@ -91,11 +91,24 @@ func (a *API) aiGateQuota(w http.ResponseWriter, r *http.Request, feature string
 	return true
 }
 
-// recordUsage writes the ai_usage row after a successful model call (AI-030,
-// AI-034). A write failure is logged and swallowed: it must not fail the
-// response the user already earned, but a persistent failure silently starves
-// the daily quota (AI-031) and the monthly ceiling (AI-032), so it is logged
-// loudly rather than dropped.
+// meterIfBilled records usage for any model call that returned token counts —
+// even one that ultimately errored (no parseable suggestions, a truncated
+// payload) or whose result a later step rejects. A completed round-trip has
+// incurred cost and must count against the daily quota (AI-031) and the monthly
+// ceiling (AI-032); a call that never reached the model carries a zero Usage and
+// is skipped, so a disabled assistant or a transport error before any response
+// never burns quota (AI-034).
+func (a *API) meterIfBilled(r *http.Request, uid pgtype.UUID, feature string, u ai.Usage) {
+	if u.InputTokens == 0 && u.OutputTokens == 0 {
+		return
+	}
+	a.recordUsage(r, uid, feature, u)
+}
+
+// recordUsage writes the ai_usage row (AI-030). A write failure is logged and
+// swallowed: it must not fail the response the user already earned, but a
+// persistent failure silently starves the daily quota (AI-031) and the monthly
+// ceiling (AI-032), so it is logged loudly rather than dropped.
 func (a *API) recordUsage(r *http.Request, uid pgtype.UUID, feature string, u ai.Usage) {
 	if err := a.Queries.RecordAIUsage(r.Context(), db.RecordAIUsageParams{
 		UserID:       uid,
@@ -170,6 +183,7 @@ func (a *API) suggestCards(w http.ResponseWriter, r *http.Request) {
 		Want:          suggestWant,
 		Search:        a.mirrorSearch(identity),
 	})
+	a.meterIfBilled(r, uid, "suggest", res.Usage)
 	if err != nil {
 		if errors.Is(err, ai.ErrNotConfigured) {
 			writeError(w, http.StatusServiceUnavailable, "AI features are not configured")
@@ -178,8 +192,6 @@ func (a *API) suggestCards(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadGateway, "AI suggestion failed")
 		return
 	}
-
-	a.recordUsage(r, uid, "suggest", res.Usage)
 
 	kept, dropped, err := a.gateSuggestions(ctx, res.Suggestions, ld)
 	if err != nil {
@@ -250,6 +262,7 @@ func (a *API) explainCard(w http.ResponseWriter, r *http.Request) {
 		CardText:      text,
 		DeckIdentity:  nonNil(deck.ColorIdentity),
 	})
+	a.meterIfBilled(r, uid, "explain", res.Usage)
 	if err != nil {
 		if errors.Is(err, ai.ErrNotConfigured) {
 			writeError(w, http.StatusServiceUnavailable, "AI features are not configured")
@@ -259,7 +272,6 @@ func (a *API) explainCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.recordUsage(r, uid, "explain", res.Usage)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"card_id":     uuidString(cardID),
 		"explanation": res.Text,
@@ -278,7 +290,11 @@ func (a *API) explainCard(w http.ResponseWriter, r *http.Request) {
 //
 // @spec AI-010, AI-013
 func (a *API) gateSuggestions(ctx context.Context, suggestions []ai.Suggestion, ld *loadedDeck) ([]map[string]any, int, error) {
-	overrides, err := a.Queries.ListBanlistOverrides(ctx)
+	loadOverrides := a.Queries.ListBanlistOverrides
+	if a.overridesLoader != nil {
+		loadOverrides = a.overridesLoader
+	}
+	overrides, err := loadOverrides(ctx)
 	if err != nil {
 		return nil, 0, err
 	}

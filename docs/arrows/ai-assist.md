@@ -28,7 +28,7 @@ remain gaps.
 
 ### Tests
 - backend/internal/ai/ai_test.go — AI-001 (stub returns not-configured), AI-004 (per-feature model ids), cost estimate
-- backend/internal/api/ai_test.go — AI-010, AI-011, AI-013, AI-020, AI-021, AI-024, AI-031, AI-032, AI-033, AI-034, AI-035
+- backend/internal/api/ai_test.go — AI-010, AI-011, AI-013, AI-020, AI-021, AI-024, AI-030 (billed-but-unusable + gate-error still metered), AI-031, AI-032, AI-033, AI-034, AI-035
 - backend/internal/config/config_test.go — AI-002 (fail-fast on AI_ENABLED without a key)
 
 ### Code
@@ -56,7 +56,9 @@ card, never surface an illegal one.
    and re-validated with `internal/deckrules` for the deck's identity; failures
    dropped silently, never substituted, drop count reported.
 5. `ai_usage` table backing per-user daily quotas and a global monthly spend
-   ceiling; written only after a successful model call.
+   ceiling; written whenever a model call returns token counts (metered before
+   any error is mapped to a status), skipped only when the model was never
+   reached.
 
 ## Spec Coverage
 

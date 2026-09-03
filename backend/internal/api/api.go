@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -35,6 +36,11 @@ type API struct {
 	AISuggestDailyLimit  int
 	AIExplainDailyLimit  int
 	AIMonthlySpendMicros int64
+
+	// overridesLoader loads the manual banlist overrides for the suggestion gate;
+	// nil means Queries.ListBanlistOverrides. A seam so a test can force the
+	// gate's DB-failure path and assert the completed model call is still metered.
+	overridesLoader func(context.Context) ([]db.ListBanlistOverridesRow, error)
 }
 
 // RegisterCardRoutes mounts the card-data read endpoints. It is called inside

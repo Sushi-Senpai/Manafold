@@ -62,10 +62,15 @@ Cost is controlled by four mechanisms:
 
 The `ai_usage` table (`user_id`, `usage_date`, `feature`, `calls`,
 `input_tokens`, `output_tokens`, `cost_micros`, primary key on the first three)
-backs both quotas. It is written **only after** a model call returns
-successfully, so a provider error never burns a user's quota (AI-034). Cost is
-estimated from the returned token counts times a per-model price table in
-`internal/ai`, stored in millionths of a USD for integer precision.
+backs both quotas. It is written **whenever a model call comes back with token
+counts** — a call that reached the model has cost money and is metered even when
+its result is unusable (no parseable suggestions, a truncated payload, empty
+prose) or a later step fails; only a call that never reached the model (the
+assistant disabled, a transport error before any response) escapes the meter
+(AI-034). The assistant therefore returns the accumulated `Usage` on every
+error path, and the handler meters it before mapping any error to a status
+code. Cost is estimated from the returned token counts times a per-model price
+table in `internal/ai`, stored in millionths of a USD for integer precision.
 
 ## `internal/ai` Package Shape
 
@@ -107,9 +112,10 @@ The assistant runs a manual `Messages.New` loop with two tools:
   final message keeps the stop condition and the payload shape unambiguous.
 
 The loop is capped at a small iteration count; if it ends without a
-`submit_suggestions` call the assistant returns whatever it last proposed, or an
-error if it proposed nothing. Input/output token counts are summed across turns
-into `SuggestResult.Usage`.
+`submit_suggestions` call the assistant returns an error. Input/output token
+counts are summed across turns into `SuggestResult.Usage`, which is populated on
+every return path — success, parse failure, no-`submit_suggestions` — so the
+handler can meter a call that reached the model regardless of its outcome.
 
 ### Explain — single call
 
@@ -133,14 +139,18 @@ Ownership is checked before the spend and quota gates so a non-owner always gets
 `404` and can never probe the global spend state or their own quota state for a
 deck they cannot see (AI-035). Then `suggestions` additionally returns `422` if
 the deck has no commander (AI-024).
-A provider error after all gates pass is `502` and is not metered. Once the
-model call returns it has incurred cost, so `ai_usage` is recorded (AI-030)
-before the response is assembled — a later failure, such as the
-anti-hallucination gate hitting a database error, then returns `500` without
-under-counting the daily quota (AI-031) or the monthly ceiling (AI-032). On
-success the response is returned — for `suggestions`, the surviving cards as
-`cardSummary` objects plus their rationale and a `dropped` count (AI-013); for
-`explain`, the prose and the model id.
+After the gates pass, the handler calls the assistant and then meters the
+returned `Usage` if it carries any tokens (AI-030), **before** it inspects the
+error. A transport failure before any response carries a zero `Usage` and is
+not metered, then maps to `502`. A call that reached the model but came back
+unusable — no parseable suggestions, a truncated `submit_suggestions` payload,
+empty explanation prose — is metered and then mapped to `502`. A completed call
+whose result the anti-hallucination gate cannot validate (a `banlist_overrides`
+database error) is metered and then mapped to `500`. So neither the daily quota
+(AI-031) nor the monthly ceiling (AI-032) is ever under-counted for a call that
+cost money. On success the response is returned — for `suggestions`, the
+surviving cards as `cardSummary` objects plus their rationale and a `dropped`
+count (AI-013); for `explain`, the prose and the model id.
 
 ## The Anti-Hallucination Gate
 
@@ -168,7 +178,7 @@ Reusing `deckrules` here is deliberate — there is exactly one definition of
 | Final answer shape | A `submit_suggestions` tool call | Parse a JSON block out of the model's last text message | A tool call has a schema and an unambiguous stop condition; free-text JSON needs a tolerant extractor and still fails on stray prose. |
 | Models per feature | `claude-sonnet-5` for suggest, `claude-haiku-4-5` for explain | One model for both; Opus-tier throughout | The blurb is a short, low-stakes generation where Haiku holds quality at a fraction of the cost; suggestions need Sonnet's judgement over the pool. Opus-tier is reserved for whole-deck generation if it is ever built. |
 | Suggestions on model failure | Return `502` (no fallback list) | Fall back to the raw `edhrec_rank` pool | An unexplained top-`edhrec` dump is not what the user asked for and reads as a broken feature; better to surface the failure. The M5 deck-health report is the case *with* a real deterministic fallback. |
-| Usage accounting | Write `ai_usage` as soon as the model call returns, before the response is assembled | Reserve quota before the call; write only after the whole handler succeeds | A provider error (no completed call) should not cost the user a call, but any call that actually reached the model has incurred cost and must be metered regardless of how many suggestions survive the gate or whether a later step fails. The small risk is a burst of concurrent calls slipping a few over the limit, which is acceptable for v1. |
+| Usage accounting | The assistant returns its accumulated `Usage` on every path; the handler writes `ai_usage` whenever that `Usage` carries tokens, before it maps any error to a status code | Reserve quota before the call; write only after the whole handler succeeds; meter only the clean success path | A call that never reached the model (assistant disabled, transport error before any response) carries a zero `Usage` and should not cost the user a call, but any call that reached the model has incurred real cost and must be metered regardless of an unusable result or a downstream gate failure — otherwise a deterministically repeatable path (model replies with plain text, `MaxTokens` truncation, a `banlist_overrides` blip) silently under-counts the ceiling. The small risk is a burst of concurrent calls slipping a few over the limit, which is acceptable for v1. |
 | Quota store | A Postgres `ai_usage` table, checked per request | An in-process counter | Quotas must survive a restart and, when the backend scales past one instance, be shared; a table is both. The month-to-date ceiling sum is a single indexed aggregate. |
 
 ## Open Questions & Future Decisions
