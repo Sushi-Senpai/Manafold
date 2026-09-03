@@ -13,7 +13,7 @@ optionally a second/partner commander). Commander legality — colour identity,
 singleton, the 100-card count, the banlist, and commander shape — is validated by
 the system every time the deck changes and surfaced as a live report, never left
 to the user. This segment owns `decks`, `deck_cards`, the pure validator
-`internal/deckrules`, the (stubbed for M1) analyser `internal/deckstats`, deck
+`internal/deckrules`, the deterministic analyser `internal/deckstats`, deck
 CRUD, and the read-only public deck view.
 
 Ownership is enforced **in the SQL**, not by a per-handler check: every deck

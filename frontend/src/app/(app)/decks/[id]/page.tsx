@@ -544,6 +544,10 @@ function StatsPanel({ deckId, detail }: { deckId: string; detail: DeckDetail }) 
 
   useEffect(() => {
     let cancelled = false;
+    // Drop any stale error the moment the deck signature changes so the panel
+    // shows "Loading stats…" rather than a previous failure while the refetch
+    // is in flight.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(null);
     api
       .getDeckStats(deckId)

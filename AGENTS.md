@@ -46,7 +46,7 @@ Stop after each phase for user review. **Docs carry current intent, written to b
 | `platform-shell` | `PLATFORM` | Go entry point, chi router with per-domain register helpers, config fail-fast, embedded migrations applied at startup, `/health`, the Next.js app-router substrate + same-origin proxy + `lib/api.ts` wrapper |
 | `account-access` | `ACCT` | email + password auth (argon2id), server-side sessions, `SessionAuth` / `DevAuth` middleware, anonymous deck drafts + claim-on-sign-in |
 | `card-data` | `CARD` | Scryfall bulk-data sync + `sync_runs`, `cards` / `card_prints` / `card_rulings` schema, `GET /api/cards/search` + `/autocomplete`, derived `singleton_limit` / `can_be_commander`, `color_identity` stored verbatim |
-| `deck-building` | `DECK` | `decks` + `deck_cards` (qty / board / category), commander & partner assignment, `internal/deckrules` (color identity, singleton, count, banlist, commander shape), `internal/deckstats` (stub), deck CRUD + read-only public share |
+| `deck-building` | `DECK` | `decks` + `deck_cards` (qty / board / category), commander & partner assignment, `internal/deckrules` (color identity, singleton, count, banlist, commander shape), `internal/deckstats` (deterministic mana curve, colour-pip demand vs sources, functional-category roll-up), deck CRUD + read-only public share |
 | `ai-assist` | `AI` | Anthropic Claude client wrapper, `search_cards` tool over the mirror, suggest-&-explain, deck-health prose, bracket estimate, the validate-every-returned-card gate |
 | `import-export` | `PORT` | parse/emit plain-text, MTGA, Moxfield, Archidekt decklists; `imports` audit table; unresolved-name reporting |
 

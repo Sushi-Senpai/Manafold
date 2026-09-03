@@ -144,7 +144,7 @@ flowchart TB
     subgraph deck["deck-building (DECK)"]
         decks["decks / deck_cards<br/>(qty / board / category)"]
         rules["internal/deckrules<br/>identity · singleton · count · banlist · shape"]
-        stats["internal/deckstats (stub in M1)"]
+        stats["internal/deckstats<br/>curve · pips vs sources · category roll-up"]
         share["read-only public deck view"]
     end
 
@@ -274,7 +274,7 @@ Milestones after M1 (the segment map does not change; these add specs and code):
 
 | M | Deliverable | Segments |
 |---|---|---|
-| **M2** | Import/export (plain-text, MTGA, Moxfield, Archidekt) with unresolved-name reporting; printing-selection UI; deterministic deck stats (curve, colour pips vs sources, type & category counts, average mana value) | `import-export`, `deck-building` |
+| **M2** | Import/export (plain-text, MTGA, Moxfield, Archidekt) with unresolved-name reporting; deterministic deck stats (curve, colour pips vs sources, type & category counts, average mana value) | `import-export`, `deck-building` |
 | **M3** | Real email + password auth (argon2id) + server-side sessions; deck ownership on real users; anonymous drafts + claim-on-sign-in; the read-only public deck URL | `account-access`, `deck-building` |
 | **M4** | AI v1: "suggest & explain" (candidate pool + Claude call + `search_cards` tool + validate-every-card gate) and single-card fit blurbs | `ai-assist` |
 | **M5** | Deterministic deck-health report vs Commander heuristics, with an LLM prose summary + prioritized fixes | `deck-building`, `ai-assist` |
