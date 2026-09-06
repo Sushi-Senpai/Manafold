@@ -1,0 +1,39 @@
+=== PATCH /api/decks/{id}/cards/{cardId} — live transcript (DEV_AUTH) ===
+created deck: 7553e48a-3024-48e1-809d-ffe1948fce6a
+
+$ PUT /commander  (Atraxa)
+  -> HTTP 200
+$ POST /cards  (add Forest to main)
+{"board":"main","card_id":"670a9786-29b1-4128-afb5-07825cc57861","color_identity_violation":false,"entry_id":"3abbe885-6e66-4ff5-bcc0-ca016f7822c0","offending_colors":[],"quantity":1,"singleton_violation":false}
+
+  -> HTTP 201
+
+$ PATCH {board:main, quantity:7}   set-in-place
+  -> HTTP 204
+   GET deck -> main Forest qty:
+Forest x7
+
+$ PATCH {board:main, quantity:-1}  negative rejected
+{"error":"quantity must be zero or greater"}
+  -> HTTP 400
+
+$ PATCH {board:main, to_board:sideboard}  move (qty travels)
+  -> HTTP 204
+   GET deck -> boards:
+command:[Atraxa, Praetors' Voice x1]  main:[]  maybe:[]  sideboard:[Forest x7]
+
+$ POST /cards  (re-add 1 Forest on main) then PATCH {board:sideboard,to_board:main}  merge
+  add -> HTTP 201
+  merge-move -> HTTP 204
+   GET deck -> boards:
+command:[Atraxa, Praetors' Voice x1]  main:[Forest x8]  maybe:[]  sideboard:[]
+   (1 + 7 merged into a single main entry = 8)
+
+$ PATCH {board:main, quantity:0}  zero deletes the entry
+  -> HTTP 204
+   GET deck -> main:
+[]
+
+$ PATCH {board:main}  neither quantity nor to_board -> 400
+{"error":"quantity or to_board is required"}
+  -> HTTP 400
