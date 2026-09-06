@@ -103,6 +103,15 @@ after `legalities->>'commander'`.
 `cardsync.Run(ctx, pool, opts)` is the ingestion entry point, called by
 `cmd/cardsync/main.go` (and, in tests, directly with a fixture).
 
+`opts.OracleCardsPath` / `opts.DefaultCardsPath` replace the download with a
+local file for that pass. `cmd/cardsync` sets them from `CARDSYNC_SEED_PATH`
+(one file feeds both passes) or the per-pass `CARDSYNC_ORACLE_PATH` /
+`CARDSYNC_DEFAULT_PATH`. `backend/seed/cards.json` is the checked-in dev / CI
+seed — a JSON array of real Scryfall card objects (commanders, a colour / type /
+mana-value spread, two modal double-faced cards, one deliberately imageless
+printing) so a local run and CI have searchable, image-bearing card data
+without a live Scryfall fetch (`CARD-040`).
+
 1. `GET https://api.scryfall.com/bulk-data` — the manifest. Read the
    `jsonl_download_uri` and `updated_at` for `oracle_cards` and `default_cards`
    (and `rulings` when `opts.IncludeRulings`). A manifest entry missing
@@ -231,10 +240,12 @@ plausible-but-wrong query silently returns the wrong cards.
 ## References
 
 - Code: `backend/internal/cardsync/`, `backend/internal/cardsearch/`,
-  `backend/internal/api/cards.go`, `backend/cmd/cardsync/main.go`,
-  `backend/internal/db/migrations/000001_create_card_data.up.sql`,
+  `backend/internal/api/cards.go`, `backend/cmd/cardsync/main.go`
+  (`seedOptions`), `backend/internal/db/migrations/000001_create_card_data.up.sql`,
   `backend/internal/db/queries/cards.sql`
-- Test fixtures: `backend/internal/cardsync/testdata/`
+- Seed: `backend/seed/cards.json` (dev / CI card seed, `CARD-040`)
+- Test fixtures: `backend/internal/cardsync/testdata/`; seed test
+  `backend/internal/cardsync/seed_test.go`
 - Cross-segment: `deck-building`'s validator reads `cards.color_identity`,
   `cards.singleton_limit`, `cards.can_be_commander`, `cards.legalities`, and
   `banlist_overrides` (`DECK-004` / `DECK-006` / `DECK-008`). `import-export`

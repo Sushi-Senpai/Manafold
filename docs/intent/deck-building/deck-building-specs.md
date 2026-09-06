@@ -13,6 +13,8 @@
 - [x] **DECK-009**: When a client mutates or reads a deck it does not own, the system shall respond `404`, with ownership enforced in the query rather than by a separate check.
 - [x] **DECK-010**: When a client removes a card entry from a deck, the system shall scope the deletion through the deck's owner, respond `204` only when a row was actually deleted, and respond `404` when no row matched — whether because the deck is not owned by the caller or the card entry was absent.
 - [x] **DECK-011**: When a client updates a deck's name, description, public flag, or bracket, the system shall persist only those fields and leave the deck's cards and commander untouched.
+- [x] **DECK-012**: When a client sets an existing entry's quantity through `PATCH /api/decks/{id}/cards/{cardId}` with `{ board, quantity }`, the system shall, ownership-scoped in the query, set that `(deck_id, card_id, board)` entry's quantity when `quantity` is positive, delete the entry when `quantity` is `0`, reject a negative `quantity` with `400`, and respond `404` when no such entry exists — for a wrong board, an absent card, or a deck the caller does not own.
+- [x] **DECK-013**: When the same `PATCH /api/decks/{id}/cards/{cardId}` request carries a `to_board` that differs from `board`, the system shall move that entry to `to_board` in one statement — carrying its quantity, printing, and category, and adding its quantity into any entry that already exists for the same card on `to_board` — and respond `404` when the source entry does not exist or the deck is not the caller's.
 
 ## Commander Shape
 
@@ -38,3 +40,31 @@
 ## Import Bulk-Add (owned with `import-export`)
 
 - [x] **DECK-060**: When `import-export` supplies a parsed decklist, the system shall create `deck_cards` entries for every resolved card in one transaction, preserving each entry's board and category.
+
+## Builder Card Previews
+
+- [x] **DECK-070**: While the builder runs on a device whose primary pointer supports hover, when the pointer rests on a card-name surface for a short intent delay, the system shall show a single floating preview of that card anchored near the pointed element; moving to another card-name surface moves the one preview rather than opening a second.
+- [x] **DECK-071**: The card preview shall render `image_uris.normal` when present, otherwise `image_uris.small`, otherwise a compact text card frame (name, mana cost, type line); it shall never mount an empty or broken image element.
+- [x] **DECK-072**: The card preview shall stay wholly within the viewport — opening toward the anchor's left when it would otherwise overflow the right edge, and shifting up when it would otherwise overflow the bottom edge.
+- [x] **DECK-073**: The system shall decode the preview image before revealing the preview, showing a placeholder state until decoding completes so the preview never first appears blank.
+- [x] **DECK-074**: The card preview shall be dismissed when the pointer leaves the anchor, when any scroll container scrolls, or when the user presses Escape.
+- [x] **DECK-075**: While the primary pointer does not support hover (touch or other coarse pointer), the system shall not arm card previews, and the builder shall remain fully operable without them.
+- [x] **DECK-076**: The system shall arm the card preview on every card-name surface of the builder: each search result, each decklist entry, the assigned commander and partner, and each commander-picker autocomplete option.
+- [D] **DECK-077**: When the card mirror exposes a distinct back-face image for a double-faced card, the preview shall offer a control to flip between faces; until then it shows the front face only. (`CardSummary` / `DeckEntry` carry one `image_uris` object, so a mirror change is the prerequisite.)
+
+## Builder Search & Decklist UX
+
+- [x] **DECK-080**: Each card-search result row shall identify the card by name, mana cost, type line, and colour identity.
+- [x] **DECK-081**: The system shall add a search result's card to the deck's `main` board from a single interaction — activating the row's add control, or pressing Enter while that row holds the keyboard cursor.
+- [x] **DECK-082**: The card-search result list shall be keyboard navigable — ArrowDown and ArrowUp move a selection cursor over the rows (clamping at the ends), Home and End jump to the first and last row, and Enter adds the card of the row under the cursor.
+- [x] **DECK-083**: When a search result's card already has entries anywhere in the deck, its row shall show the card's current total quantity across the deck rather than presenting it as absent.
+- [x] **DECK-084**: When a card is added from a search result, that row shall give an explicit transient confirmation of the addition.
+- [x] **DECK-085**: The card-search box shall pass its raw text to `GET /api/cards/search` unmodified, so the `id:` / `t:` / `cmc` / `o:` / `is:commander` predicates and bare terms keep working.
+- [x] **DECK-086**: Each decklist entry on a non-`command` board shall present a quantity stepper — one control adds a copy, the other removes a copy (calling `PATCH …/cards/{cardId}` to set `quantity - 1`) and removes the entry when the last copy is taken — while the entry's colour-identity and singleton violation badges and its board-and-category grouping stay visible.
+
+## Builder Card Action Menu
+
+- [x] **DECK-090**: While a decklist entry is hovered on a hover-capable pointer, the system shall, after a short delay, show an action menu anchored to that row offering the actions valid for the entry, and shall also open it on demand from a per-row control (the path a coarse pointer uses).
+- [x] **DECK-091**: The action menu shall offer only actions valid for the entry in context: Add One, Add More, Remove One, Move to each board the entry is not already on, and Copy Card Name for every editable entry; Remove All only when the entry's quantity exceeds one.
+- [x] **DECK-092**: While a decklist entry is hovered and the caller is not typing in a field, the chords Alt+1 (Add One), Alt+2 (Remove One), Alt+3 (Move to Sideboard), and Alt+4 (Move to Considering) shall fire their action whether or not the menu is open, matched on the physical digit key.
+- [x] **DECK-093**: For the commander entry the action menu shall offer only Copy Card Name — no quantity or board actions — and the while-hovered quantity/board chords shall do nothing.

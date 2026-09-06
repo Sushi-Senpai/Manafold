@@ -21,7 +21,7 @@ function ids(entry: CardActionEntry) {
   return buildCardActions({ ...base, entry }).map((a) => a.id);
 }
 
-// @spec DECK-091
+// @spec DECK-091, DECK-086
 test("a single-copy main entry offers add/remove and moves to the other boards only", () => {
   assert.deepEqual(ids({ card_id: "c", name: "Sol Ring", board: "main", quantity: 1 }), [
     "add-one",

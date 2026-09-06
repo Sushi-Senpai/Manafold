@@ -15,6 +15,7 @@
 - [ ] **CARD-009**: When a client adds a card by a collector number not present in `card_prints`, the system shall fetch that single printing from Scryfall's `/cards/collection` endpoint (held under ~2 requests/second), upsert it, and then complete the add. (Gap through M2: import resolves by name only; an unmirrored `(SET) collector#` is reported unresolved rather than fetched. Lands with printing-selection UI.)
 - [D] **CARD-010**: When the card-sync job runs, the system shall also ingest Scryfall's `oracle_tags` bulk file to seed `deck-building`'s functional auto-categorizer.
 - [D] **CARD-011**: The system shall mirror non-English printings from the Scryfall `all_cards` export.
+- [x] **CARD-040**: When `CARDSYNC_SEED_PATH` (or `CARDSYNC_ORACLE_PATH` / `CARDSYNC_DEFAULT_PATH`) is set, the card-sync job shall ingest that local file — a JSON array of Scryfall card objects — through the same oracle and printing passes as a real bulk run instead of downloading, so a local run and CI have a small set of real cards (with genuine Scryfall `image_uris`, a colour / type / mana-value spread, at least one double-faced card, and at least one card with no image) to search against.
 
 ## Search & Autocomplete
 

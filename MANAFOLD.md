@@ -337,3 +337,51 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   `CARD-001` / `CARD-008` refined and `CARD-012` added, each with an httptest
   covering the manifest lookup, the gunzip-then-JSONL decode, and the non-gzip
   error path.
+
+- **2026-09-06** — Builder-experience pass (own branch / PR). Turned the bare
+  `/decks/[id]` builder into a Moxfield-grade deckbuilding surface.
+  - **`PATCH /api/decks/{id}/cards/{cardId}`** (`DECK-012`, `DECK-013`): the one
+    authorised backend change. Sets an existing entry's quantity in place
+    (`0` deletes; negative `400`) or moves it to another board (`to_board`),
+    carrying quantity / printing / category and merging into any entry already
+    on the target board — one statement (`MoveDeckCard`: delete-returning +
+    insert-on-conflict). Ownership scoped in the query exactly like add/remove;
+    `404` on a deck you do not own. This is what makes a per-copy `−` and the
+    action menu's board moves possible; `POST` (only `+1`) and `DELETE` (whole
+    entry) could not.
+  - **Card hover preview** (`DECK-070..077`): one floating card image shared by
+    every card-name surface (search results, decklist rows, commander display,
+    commander autocomplete) via a `CardPreviewProvider` that portals into
+    `document.body` inside a `.workspace` wrapper. Intent delay (~140 ms),
+    `image_uris.normal` → `small` → text card frame, decode-before-reveal,
+    viewport flip/clamp (pure `computePreviewPlacement`), dismiss on
+    mouse-leave / scroll / Escape, and not armed at all on coarse pointers.
+    `DECK-077` (double-faced flip) deferred — `CardSummary` exposes one
+    `image_uris`, so it waits on `card-data`.
+  - **Enriched card search** (`DECK-080..086`): result rows carry name + mana
+    pips + type line + colour identity, one-action Add, Arrow/Home/End/Enter
+    keyboard navigation (pure `moveCursor`), an "N in deck" reflection (pure
+    `deckCardQuantity`), and a transient add confirmation. Raw query still goes
+    straight to `GET /api/cards/search`. Decklist rows gained a `− n +`
+    stepper (decrement via the new PATCH; last decrement deletes).
+  - **Hover action menu** (`DECK-090..093`, scope addendum 1 §2): hovering a
+    decklist row opens a keyboard-navigable menu of the context-valid actions
+    (Add One / Add More / Remove One / Remove All / Move to Sideboard /
+    Considering / Main / Copy Card Name); `Alt+1..4` fire Add One / Remove One /
+    Move to Sideboard / Move to Considering on the hovered row whether the menu
+    is open or not, matched on the physical digit key (`event.code`) so macOS
+    Option+digit does not interfere, and suppressed while a field is focused.
+    The commander row's menu is limited to Copy Card Name. Out-of-scope
+    Moxfield items (printing / foil / tags / collection) are omitted until
+    those features exist.
+  - **Componentisation**: the builder moved out of the ~650-line `page.tsx`
+    monolith into `frontend/src/components/builder/` (13 components) with pure
+    logic in `frontend/src/lib/{cardPreview,searchNav,cardActions}.ts` +
+    unit tests; `page.tsx` now just mounts the provider and the panels.
+  - **Dev card seed** (`CARD-040`): `backend/seed/{oracle,default}_cards.json`
+    — ~40 real cards with genuine Scryfall `image_uris` (commanders, a colour /
+    type / MV spread, a double-faced card, one imageless card) — loaded by
+    `cmd/cardsync` when `CARDSYNC_ORACLE_PATH` / `CARDSYNC_DEFAULT_PATH` are
+    set, so a local run and CI both have searchable card data.
+  - **Deferred**: `DECK-077` (DFC preview flip); tap-to-preview on touch; the
+    out-of-scope action-menu items.
