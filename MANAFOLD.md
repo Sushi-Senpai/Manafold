@@ -318,3 +318,17 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   - **Deferred / unchanged**: deck-health prose (`AI-022`, M5) and the bracket
     estimate (`AI-023`, M6) remain gaps; EDHREC high-synergy data (`AI-040`) is
     still blocked on a Terms-of-Service decision.
+
+- **2026-09-06** — Card-sync bulk-download fix (`card-data` segment, ships in the
+  M4 PR). A live run of the merged M1–M3 app failed: `cardsync` read the bulk
+  manifest's `download_uri` and decoded a JSON array, but Scryfall now exposes
+  only `jsonl_download_uri`, pointing at a gzip-compressed newline-delimited-JSON
+  file on `data.scryfall.io` served as `application/gzip` with no
+  `Content-Encoding`. The M1 implementation had diverged from the `card-data`
+  design, which already described the exports as gzipped JSONL. `internal/cardsync`
+  now follows `jsonl_download_uri`, inflates the body with `compress/gzip`
+  (`getBulk`), and decodes the stream object-by-object with `streamJSONObjects`;
+  a manifest entry missing the field fails the run. Fixtures moved to `.jsonl`.
+  `CARD-001` / `CARD-008` refined and `CARD-012` added, each with an httptest
+  covering the manifest lookup, the gunzip-then-JSONL decode, and the non-gzip
+  error path.

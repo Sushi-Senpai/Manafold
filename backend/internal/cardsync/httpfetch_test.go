@@ -1,10 +1,13 @@
 package cardsync
 
 import (
+	"compress/gzip"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -94,5 +97,151 @@ func TestFetcher_NonRetryableStatusIsAnError(t *testing.T) {
 	f := &fetcher{client: srv.Client()}
 	if _, err := f.get(context.Background(), srv.URL); err == nil {
 		t.Fatal("get on a 500 returned nil error, want a non-nil error")
+	}
+}
+
+// TestManifest_ResolvesJSONLDownloadURI covers the manifest decode + lookup the
+// sync job does before every bulk download: it must read the current
+// jsonl_download_uri field (Scryfall retired the array-form download_uri) and
+// must fail loudly, not return an empty URL, when an entry lacks it (CARD-001).
+//
+// @spec CARD-001
+func TestManifest_ResolvesJSONLDownloadURI(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/bulk-data" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = io.WriteString(w, `{"object":"list","data":[
+			{"type":"oracle_cards","updated_at":"2026-09-06T09:01:54.221+00:00",
+			 "jsonl_download_uri":"https://data.scryfall.io/oracle-cards/oracle-cards-20260906.jsonl.gz"},
+			{"type":"default_cards","updated_at":"2026-09-06T09:05:27.982+00:00"}
+		]}`)
+	}))
+	t.Cleanup(srv.Close)
+
+	f := &fetcher{client: srv.Client()}
+	man, err := f.manifest(context.Background(), srv.URL)
+	if err != nil {
+		t.Fatalf("manifest: %v", err)
+	}
+
+	uri, updated, err := man.find("oracle_cards")
+	if err != nil {
+		t.Fatalf("find oracle_cards: %v", err)
+	}
+	if uri != "https://data.scryfall.io/oracle-cards/oracle-cards-20260906.jsonl.gz" {
+		t.Errorf("oracle_cards uri = %q, want the jsonl_download_uri value", uri)
+	}
+	if updated.IsZero() {
+		t.Error("oracle_cards updated_at parsed as zero, want the manifest timestamp")
+	}
+
+	if _, _, err := man.find("default_cards"); err == nil {
+		t.Error("find on an entry with no jsonl_download_uri returned nil error, want a failure")
+	}
+	if _, _, err := man.find("rulings"); err == nil {
+		t.Error("find on an absent bulk type returned nil error, want a failure")
+	}
+}
+
+// TestGetBulk_InflatesGzippedJSONL exercises the real download path: Scryfall
+// serves the export as application/gzip with no Content-Encoding, so getBulk
+// must inflate it itself, and the inflated body is newline-delimited JSON —
+// one object per line — that streamJSONObjects walks without buffering the
+// whole file (CARD-001, CARD-012).
+//
+// @spec CARD-001, CARD-012
+func TestGetBulk_InflatesGzippedJSONL(t *testing.T) {
+	lines := []string{
+		`{"oracle_id":"11111111-1111-1111-1111-111111111111","name":"Alpha"}`,
+		`{"oracle_id":"22222222-2222-2222-2222-222222222222","name":"Beta"}`,
+		`{"oracle_id":"33333333-3333-3333-3333-333333333333","name":"Gamma"}`,
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/gzip")
+		zw := gzip.NewWriter(w)
+		for _, ln := range lines {
+			_, _ = io.WriteString(zw, ln+"\n")
+		}
+		_ = zw.Close()
+	}))
+	t.Cleanup(srv.Close)
+
+	f := &fetcher{client: srv.Client()}
+	body, err := f.getBulk(context.Background(), srv.URL)
+	if err != nil {
+		t.Fatalf("getBulk: %v", err)
+	}
+	t.Cleanup(func() { _ = body.Close() })
+
+	var names []string
+	err = streamJSONObjects(body, func(raw json.RawMessage) error {
+		var o struct {
+			OracleID string `json:"oracle_id"`
+			Name     string `json:"name"`
+		}
+		if err := json.Unmarshal(raw, &o); err != nil {
+			return err
+		}
+		names = append(names, o.Name)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("streamJSONObjects over inflated body: %v", err)
+	}
+	if strings.Join(names, ",") != "Alpha,Beta,Gamma" {
+		t.Errorf("decoded names = %v, want [Alpha Beta Gamma]", names)
+	}
+}
+
+// TestGetBulk_NonGzipBodyIsAnError confirms a body that is not valid gzip is
+// surfaced as an error (so CARD-007 fails the run) rather than read as garbage.
+//
+// @spec CARD-007, CARD-012
+func TestGetBulk_NonGzipBodyIsAnError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `{"not":"gzip"}`)
+	}))
+	t.Cleanup(srv.Close)
+
+	f := &fetcher{client: srv.Client()}
+	if _, err := f.getBulk(context.Background(), srv.URL); err == nil {
+		t.Fatal("getBulk on a non-gzip body returned nil error, want a gunzip failure")
+	}
+}
+
+// TestStreamJSONObjects_DecodesNewlineDelimited pins the JSONL decode contract
+// directly: consecutive objects separated by newlines are each delivered once,
+// trailing whitespace is tolerated, and an empty stream is not an error
+// (CARD-012).
+//
+// @spec CARD-012
+func TestStreamJSONObjects_DecodesNewlineDelimited(t *testing.T) {
+	in := "{\"n\":1}\n{\"n\":2}\n{\"n\":3}\n\n"
+	var got []int
+	err := streamJSONObjects(strings.NewReader(in), func(raw json.RawMessage) error {
+		var o struct {
+			N int `json:"n"`
+		}
+		if err := json.Unmarshal(raw, &o); err != nil {
+			return err
+		}
+		got = append(got, o.N)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("streamJSONObjects: %v", err)
+	}
+	if len(got) != 3 || got[0] != 1 || got[1] != 2 || got[2] != 3 {
+		t.Errorf("decoded = %v, want [1 2 3]", got)
+	}
+
+	if err := streamJSONObjects(strings.NewReader(""), func(json.RawMessage) error {
+		t.Fatal("callback ran on an empty stream")
+		return nil
+	}); err != nil {
+		t.Errorf("empty stream returned %v, want nil", err)
 	}
 }

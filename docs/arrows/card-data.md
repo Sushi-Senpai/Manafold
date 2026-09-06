@@ -6,7 +6,8 @@ The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
 
 ## Status
 
-**MAPPED** — greenfield, authored with the M1 slice (2026-09-02).
+**MAPPED** — greenfield, authored with the M1 slice (2026-09-02); bulk-download
+path corrected to `jsonl_download_uri` + gzip-inflated JSONL (CARD-012, 2026-09-06).
 
 ## References
 
@@ -17,12 +18,13 @@ The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
 - docs/intent/card-data/card-data-design.md
 
 ### EARS
-- docs/intent/card-data/card-data-specs.md (CARD-001..011, CARD-020..024, CARD-030)
+- docs/intent/card-data/card-data-specs.md (CARD-001..012, CARD-020..024, CARD-030)
 
 ### Tests
-- backend/internal/cardsync/cardsync_test.go (`TestRun_IngestsFixture_DerivesFields`) — CARD-001, CARD-002 (verbatim color_identity), CARD-003, CARD-004, CARD-005, CARD-007
+- backend/internal/cardsync/cardsync_test.go (`TestRun_IngestsFixture_DerivesFields`) — CARD-001, CARD-002 (verbatim color_identity), CARD-003, CARD-004, CARD-005, CARD-007; reads the checked-in `.jsonl` fixtures
 - backend/internal/cardsync/derive_test.go (`TestDeriveSingletonLimit`, `TestDeriveCanBeCommander`) — CARD-003, CARD-004
 - backend/internal/cardsync/httpfetch_test.go (`TestFetcher_SendsEtiquetteHeadersAndRetriesOn429`, `TestFetcher_NonRetryableStatusIsAnError`) — CARD-006 (descriptive User-Agent + explicit Accept on every request; exactly one retry after the back-off on HTTP 429), CARD-007
+- backend/internal/cardsync/httpfetch_test.go (`TestManifest_ResolvesJSONLDownloadURI`, `TestGetBulk_InflatesGzippedJSONL`, `TestGetBulk_NonGzipBodyIsAnError`, `TestStreamJSONObjects_DecodesNewlineDelimited`) — CARD-001 (manifest → `jsonl_download_uri`, missing field fails), CARD-012 (gunzip the `application/gzip` body, decode newline-delimited JSON incrementally, non-gzip body is an error), CARD-007
 - backend/internal/cardsearch/cardsearch_test.go — CARD-022, CARD-023
 - backend/internal/api/cards_test.go — CARD-020, CARD-021, CARD-023
 - CARD-008 / CARD-024 (no Scryfall call on a client request path) are a negative
@@ -31,7 +33,7 @@ The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
   dedicated `@spec` test asserts the absence.
 
 ### Code
-- backend/internal/cardsync/ (`Run`, bulk manifest fetch, streaming JSONL upsert, derived fields)
+- backend/internal/cardsync/ (`Run`, bulk manifest fetch → `jsonl_download_uri`, `getBulk` gzip inflation, `streamJSONObjects` incremental JSONL upsert, derived fields)
 - backend/internal/cardsearch/ (`Parse`, predicate → SQL via `Query.WhereSQL`)
 - backend/internal/api/cards.go (`registerCardRoutes`, search + autocomplete handlers)
 - backend/cmd/cardsync/main.go
@@ -46,9 +48,10 @@ The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
 1. Schema — Oracle (`cards`) vs printing (`card_prints`) split; `legalities` /
    `prices` / `image_uris` / `card_faces` as jsonb; `oracle_search` tsvector +
    GIN; `banlist_overrides` escape hatch.
-2. `internal/cardsync` — manifest fetch, streamed gzip JSONL upsert, `sync_runs`
-   audit, HTTP etiquette (descriptive UA + Accept, 429 back-off), derived
-   `singleton_limit` / `can_be_commander` / `commander_color_identity`.
+2. `internal/cardsync` — manifest fetch (`jsonl_download_uri`), gzip-inflated
+   streamed JSONL upsert, `sync_runs` audit, HTTP etiquette (descriptive UA +
+   Accept, 429 back-off), derived `singleton_limit` / `can_be_commander` /
+   `commander_color_identity`.
 3. `internal/cardsearch` — hand-written tokenizer for the Scryfall-syntax subset
    (`id:` / `t:` / `cmc` / `o:` / `is:commander` + full text).
 4. HTTP — `/api/cards/search` (paged) + `/api/cards/autocomplete` (≤ 20, by
@@ -58,13 +61,13 @@ The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
 
 | Category | Spec IDs | Implemented | Deferred | Gaps |
 |---|---|---|---|---|
-| Sync job | CARD-001..008 | 8 | 0 | 0 |
+| Sync job | CARD-001..008, CARD-012 | 9 | 0 | 0 |
 | Single-printing fallback | CARD-009 | 0 | 0 | 1 (M2+ — see below) |
 | oracle_tags / all_cards | CARD-010, CARD-011 | 0 | 2 | 0 |
 | Search & autocomplete | CARD-020..024 | 5 | 0 | 0 |
 | Banlist overrides | CARD-030 | 1 | 0 | 0 |
 
-**Summary:** 14 of 16 implemented; one gap: CARD-009, the single-printing
+**Summary:** 15 of 17 implemented; one gap: CARD-009, the single-printing
 Scryfall fallback, deferred past M2's import/export (import resolves names
 against the mirror; an unmirrored `(SET) collector#` currently falls through to
 name resolution rather than triggering a live fetch). 2 deferred (CARD-010/011).

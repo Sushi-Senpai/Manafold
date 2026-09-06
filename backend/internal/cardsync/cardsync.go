@@ -1,12 +1,15 @@
 // Package cardsync ingests Scryfall's bulk-data exports into Manafold's own
 // Postgres. cmd/cardsync calls Run; tests call it directly with local fixture
 // files. Scryfall's card endpoints are never touched here beyond the two large
-// streamed bulk GETs and the manifest (CARD-008).
+// streamed bulk GETs and the manifest (CARD-008). Each downloaded export is a
+// gzip-compressed newline-delimited-JSON stream that Run inflates and decodes
+// object by object (CARD-012).
 //
-// @spec CARD-001, CARD-002, CARD-005, CARD-006, CARD-007
+// @spec CARD-001, CARD-002, CARD-005, CARD-006, CARD-007, CARD-012
 package cardsync
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -34,8 +37,9 @@ const (
 var retryBackoff = 30 * time.Second
 
 // Options configures a run. With OracleCardsPath / DefaultCardsPath set the run
-// reads those local files instead of downloading; otherwise it fetches the
-// Scryfall bulk manifest and streams the exports.
+// reads those local files — plain, uninflated JSONL — instead of downloading;
+// otherwise it fetches the Scryfall bulk manifest and streams the gzip-inflated
+// exports.
 type Options struct {
 	BaseURL          string
 	HTTPClient       *http.Client
@@ -98,7 +102,7 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 				return res, err
 			}
 			oracleUpdatedAt = updated
-			rc, err := f.get(ctx, uri)
+			rc, err := f.getBulk(ctx, uri)
 			if err != nil {
 				return res, err
 			}
@@ -110,7 +114,7 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 				return res, err
 			}
 			defaultUpdatedAt = updated
-			rc, err := f.get(ctx, uri)
+			rc, err := f.getBulk(ctx, uri)
 			if err != nil {
 				return res, err
 			}
@@ -146,7 +150,7 @@ func ingestOracle(ctx context.Context, q *db.Queries, r io.Reader, updatedAt tim
 	}
 
 	var count int32
-	streamErr := streamObjects(r, func(raw json.RawMessage) error {
+	streamErr := streamJSONObjects(r, func(raw json.RawMessage) error {
 		var o scryfallObject
 		if err := json.Unmarshal(raw, &o); err != nil {
 			return err
@@ -187,7 +191,7 @@ func ingestPrints(ctx context.Context, q *db.Queries, r io.Reader, updatedAt tim
 
 	var count int32
 	var skips int
-	streamErr := streamObjects(r, func(raw json.RawMessage) error {
+	streamErr := streamJSONObjects(r, func(raw json.RawMessage) error {
 		var o scryfallObject
 		if err := json.Unmarshal(raw, &o); err != nil {
 			return err
@@ -223,29 +227,25 @@ func ingestPrints(ctx context.Context, q *db.Queries, r io.Reader, updatedAt tim
 	return int(count), skips, nil
 }
 
-// streamObjects decodes a Scryfall bulk file — a single JSON array of card
-// objects — one element at a time, so a multi-hundred-MB export never lands in
-// memory whole.
-func streamObjects(r io.Reader, fn func(json.RawMessage) error) error {
+// streamJSONObjects decodes a Scryfall bulk export — newline-delimited JSON, one
+// card object per line — one object at a time, so a multi-hundred-MB export
+// never lands in memory whole. A json.Decoder consumes consecutive JSON values
+// across the newlines that separate them natively, so no per-line length limit
+// applies (CARD-012).
+func streamJSONObjects(r io.Reader, fn func(json.RawMessage) error) error {
 	dec := json.NewDecoder(r)
-	tok, err := dec.Token()
-	if err != nil {
-		return err
-	}
-	if d, ok := tok.(json.Delim); !ok || d != '[' {
-		return fmt.Errorf("expected a JSON array, got %v", tok)
-	}
-	for dec.More() {
+	for {
 		var raw json.RawMessage
 		if err := dec.Decode(&raw); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
 			return err
 		}
 		if err := fn(raw); err != nil {
 			return err
 		}
 	}
-	_, err = dec.Token() // closing ]
-	return err
 }
 
 // ---- HTTP ----------------------------------------------------------------
@@ -256,16 +256,22 @@ type fetcher struct {
 
 type bulkManifest struct {
 	Data []struct {
-		Type        string    `json:"type"`
-		DownloadURI string    `json:"download_uri"`
-		UpdatedAt   time.Time `json:"updated_at"`
+		Type string `json:"type"`
+		// JSONLDownloadURI points at a gzip-compressed newline-delimited-JSON
+		// export on data.scryfall.io. Scryfall retired the array-form
+		// download_uri; jsonl_download_uri is the current field (CARD-001).
+		JSONLDownloadURI string    `json:"jsonl_download_uri"`
+		UpdatedAt        time.Time `json:"updated_at"`
 	} `json:"data"`
 }
 
 func (m bulkManifest) find(bulkType string) (uri string, updatedAt time.Time, err error) {
 	for _, d := range m.Data {
 		if d.Type == bulkType {
-			return d.DownloadURI, d.UpdatedAt, nil
+			if d.JSONLDownloadURI == "" {
+				return "", time.Time{}, fmt.Errorf("bulk manifest %q entry has no jsonl_download_uri", bulkType)
+			}
+			return d.JSONLDownloadURI, d.UpdatedAt, nil
 		}
 	}
 	return "", time.Time{}, fmt.Errorf("bulk manifest has no %q entry", bulkType)
@@ -308,6 +314,39 @@ func (f *fetcher) get(ctx context.Context, url string) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("scryfall GET %s: unexpected status %d", url, resp.StatusCode)
 	}
 	return resp.Body, nil
+}
+
+// getBulk downloads a bulk export and returns a reader over its inflated
+// contents. Scryfall serves the export as application/gzip with no
+// Content-Encoding, so net/http never inflates it and the job must (CARD-012).
+// Closing the returned ReadCloser closes both the gzip reader and the body.
+func (f *fetcher) getBulk(ctx context.Context, url string) (io.ReadCloser, error) {
+	body, err := f.get(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	zr, err := gzip.NewReader(body)
+	if err != nil {
+		body.Close()
+		return nil, fmt.Errorf("scryfall bulk %s: gunzip: %w", url, err)
+	}
+	return gzipBody{Reader: zr, body: body}, nil
+}
+
+// gzipBody couples a gzip.Reader to the HTTP body it inflates so a single Close
+// tears down both.
+type gzipBody struct {
+	*gzip.Reader
+	body io.Closer
+}
+
+func (g gzipBody) Close() error {
+	zerr := g.Reader.Close()
+	berr := g.body.Close()
+	if zerr != nil {
+		return zerr
+	}
+	return berr
 }
 
 func (f *fetcher) do(ctx context.Context, url string) (*http.Response, error) {

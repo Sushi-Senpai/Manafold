@@ -53,7 +53,7 @@ arrows:
     blocks: [deck-building, import-export, ai-assist]
     blockedBy: [platform-shell]
     detail: card-data.md
-    next: "M1 landed: cards / card_prints / card_rulings / sync_runs / banlist_overrides schema; internal/cardsync ingests the Oracle + Default bulk exports with derived singleton_limit / can_be_commander and color_identity verbatim; GET /api/cards/search + /autocomplete over the mirror. M2: CARD-006 etiquette-header + 429-backoff test closed; ResolveCardByName (exact / DFC face) added for import. Deferred: single-printing fallback (CARD-009, with printing-selection UI), oracle_tags ingestion (CARD-010)."
+    next: "M1 landed: cards / card_prints / card_rulings / sync_runs / banlist_overrides schema; internal/cardsync ingests the Oracle + Default bulk exports with derived singleton_limit / can_be_commander and color_identity verbatim; GET /api/cards/search + /autocomplete over the mirror. M2: CARD-006 etiquette-header + 429-backoff test closed; ResolveCardByName (exact / DFC face) added for import. M4 PR: bulk download follows the manifest's jsonl_download_uri and gzip-inflates the .jsonl.gz stream, decoding it object-by-object (CARD-001 refined, CARD-012 added); fixtures moved to .jsonl. Deferred: single-printing fallback (CARD-009, with printing-selection UI), oracle_tags ingestion (CARD-010)."
     drift: null
 
   deck-building:
