@@ -425,6 +425,16 @@ func TestPatchCard_QuantityAndBoardMove(t *testing.T) {
 		t.Fatalf("negative quantity = %d, want 400", rec.Code)
 	}
 
+	// DECK-012: a quantity past any real-deck bound is a clean 400, not an int32
+	// wrap or a CHECK-constraint 500.
+	rec = serve(t, a, owner, http.MethodPatch, "/decks/"+deckID+"/cards/"+uuidString(card), map[string]any{"board": "main", "quantity": 1 << 40})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("out-of-range quantity = %d %s, want 400", rec.Code, rec.Body.String())
+	}
+	if got := entryQty(t, a, owner, deckID, uuidString(card), "main"); got != 7 {
+		t.Fatalf("out-of-range patch changed the quantity: %d, want 7", got)
+	}
+
 	// DECK-013: move the entry from main to sideboard, quantity travels with it.
 	rec = serve(t, a, owner, http.MethodPatch, "/decks/"+deckID+"/cards/"+uuidString(card), map[string]any{"board": "main", "to_board": "sideboard"})
 	if rec.Code != http.StatusNoContent {

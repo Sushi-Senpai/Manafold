@@ -652,6 +652,10 @@ func (a *API) removeCard(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// maxDeckCardQuantity is an upper bound comfortably above any real deck, used to
+// reject absurd quantities before the int32 cast in patchCard would wrap them.
+const maxDeckCardQuantity = 1_000_000
+
 // patchCard is the one endpoint for editing an existing entry in place: set its
 // quantity (0 deletes it) or move it to another board, carrying its quantity,
 // printing, and category along. Everything is ownership-scoped in the query
@@ -724,6 +728,12 @@ func (a *API) patchCard(w http.ResponseWriter, r *http.Request) {
 	q := *body.Quantity
 	if q < 0 {
 		writeError(w, http.StatusBadRequest, "quantity must be zero or greater")
+		return
+	}
+	// Cap well above any real deck so a huge value returns a clean 400 instead of
+	// wrapping in the int32 cast below or tripping the deck_cards quantity check.
+	if q > maxDeckCardQuantity {
+		writeError(w, http.StatusBadRequest, "quantity is too large")
 		return
 	}
 
