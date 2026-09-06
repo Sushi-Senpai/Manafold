@@ -20,8 +20,13 @@ decklist. **M2** added import/export + deterministic deck stats + the Slate &
 Signet palette. **M3** added Manafold's own email + password accounts (argon2id),
 server-side sessions, per-IP rate limiting on login/register, and anonymous deck
 drafts claimable on sign-in; `AnonOrSession` replaces the `DEV_AUTH` stub as the
-default auth path (the stub stays available for local/CI). All milestones land on
-one branch as a single growing PR.
+default auth path (the stub stays available for local/CI). **M4** added AI assist
+— a "suggest cards" panel and single-card fit blurbs backed by Anthropic Claude
+(`internal/ai`), gated by `AI_ENABLED` (stub + `503` when off), with the
+anti-hallucination gate reusing `internal/deckrules`, per-user daily call caps,
+and a global monthly spend ceiling; a follow-on fix repaired `internal/cardsync`
+against Scryfall's current bulk API (`jsonl_download_uri` + gzipped JSONL). All
+milestones land on one branch as a single growing PR.
 
 ## Vision
 
@@ -103,7 +108,7 @@ Mirrors Waystone. See `docs/high-level-design.md` § Key Design Decisions and
 | Migrations | [golang-migrate](https://github.com/golang-migrate/migrate), embedded via `//go:embed` and applied by the API binary at startup before the pool opens |
 | Database | PostgreSQL 16 (Neon serverless in prod, direct non-pooled connection string) |
 | Card data | Mirror of the Scryfall bulk-data exports, synced daily |
-| AI provider | Anthropic Claude, `github.com/anthropics/anthropic-sdk-go`, developer-held key (no AI code ships in M1) |
+| AI provider | Anthropic Claude, `github.com/anthropics/anthropic-sdk-go`, developer-held key; `AI_ENABLED` gates it, stub + `503` when off (M4; suggest & explain) |
 | Auth | Manafold email + password (argon2id) + server-side sessions + `DEV_AUTH` stub (M3; M1 is stub-only) |
 | Hosting | Vercel (frontend) + Render Docker (backend) + Neon (Postgres); card-sync as a Render cron |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) with a Postgres service container, plus the shared no-mistakes pipeline (`.no-mistakes.yaml` sets `ci: { no_ci: true }`) |
