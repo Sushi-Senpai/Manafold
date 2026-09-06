@@ -652,6 +652,120 @@ func (a *API) removeCard(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// patchCard is the one endpoint for editing an existing entry in place: set its
+// quantity (0 deletes it) or move it to another board, carrying its quantity,
+// printing, and category along. Everything is ownership-scoped in the query
+// exactly like add/remove, so a deck the caller does not own affects zero rows
+// and returns 404.
+//
+// @spec DECK-009, DECK-012, DECK-013
+func (a *API) patchCard(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseUUID(chi.URLParam(r, "id"))
+	if !ok {
+		writeError(w, http.StatusNotFound, "deck not found")
+		return
+	}
+	cardID, ok := parseUUID(chi.URLParam(r, "cardId"))
+	if !ok {
+		writeError(w, http.StatusBadRequest, "card id is not a valid id")
+		return
+	}
+	var body struct {
+		Board    string `json:"board"`
+		ToBoard  string `json:"to_board"`
+		Quantity *int   `json:"quantity"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	board := body.Board
+	if board == "" {
+		board = "main"
+	}
+	if !validBoards[board] {
+		writeError(w, http.StatusBadRequest, "unknown board: "+board)
+		return
+	}
+
+	uid, tok := callerOwner(r)
+
+	// A board move takes precedence: the quantity travels with the entry, so a
+	// quantity field in the same request is ignored.
+	if body.ToBoard != "" && body.ToBoard != board {
+		if !validBoards[body.ToBoard] {
+			writeError(w, http.StatusBadRequest, "unknown board: "+body.ToBoard)
+			return
+		}
+		rows, err := a.Queries.MoveDeckCard(r.Context(), db.MoveDeckCardParams{
+			DeckID:    id,
+			CardID:    cardID,
+			FromBoard: board,
+			ToBoard:   body.ToBoard,
+			UserID:    uid,
+			AnonToken: tok,
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to move card")
+			return
+		}
+		if rows == 0 {
+			writeError(w, http.StatusNotFound, "deck card not found")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if body.Quantity == nil {
+		writeError(w, http.StatusBadRequest, "quantity or to_board is required")
+		return
+	}
+	q := *body.Quantity
+	if q < 0 {
+		writeError(w, http.StatusBadRequest, "quantity must be zero or greater")
+		return
+	}
+
+	if q == 0 {
+		rows, err := a.Queries.DeleteDeckCard(r.Context(), db.DeleteDeckCardParams{
+			DeckID:    id,
+			CardID:    cardID,
+			Board:     board,
+			UserID:    uid,
+			AnonToken: tok,
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to remove card")
+			return
+		}
+		if rows == 0 {
+			writeError(w, http.StatusNotFound, "deck card not found")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	rows, err := a.Queries.SetDeckCardQuantity(r.Context(), db.SetDeckCardQuantityParams{
+		Quantity:  int32(q),
+		DeckID:    id,
+		CardID:    cardID,
+		Board:     board,
+		UserID:    uid,
+		AnonToken: tok,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update quantity")
+		return
+	}
+	if rows == 0 {
+		writeError(w, http.StatusNotFound, "deck card not found")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // @spec DECK-008
 func (a *API) getValidation(w http.ResponseWriter, r *http.Request) {
 	deck, ok := a.deckForOwner(w, r)

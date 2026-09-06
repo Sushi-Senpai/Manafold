@@ -63,6 +63,7 @@ func (a *API) RegisterDeckRoutes(r chi.Router) {
 	r.Patch("/decks/{id}", a.updateDeck)
 	r.Put("/decks/{id}/commander", a.setCommander)
 	r.Post("/decks/{id}/cards", a.addCard)
+	r.Patch("/decks/{id}/cards/{cardId}", a.patchCard)
 	r.Delete("/decks/{id}/cards/{cardId}", a.removeCard)
 	r.Get("/decks/{id}/validation", a.getValidation)
 	r.Get("/decks/{id}/stats", a.getDeckStats)

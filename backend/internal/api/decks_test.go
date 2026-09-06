@@ -374,3 +374,109 @@ func TestAddCard_ViolationFlagScopedToCountedBoards(t *testing.T) {
 		t.Fatalf("maybeboard entry carries offending_colors: %+v", detail.Boards["maybe"][0].OffendingColors)
 	}
 }
+
+// entryQty returns the quantity of the given card on the given board of a
+// freshly-fetched deck, or 0 when there is no such entry.
+func entryQty(t *testing.T, a *API, owner pgtype.UUID, deckID, cardID, board string) int32 {
+	t.Helper()
+	rec := serve(t, a, owner, http.MethodGet, "/decks/"+deckID, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get deck: %d %s", rec.Code, rec.Body.String())
+	}
+	for _, e := range decode[deckDetailJSON](t, rec).Boards[board] {
+		if e.CardID == cardID {
+			return e.Quantity
+		}
+	}
+	return 0
+}
+
+// @spec DECK-012, DECK-013, DECK-009
+func TestPatchCard_QuantityAndBoardMove(t *testing.T) {
+	a := testAPI(t)
+	owner := makeUser(t, a)
+	other := makeUser(t, a)
+
+	commander := makeCard(t, a, "Patch Commander "+hex.EncodeToString(randBytes(t, 4)), "Legendary Creature — Human", []string{"G"}, true)
+	card := makeCard(t, a, "Patch Forest "+hex.EncodeToString(randBytes(t, 4)), "Basic Land — Forest", []string{}, false)
+
+	rec := serve(t, a, owner, http.MethodPost, "/decks", map[string]string{"name": "Patch Deck"})
+	deckID := decode[deckJSON](t, rec).ID
+	rec = serve(t, a, owner, http.MethodPut, "/decks/"+deckID+"/commander", map[string]string{"commander_card_id": uuidString(commander)})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("set commander: %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := serve(t, a, owner, http.MethodPost, "/decks/"+deckID+"/cards", map[string]string{"card_id": uuidString(card)}); rec.Code != http.StatusCreated {
+		t.Fatalf("add card: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// DECK-012: set the quantity in place.
+	rec = serve(t, a, owner, http.MethodPatch, "/decks/"+deckID+"/cards/"+uuidString(card), map[string]any{"board": "main", "quantity": 7})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("set quantity: %d %s, want 204", rec.Code, rec.Body.String())
+	}
+	if got := entryQty(t, a, owner, deckID, uuidString(card), "main"); got != 7 {
+		t.Fatalf("main quantity = %d, want 7", got)
+	}
+
+	// DECK-012: a negative quantity is rejected, the entry is untouched.
+	rec = serve(t, a, owner, http.MethodPatch, "/decks/"+deckID+"/cards/"+uuidString(card), map[string]any{"board": "main", "quantity": -1})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("negative quantity = %d, want 400", rec.Code)
+	}
+
+	// DECK-013: move the entry from main to sideboard, quantity travels with it.
+	rec = serve(t, a, owner, http.MethodPatch, "/decks/"+deckID+"/cards/"+uuidString(card), map[string]any{"board": "main", "to_board": "sideboard"})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("move card: %d %s, want 204", rec.Code, rec.Body.String())
+	}
+	if got := entryQty(t, a, owner, deckID, uuidString(card), "main"); got != 0 {
+		t.Fatalf("main still has the card after a move: qty %d", got)
+	}
+	if got := entryQty(t, a, owner, deckID, uuidString(card), "sideboard"); got != 7 {
+		t.Fatalf("sideboard quantity after move = %d, want 7", got)
+	}
+
+	// DECK-013: moving onto a board that already holds the card merges the
+	// quantities rather than colliding on the unique key.
+	if rec := serve(t, a, owner, http.MethodPost, "/decks/"+deckID+"/cards", map[string]string{"card_id": uuidString(card), "board": "main"}); rec.Code != http.StatusCreated {
+		t.Fatalf("re-add on main: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = serve(t, a, owner, http.MethodPatch, "/decks/"+deckID+"/cards/"+uuidString(card), map[string]any{"board": "sideboard", "to_board": "main"})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("merge move: %d %s, want 204", rec.Code, rec.Body.String())
+	}
+	if got := entryQty(t, a, owner, deckID, uuidString(card), "main"); got != 8 {
+		t.Fatalf("merged main quantity = %d, want 8 (1 + 7)", got)
+	}
+	if got := entryQty(t, a, owner, deckID, uuidString(card), "sideboard"); got != 0 {
+		t.Fatalf("sideboard not emptied by the move: qty %d", got)
+	}
+
+	// DECK-012: quantity 0 deletes the entry.
+	rec = serve(t, a, owner, http.MethodPatch, "/decks/"+deckID+"/cards/"+uuidString(card), map[string]any{"board": "main", "quantity": 0})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("quantity 0: %d %s, want 204", rec.Code, rec.Body.String())
+	}
+	if got := entryQty(t, a, owner, deckID, uuidString(card), "main"); got != 0 {
+		t.Fatalf("entry survived a quantity-0 patch: qty %d", got)
+	}
+
+	// DECK-012: neither quantity nor to_board is a 400.
+	rec = serve(t, a, owner, http.MethodPatch, "/decks/"+deckID+"/cards/"+uuidString(card), map[string]any{"board": "main"})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("empty patch = %d, want 400", rec.Code)
+	}
+
+	// DECK-009: a non-owner's patch matches no row and returns 404.
+	if rec := serve(t, a, owner, http.MethodPost, "/decks/"+deckID+"/cards", map[string]string{"card_id": uuidString(card), "board": "main"}); rec.Code != http.StatusCreated {
+		t.Fatalf("re-add for non-owner check: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = serve(t, a, other, http.MethodPatch, "/decks/"+deckID+"/cards/"+uuidString(card), map[string]any{"board": "main", "quantity": 3})
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("non-owner patch = %d, want 404", rec.Code)
+	}
+	if got := entryQty(t, a, owner, deckID, uuidString(card), "main"); got != 1 {
+		t.Fatalf("non-owner patch changed the quantity: %d, want 1", got)
+	}
+}

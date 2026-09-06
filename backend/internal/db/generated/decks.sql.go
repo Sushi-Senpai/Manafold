@@ -386,6 +386,97 @@ func (q *Queries) ListDecksForOwner(ctx context.Context, arg ListDecksForOwnerPa
 	return items, nil
 }
 
+const moveDeckCard = `-- name: MoveDeckCard :execrows
+WITH removed AS (
+    DELETE FROM deck_cards dc
+    USING decks d
+    WHERE dc.deck_id = $1::uuid
+      AND dc.card_id = $2::uuid
+      AND dc.board = $4::text
+      AND dc.deck_id = d.id
+      AND (d.user_id = $5::uuid OR d.anon_token = $6::text)
+    RETURNING dc.print_id, dc.quantity, dc.category
+)
+INSERT INTO deck_cards (deck_id, card_id, print_id, quantity, board, category)
+SELECT $1::uuid, $2::uuid, removed.print_id,
+       removed.quantity, $3::text, removed.category
+FROM removed
+ON CONFLICT (deck_id, card_id, board)
+DO UPDATE SET quantity = deck_cards.quantity + EXCLUDED.quantity
+`
+
+type MoveDeckCardParams struct {
+	DeckID    pgtype.UUID `json:"deck_id"`
+	CardID    pgtype.UUID `json:"card_id"`
+	ToBoard   string      `json:"to_board"`
+	FromBoard string      `json:"from_board"`
+	UserID    pgtype.UUID `json:"user_id"`
+	AnonToken pgtype.Text `json:"anon_token"`
+}
+
+// Moves an entry to another board in one statement: the source row is deleted
+// (ownership-scoped through decks) and re-inserted on the target board,
+// merging into any entry that already exists there for the same card. execrows
+// of 0 means the source entry did not exist or the deck is not the caller's,
+// which the handler maps to 404 (DECK-009).
+// @spec DECK-009, DECK-013
+func (q *Queries) MoveDeckCard(ctx context.Context, arg MoveDeckCardParams) (int64, error) {
+	result, err := q.db.Exec(ctx, moveDeckCard,
+		arg.DeckID,
+		arg.CardID,
+		arg.ToBoard,
+		arg.FromBoard,
+		arg.UserID,
+		arg.AnonToken,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setDeckCardQuantity = `-- name: SetDeckCardQuantity :execrows
+UPDATE deck_cards dc
+SET quantity = $1::integer
+FROM decks d
+WHERE dc.deck_id = $2
+  AND dc.card_id = $3
+  AND dc.board = $4
+  AND dc.deck_id = d.id
+  AND (d.user_id = $5 OR d.anon_token = $6)
+`
+
+type SetDeckCardQuantityParams struct {
+	Quantity  int32       `json:"quantity"`
+	DeckID    pgtype.UUID `json:"deck_id"`
+	CardID    pgtype.UUID `json:"card_id"`
+	Board     string      `json:"board"`
+	UserID    pgtype.UUID `json:"user_id"`
+	AnonToken pgtype.Text `json:"anon_token"`
+}
+
+// Sets an existing entry's quantity in place, ownership-scoped through decks
+// exactly like the other deck_cards mutations. The handler routes a requested
+// quantity of 0 to DeleteDeckCard, so this query is only ever called with a
+// value the deck_cards `quantity > 0` CHECK accepts. execrows of 0 means no
+// entry matched — a wrong board, an absent card, or a deck the caller does not
+// own — which the handler maps to 404 (DECK-009).
+// @spec DECK-009, DECK-012
+func (q *Queries) SetDeckCardQuantity(ctx context.Context, arg SetDeckCardQuantityParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setDeckCardQuantity,
+		arg.Quantity,
+		arg.DeckID,
+		arg.CardID,
+		arg.Board,
+		arg.UserID,
+		arg.AnonToken,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setDeckCommander = `-- name: SetDeckCommander :one
 UPDATE decks
 SET commander_card_id = $1,

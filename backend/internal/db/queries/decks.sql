@@ -92,6 +92,47 @@ WHERE dc.deck_id = sqlc.arg(deck_id)
   AND dc.deck_id = d.id
   AND (d.user_id = sqlc.narg(user_id) OR d.anon_token = sqlc.narg(anon_token));
 
+-- Sets an existing entry's quantity in place, ownership-scoped through decks
+-- exactly like the other deck_cards mutations. The handler routes a requested
+-- quantity of 0 to DeleteDeckCard, so this query is only ever called with a
+-- value the deck_cards `quantity > 0` CHECK accepts. execrows of 0 means no
+-- entry matched — a wrong board, an absent card, or a deck the caller does not
+-- own — which the handler maps to 404 (DECK-009).
+-- @spec DECK-009, DECK-012
+-- name: SetDeckCardQuantity :execrows
+UPDATE deck_cards dc
+SET quantity = sqlc.arg(quantity)::integer
+FROM decks d
+WHERE dc.deck_id = sqlc.arg(deck_id)
+  AND dc.card_id = sqlc.arg(card_id)
+  AND dc.board = sqlc.arg(board)
+  AND dc.deck_id = d.id
+  AND (d.user_id = sqlc.narg(user_id) OR d.anon_token = sqlc.narg(anon_token));
+
+-- Moves an entry to another board in one statement: the source row is deleted
+-- (ownership-scoped through decks) and re-inserted on the target board,
+-- merging into any entry that already exists there for the same card. execrows
+-- of 0 means the source entry did not exist or the deck is not the caller's,
+-- which the handler maps to 404 (DECK-009).
+-- @spec DECK-009, DECK-013
+-- name: MoveDeckCard :execrows
+WITH removed AS (
+    DELETE FROM deck_cards dc
+    USING decks d
+    WHERE dc.deck_id = sqlc.arg(deck_id)::uuid
+      AND dc.card_id = sqlc.arg(card_id)::uuid
+      AND dc.board = sqlc.arg(from_board)::text
+      AND dc.deck_id = d.id
+      AND (d.user_id = sqlc.narg(user_id)::uuid OR d.anon_token = sqlc.narg(anon_token)::text)
+    RETURNING dc.print_id, dc.quantity, dc.category
+)
+INSERT INTO deck_cards (deck_id, card_id, print_id, quantity, board, category)
+SELECT sqlc.arg(deck_id)::uuid, sqlc.arg(card_id)::uuid, removed.print_id,
+       removed.quantity, sqlc.arg(to_board)::text, removed.category
+FROM removed
+ON CONFLICT (deck_id, card_id, board)
+DO UPDATE SET quantity = deck_cards.quantity + EXCLUDED.quantity;
+
 -- @spec DECK-007
 -- name: ListDeckCardEntries :many
 SELECT
