@@ -33,7 +33,7 @@ hover action menu + Alt+1..4 shortcuts (`DECK-090..093`).
 - frontend/src/lib/cardPreview.test.ts — DECK-071, DECK-072 (image source fallback; edge flip + viewport clamp)
 - frontend/src/lib/searchNav.test.ts — DECK-082, DECK-083 (cursor movement + clamping; per-card in-deck quantity)
 - frontend/src/lib/cardActions.test.ts — DECK-091, DECK-092, DECK-093 (context-filtered action list; Alt-chord mapping; commander limited to Copy Card Name)
-- E2E (chrome-devtools-axi, evidence in repo) — DECK-070, DECK-074, DECK-076, DECK-080, DECK-084, DECK-090: hover preview over a search result and a decklist row, enriched results, action menu
+- E2E (Chrome DevTools Protocol against headless Chromium, evidence in repo — see `docs/evidence/builder-previews/README.md`) — DECK-070, DECK-074, DECK-076, DECK-080, DECK-084, DECK-090: hover preview over a search result and a decklist row, enriched results, action menu
 - backend/internal/api/stats_test.go — DECK-051, DECK-052 (curve / pips / sources / category roll-up end to end; non-owner 404)
 - backend/internal/api/imports_test.go — DECK-060 (bulk write in one transaction, board + category preserved)
 - backend/internal/api/auth_test.go — DECK-040, DECK-041 (anonymous deck create/read scoped to the token; claim reassigns and nulls the token)

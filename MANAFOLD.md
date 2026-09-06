@@ -378,10 +378,11 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
     monolith into `frontend/src/components/builder/` (13 components) with pure
     logic in `frontend/src/lib/{cardPreview,searchNav,cardActions}.ts` +
     unit tests; `page.tsx` now just mounts the provider and the panels.
-  - **Dev card seed** (`CARD-040`): `backend/seed/{oracle,default}_cards.json`
-    — ~40 real cards with genuine Scryfall `image_uris` (commanders, a colour /
-    type / MV spread, a double-faced card, one imageless card) — loaded by
-    `cmd/cardsync` when `CARDSYNC_ORACLE_PATH` / `CARDSYNC_DEFAULT_PATH` are
-    set, so a local run and CI both have searchable card data.
+  - **Dev card seed** (`CARD-040`): `backend/seed/cards.json` — ~40 real cards
+    with genuine Scryfall `image_uris` (10 commanders, a colour / type / MV
+    spread, two double-faced cards, one imageless printing) — loaded by
+    `cmd/cardsync`'s `seedOptions` when `CARDSYNC_SEED_PATH` (or the per-pass
+    `CARDSYNC_ORACLE_PATH` / `CARDSYNC_DEFAULT_PATH`) is set, so a local run and
+    CI both have searchable card data.
   - **Deferred**: `DECK-077` (DFC preview flip); tap-to-preview on touch; the
     out-of-scope action-menu items.
