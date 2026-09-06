@@ -19,6 +19,8 @@ import {
   boardCount,
   groupByCategory,
   formatValidationStrip,
+  formatSuggestionsFooter,
+  explainFitLabel,
   type BoardName,
 } from "@/lib/deck";
 import { curveRows, pipRows, categoryRows } from "@/lib/deckstats";
@@ -388,7 +390,7 @@ function ExplainFit({ deckId, cardId }: { deckId: string; cardId: string }) {
         disabled={loading}
         className="text-xs text-foreground/40 hover:text-primary disabled:opacity-50"
       >
-        {loading ? "Explaining…" : text ? "Explain fit again" : "Explain fit"}
+        {explainFitLabel({ loading, hasBlurb: text !== null })}
       </button>
       {error && <p className="mt-0.5 text-xs text-danger">{error}</p>}
       {text && <p className="mt-0.5 text-xs text-foreground/70">{text}</p>}
@@ -790,10 +792,7 @@ function SuggestionsPanel({
               ))}
             </ul>
           )}
-          <p className="mt-3 text-xs text-muted">
-            {result.model}
-            {result.dropped > 0 && ` · ${result.dropped} dropped by the legality check`}
-          </p>
+          <p className="mt-3 text-xs text-muted">{formatSuggestionsFooter(result)}</p>
         </>
       )}
     </div>

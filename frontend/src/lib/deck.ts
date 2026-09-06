@@ -3,7 +3,7 @@
 //
 // @spec DECK-007, DECK-008
 
-import type { DeckEntry, ValidationReport } from "./api";
+import type { AISuggestResponse, DeckEntry, ValidationReport } from "./api";
 
 export const BOARD_ORDER = ["command", "main", "maybe", "sideboard"] as const;
 export type BoardName = (typeof BOARD_ORDER)[number];
@@ -66,4 +66,27 @@ export function formatValidationStrip(report: ValidationReport): string[] {
     lines.push("legal");
   }
   return lines;
+}
+
+// formatSuggestionsFooter renders the line under the AI suggestions list: the
+// model id, and — when the anti-hallucination gate rejected one or more
+// model-named cards — how many it dropped. Drops are reported, never quietly
+// back-filled with a substitute.
+//
+// @spec AI-013, AI-020
+export function formatSuggestionsFooter(result: AISuggestResponse): string {
+  if (result.dropped > 0) {
+    return `${result.model} · ${result.dropped} dropped by the legality check`;
+  }
+  return result.model;
+}
+
+// explainFitLabel is the caption on a decklist entry's "Explain fit" button:
+// it shows progress while a blurb is being fetched and, once one has been
+// shown, invites a fresh take.
+//
+// @spec AI-021
+export function explainFitLabel(state: { loading: boolean; hasBlurb: boolean }): string {
+  if (state.loading) return "Explaining…";
+  return state.hasBlurb ? "Explain fit again" : "Explain fit";
 }
