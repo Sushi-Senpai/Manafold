@@ -1,0 +1,57 @@
+# Round 2 targeted validation — 2026-09-06T18:24:18Z
+# Environment: no reachable Postgres (port 5432 up but credentials unknown; no docker/psql/initdb).
+# DB-backed suites therefore SKIP here and are covered by CI's Postgres service container (per intent).
+
+## go build ./...
+build OK
+
+## Card-sync fix — regression reproduced against BASE commit 3539b91 (cardsync.go + cardsync_test.go temporarily reverted, throwaway repro test added, then fully restored):
+    pre-fix find("oracle_cards") -> uri="" err=<nil>          # Scryfall manifest carries only jsonl_download_uri; old struct read download_uri
+    pre-fix streamObjects(NDJSON) -> err=expected a JSON array, got {   # old reader wanted a single JSON array, exports are newline-delimited
+  => matches the reported symptom: find() returned "", mirror never populated, card search/autocomplete empty.
+
+## Card-sync fix — new HTTP-layer tests on HEAD (adf9753), no DB:
+--- PASS: TestFetcher_SendsEtiquetteHeadersAndRetriesOn429 (0.02s)
+--- PASS: TestFetcher_NonRetryableStatusIsAnError (0.00s)
+--- PASS: TestManifest_ResolvesJSONLDownloadURI (0.00s)
+--- PASS: TestGetBulk_InflatesGzippedJSONL (0.00s)
+--- PASS: TestGetBulk_NonGzipBodyIsAnError (0.00s)
+--- PASS: TestStreamJSONObjects_DecodesNewlineDelimited (0.00s)
+ok  	manafold-backend/internal/cardsync	(cached)
+
+## internal/ai unit suite (cost table / cap / disabled stub / enabled), no DB:
+--- PASS: TestDisabled_ReturnsNotConfigured (0.00s)
+--- PASS: TestNewAnthropic_IsEnabled (0.00s)
+--- PASS: TestEstimateCost_PerFeatureModelPricing (0.00s)
+--- PASS: TestEstimateCost_UnknownModelFallsBackToSonnet (0.00s)
+--- PASS: TestCapSuggestions (0.00s)
+ok  	manafold-backend/internal/ai	(cached)
+
+## internal/config — AI env var handling, no DB:
+--- PASS: TestLoad_RequiresDatabaseURL (0.00s)
+--- PASS: TestLoad_RequiresFrontendURL (0.00s)
+--- PASS: TestLoadCardsync_DoesNotRequireFrontendURL (0.00s)
+--- PASS: TestLoadCardsync_RequiresDatabaseURL (0.00s)
+--- PASS: TestLoad_TrustedProxyCountFailSafe (0.00s)
+--- PASS: TestLoad_AIEnabledRequiresAnthropicKey (0.00s)
+--- PASS: TestLoad_AIDisabledIgnoresMissingKey (0.00s)
+--- PASS: TestLoad_AILimitDefaultsAndFailSafe (0.00s)
+--- PASS: TestLoad_DevAuthAndPortDefault (0.00s)
+ok  	manafold-backend/internal/config	0.003s
+
+## DB-backed M4 + cardsync suites this round (no Postgres) -> SKIP:
+    total SKIP (needs CI Postgres): 34
+✔ groupByCategory buckets and sorts entries, folding blanks into Uncategorised (5.050163ms)
+✔ boardCount sums quantities (0.242726ms)
+✔ formatValidationStrip renders count, violations, and commander issues (0.168727ms)
+✔ formatValidationStrip tolerates a null commander_issues from the API (0.083165ms)
+✔ formatValidationStrip says legal for a clean 100-card deck (0.108523ms)
+✔ formatSuggestionsFooter shows just the model id when the gate dropped nothing (0.963251ms)
+✔ formatSuggestionsFooter appends the dropped count when the gate rejected cards (0.164593ms)
+✔ explainFitLabel reflects the fetch state and whether a blurb is already shown (0.09122ms)
+✔ curveRows fills every bucket in order, zero for gaps (1.121113ms)
+✔ pipRows pairs demand with sources and hides untouched colours (0.179923ms)
+✔ categoryRows merges targets with counts and flags under/over/ok (4.287445ms)
+ℹ tests 11
+ℹ pass 11
+ℹ fail 0

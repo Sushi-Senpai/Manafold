@@ -1,0 +1,17 @@
+# AI endpoints with AI_ENABLED=false (shared precheck: 503 disabled is the first gate)
+
+$ curl -i -X POST http://localhost:8081/api/decks/1b8e0695-5d24-44c8-9ac2-34a7c8b590cd/suggestions
+HTTP/1.1 503 Service Unavailable
+Content-Type: application/json
+Date: Sun, 06 Sep 2026 18:01:07 GMT
+Content-Length: 43
+
+{"error":"AI features are not configured"}
+
+$ curl -i -X POST http://localhost:8081/api/decks/1b8e0695-5d24-44c8-9ac2-34a7c8b590cd/cards/00000000-0000-0000-0000-000000000000/explain
+HTTP/1.1 503 Service Unavailable
+Content-Type: application/json
+Date: Sun, 06 Sep 2026 18:01:07 GMT
+Content-Length: 43
+
+{"error":"AI features are not configured"}

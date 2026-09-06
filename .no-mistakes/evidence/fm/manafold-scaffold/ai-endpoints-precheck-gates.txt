@@ -1,0 +1,28 @@
+# AI_ENABLED=true, dummy key, DEV_AUTH owner — precheck gates that run BEFORE any model call
+
+## Suggestions on a deck with no commander -> 422 (AI-020 / endpoint precondition)
+$ curl -i -X POST http://localhost:8081/api/decks/$D/suggestions
+HTTP/1.1 422 Unprocessable Entity
+Content-Type: application/json
+Date: Sun, 06 Sep 2026 18:02:18 GMT
+Content-Length: 61
+
+{"error":"assign a commander before requesting suggestions"}
+
+## Explain a card that is NOT on the deck's main/command board -> 404 (AI endpoint: 404 unless card on main/command board)
+$ curl -i -X POST http://localhost:8081/api/decks/$D/cards/11111111-1111-1111-1111-111111111111/explain
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+Date: Sun, 06 Sep 2026 18:02:18 GMT
+Content-Length: 66
+
+{"error":"that card is not on this deck's main or command board"}
+
+## Suggestions on a deck the caller does not own -> 404 (ownership before quota, AI-035)
+$ curl -i -X POST http://localhost:8081/api/decks/99999999-9999-9999-9999-999999999999/suggestions
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+Date: Sun, 06 Sep 2026 18:02:18 GMT
+Content-Length: 27
+
+{"error":"deck not found"}

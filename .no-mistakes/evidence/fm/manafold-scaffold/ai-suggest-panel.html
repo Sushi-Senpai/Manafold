@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Manafold — AI suggestions panel (rendered from the M4 builder JSX)</title>
+<style>
+  /* Manafold "Slate & Signet" LIGHT workspace theme — literal token values
+     copied from frontend/src/app/globals.css .workspace block. */
+  :root{
+    --background:#f7f8fa; --surface:#ffffff; --surface-2:#f0f2f6;
+    --foreground:#1b2230; --muted:#5b6472; --primary:#5b3fd4;
+    --primary-ink:#ffffff; --border:#e3e6ec; --danger:#c1372f;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--background); color:var(--foreground);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:32px; display:flex; flex-direction:column; gap:24px; align-items:flex-start;
+  }
+  h1{font-size:15px;margin:0 0 4px;font-weight:700}
+  .cap{font-size:12px;color:var(--muted);margin:0 0 16px;max-width:760px;line-height:1.5}
+  .col{display:flex;flex-direction:column;gap:20px;width:560px}
+
+  /* ---- <SuggestionsPanel> : rounded-lg border border-border bg-surface p-4 ---- */
+  .panel{border:1px solid var(--border);border-radius:8px;background:var(--surface);padding:16px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .panel-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0}
+  .btn-primary{
+    border:0;border-radius:6px;background:var(--primary);color:var(--primary-ink);
+    padding:4px 12px;font-size:12px;font-weight:500;cursor:pointer
+  }
+  .btn-primary[disabled]{opacity:.5;cursor:default}
+  .hint{margin:12px 0 0;font-size:14px;color:var(--muted)}
+
+  ul.suggestions{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+  ul.suggestions > li{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;font-size:14px}
+  .s-name{font-weight:500}
+  .s-type{font-size:12px;color:var(--muted)}
+  .s-reason{font-size:12px;color:rgba(27,34,48,.7);margin:2px 0 0}
+  .btn-add{
+    flex:none;border:1px solid var(--border);background:transparent;border-radius:6px;
+    padding:4px 8px;font-size:12px;cursor:pointer;color:var(--foreground)
+  }
+  .footer{margin:12px 0 0;font-size:12px;color:var(--muted)}
+
+  /* ---- <Decklist> entry + <ExplainFit> ---- */
+  .decklist{border:1px solid var(--border);border-radius:8px;background:var(--surface);padding:16px}
+  .group-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 6px}
+  ul.entries{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+  ul.entries > li{padding:4px 0;font-size:14px}
+  .entry-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .qty{color:rgba(27,34,48,.5)}
+  .btn-remove{border:0;background:transparent;font-size:12px;color:rgba(27,34,48,.4);cursor:pointer}
+  .explain{margin-top:2px}
+  .btn-explain{border:0;background:transparent;padding:0;font-size:12px;color:rgba(27,34,48,.4);cursor:pointer}
+  .blurb{margin:2px 0 0;font-size:12px;color:rgba(27,34,48,.7)}
+  .tag{display:inline-block;margin-left:8px;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:500}
+  .tag-id{background:rgba(193,55,47,.15);color:#c1372f}
+</style>
+</head>
+<body>
+
+<div>
+  <h1>Manafold M4 — “AI suggestions” builder panel &amp; per-card “Explain fit”</h1>
+  <p class="cap">
+    Static render of the JSX added in this branch
+    (<code>frontend/src/app/(app)/decks/[id]/page.tsx</code> — <code>SuggestionsPanel</code> and
+    <code>ExplainFit</code>), using the light Slate&nbsp;&amp;&nbsp;Signet workspace tokens and
+    representative <code>AISuggestResponse</code> data. Every card shown has already passed the
+    server anti-hallucination gate; the footer shows the model id and the dropped count —
+    the exact string produced by <code>formatSuggestionsFooter()</code>, which is unit-tested
+    in <code>frontend/src/lib/deck.test.ts</code>. The live panel only populates after a real
+    Anthropic call, which needs the developer-held key that CI deliberately omits.
+  </p>
+</div>
+
+<div class="col">
+
+  <!-- State 1: no commander assigned -->
+  <div class="panel">
+    <div class="panel-head">
+      <h2 class="panel-title">AI suggestions</h2>
+      <button class="btn-primary" disabled>Suggest cards</button>
+    </div>
+    <p class="hint">Assign a commander to get suggestions.</p>
+  </div>
+
+  <!-- State 2: populated, gate dropped 3 -->
+  <div class="panel">
+    <div class="panel-head">
+      <h2 class="panel-title">AI suggestions</h2>
+      <button class="btn-primary">Refresh</button>
+    </div>
+    <ul class="suggestions">
+      <li>
+        <div>
+          <span class="s-name">Cultivate</span> <span class="s-type">Sorcery</span>
+          <p class="s-reason">Ramps and fixes toward your five-colour commander while keeping land drops on curve.</p>
+        </div>
+        <button class="btn-add">Add</button>
+      </li>
+      <li>
+        <div>
+          <span class="s-name">Farseek</span> <span class="s-type">Sorcery</span>
+          <p class="s-reason">One-mana fixing that fetches a Plains-type dual, smoothing the early turns.</p>
+        </div>
+        <button class="btn-add">Add</button>
+      </li>
+      <li>
+        <div>
+          <span class="s-name">Eternal Witness</span> <span class="s-type">Creature — Human Shaman</span>
+          <p class="s-reason">Recurs the best card in your graveyard and pairs with any blink or sacrifice line.</p>
+        </div>
+        <button class="btn-add">Add</button>
+      </li>
+      <li>
+        <div>
+          <span class="s-name">Rhystic Study</span> <span class="s-type">Enchantment</span>
+          <p class="s-reason">Repeatable card advantage that taxes every opponent spell in a slower Commander pod.</p>
+        </div>
+        <button class="btn-add">Add</button>
+      </li>
+    </ul>
+    <p class="footer">claude-sonnet-5 · 3 dropped by the legality check</p>
+  </div>
+
+  <!-- State 3: populated, nothing dropped -->
+  <div class="panel">
+    <div class="panel-head">
+      <h2 class="panel-title">AI suggestions</h2>
+      <button class="btn-primary">Refresh</button>
+    </div>
+    <ul class="suggestions">
+      <li>
+        <div>
+          <span class="s-name">Sol Ring</span> <span class="s-type">Artifact</span>
+          <p class="s-reason">Universal acceleration — a turn-one Sol Ring is a full turn ahead on mana.</p>
+        </div>
+        <button class="btn-add">Add</button>
+      </li>
+    </ul>
+    <p class="footer">claude-sonnet-5</p>
+  </div>
+
+  <!-- Decklist with ExplainFit on main/command entries -->
+  <div class="decklist">
+    <p class="group-label">Ramp — main</p>
+    <ul class="entries">
+      <li>
+        <div class="entry-row">
+          <span>Cultivate</span>
+          <button class="btn-remove">remove</button>
+        </div>
+        <div class="explain">
+          <button class="btn-explain">Explain fit</button>
+        </div>
+      </li>
+      <li>
+        <div class="entry-row">
+          <span>Kodama's Reach</span>
+          <button class="btn-remove">remove</button>
+        </div>
+        <div class="explain">
+          <button class="btn-explain">Explain fit again</button>
+          <p class="blurb">This sits in your ramp package alongside Cultivate: it fixes for all five
+            colours your commander demands and puts the extra land into hand, so the turn-six
+            payoff spells are castable on time.</p>
+        </div>
+      </li>
+      <li>
+        <div class="entry-row">
+          <span>Explaining…</span>
+        </div>
+        <div class="explain">
+          <button class="btn-explain" disabled style="opacity:.5">Explaining…</button>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

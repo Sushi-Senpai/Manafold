@@ -1,0 +1,70 @@
+### go build ./...
+build OK
+
+### M4 AI backend suite (internal/api, live Postgres 16)
+=== RUN   TestSuggest_GateDropsIllegalAndDuplicateCards
+--- PASS: TestSuggest_GateDropsIllegalAndDuplicateCards (0.04s)
+=== RUN   TestSuggest_AnonymousForbidden
+--- PASS: TestSuggest_AnonymousForbidden (0.02s)
+=== RUN   TestSuggest_NoCommander
+--- PASS: TestSuggest_NoCommander (0.01s)
+=== RUN   TestSuggest_DisabledAssistant
+--- PASS: TestSuggest_DisabledAssistant (0.02s)
+=== RUN   TestSuggest_DailyLimitReached
+--- PASS: TestSuggest_DailyLimitReached (0.02s)
+=== RUN   TestSuggest_GlobalSpendCeiling
+--- PASS: TestSuggest_GlobalSpendCeiling (0.02s)
+=== RUN   TestSuggest_ProviderErrorIsNotMetered
+--- PASS: TestSuggest_ProviderErrorIsNotMetered (0.02s)
+=== RUN   TestSuggest_BilledCallMeteredWhenModelReturnsError
+--- PASS: TestSuggest_BilledCallMeteredWhenModelReturnsError (0.02s)
+=== RUN   TestSuggest_BilledCallMeteredWhenGateErrors
+--- PASS: TestSuggest_BilledCallMeteredWhenGateErrors (0.03s)
+=== RUN   TestExplain_BilledCallMeteredWhenModelReturnsError
+--- PASS: TestExplain_BilledCallMeteredWhenModelReturnsError (0.03s)
+=== RUN   TestExplain_CardMustBeInDeck
+--- PASS: TestExplain_CardMustBeInDeck (0.03s)
+=== RUN   TestAIEndpoints_NonOwnerGets404BeforeQuotaGates
+=== RUN   TestAIEndpoints_NonOwnerGets404BeforeQuotaGates/caller_at_their_per-user_daily_limit
+=== RUN   TestAIEndpoints_NonOwnerGets404BeforeQuotaGates/global_monthly_spend_ceiling_tripped
+--- PASS: TestAIEndpoints_NonOwnerGets404BeforeQuotaGates (0.04s)
+=== RUN   TestListSuggestionCandidates_PoolFilters
+--- PASS: TestListSuggestionCandidates_PoolFilters (0.03s)
+PASS
+ok  	manafold-backend/internal/api	(cached)
+
+### internal/ai unit suite
+--- PASS: TestDisabled_ReturnsNotConfigured (0.00s)
+--- PASS: TestNewAnthropic_IsEnabled (0.00s)
+--- PASS: TestEstimateCost_PerFeatureModelPricing (0.00s)
+--- PASS: TestEstimateCost_UnknownModelFallsBackToSonnet (0.00s)
+--- PASS: TestCapSuggestions (0.00s)
+PASS
+ok  	manafold-backend/internal/ai	(cached)
+
+### card-sync fix: internal/cardsync full package (live Postgres 16)
+--- PASS: TestDeriveSingletonLimit (0.00s)
+--- PASS: TestDeriveCanBeCommander (0.00s)
+--- PASS: TestFetcher_SendsEtiquetteHeadersAndRetriesOn429 (0.02s)
+--- PASS: TestFetcher_NonRetryableStatusIsAnError (0.00s)
+--- PASS: TestManifest_ResolvesJSONLDownloadURI (0.00s)
+--- PASS: TestGetBulk_InflatesGzippedJSONL (0.00s)
+--- PASS: TestGetBulk_NonGzipBodyIsAnError (0.00s)
+--- PASS: TestStreamJSONObjects_DecodesNewlineDelimited (0.00s)
+--- PASS: TestRun_IngestsFixture_DerivesFields (0.04s)
+--- PASS: TestRun_EndToEnd_ScryfallShapedGzipManifest (0.04s)
+PASS
+ok  	manafold-backend/internal/cardsync	0.116s
+
+### config: AI env var handling
+--- PASS: TestLoad_RequiresDatabaseURL (0.00s)
+--- PASS: TestLoad_RequiresFrontendURL (0.00s)
+--- PASS: TestLoadCardsync_DoesNotRequireFrontendURL (0.00s)
+--- PASS: TestLoadCardsync_RequiresDatabaseURL (0.00s)
+--- PASS: TestLoad_TrustedProxyCountFailSafe (0.00s)
+--- PASS: TestLoad_AIEnabledRequiresAnthropicKey (0.00s)
+--- PASS: TestLoad_AIDisabledIgnoresMissingKey (0.00s)
+--- PASS: TestLoad_AILimitDefaultsAndFailSafe (0.00s)
+--- PASS: TestLoad_DevAuthAndPortDefault (0.00s)
+PASS
+ok  	manafold-backend/internal/config	0.004s
