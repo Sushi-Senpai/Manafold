@@ -341,6 +341,73 @@ func (q *Queries) ListBanlistOverrides(ctx context.Context) ([]ListBanlistOverri
 	return items, nil
 }
 
+const listSuggestionCandidates = `-- name: ListSuggestionCandidates :many
+SELECT id, scryfall_oracle_id, name, mana_cost, mana_value, type_line, oracle_text, colors, color_identity, produced_mana, keywords, power, toughness, loyalty, legalities, is_game_changer, is_reserved, layout, card_faces, singleton_limit, can_be_commander, commander_color_identity, edhrec_rank, created_at, updated_at FROM cards
+WHERE color_identity <@ $1::text[]
+  AND COALESCE(legalities->>'commander', '') <> 'banned'
+  AND edhrec_rank IS NOT NULL
+  AND id <> ALL($2::uuid[])
+ORDER BY edhrec_rank ASC
+LIMIT $3
+`
+
+type ListSuggestionCandidatesParams struct {
+	DeckIdentity []string      `json:"deck_identity"`
+	ExcludeIds   []pgtype.UUID `json:"exclude_ids"`
+	Lim          int32         `json:"lim"`
+}
+
+// The AI "suggest & explain" candidate pool: real cards ranked by edhrec_rank,
+// inside the deck's colour identity, not banned in Commander, and not already in
+// the deck (exclude_ids carries the deck's card ids plus its commander/partner).
+// The language model curates this pool; it never enumerates cards itself.
+// @spec AI-011
+func (q *Queries) ListSuggestionCandidates(ctx context.Context, arg ListSuggestionCandidatesParams) ([]Card, error) {
+	rows, err := q.db.Query(ctx, listSuggestionCandidates, arg.DeckIdentity, arg.ExcludeIds, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Card
+	for rows.Next() {
+		var i Card
+		if err := rows.Scan(
+			&i.ID,
+			&i.ScryfallOracleID,
+			&i.Name,
+			&i.ManaCost,
+			&i.ManaValue,
+			&i.TypeLine,
+			&i.OracleText,
+			&i.Colors,
+			&i.ColorIdentity,
+			&i.ProducedMana,
+			&i.Keywords,
+			&i.Power,
+			&i.Toughness,
+			&i.Loyalty,
+			&i.Legalities,
+			&i.IsGameChanger,
+			&i.IsReserved,
+			&i.Layout,
+			&i.CardFaces,
+			&i.SingletonLimit,
+			&i.CanBeCommander,
+			&i.CommanderColorIdentity,
+			&i.EdhrecRank,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const resolveCardByName = `-- name: ResolveCardByName :one
 SELECT id, scryfall_oracle_id, name, mana_cost, mana_value, type_line, oracle_text, colors, color_identity, produced_mana, keywords, power, toughness, loyalty, legalities, is_game_changer, is_reserved, layout, card_faces, singleton_limit, can_be_commander, commander_color_identity, edhrec_rank, created_at, updated_at FROM cards
 WHERE lower(name) = lower($1::text)

@@ -20,8 +20,13 @@ decklist. **M2** added import/export + deterministic deck stats + the Slate &
 Signet palette. **M3** added Manafold's own email + password accounts (argon2id),
 server-side sessions, per-IP rate limiting on login/register, and anonymous deck
 drafts claimable on sign-in; `AnonOrSession` replaces the `DEV_AUTH` stub as the
-default auth path (the stub stays available for local/CI). All milestones land on
-one branch as a single growing PR.
+default auth path (the stub stays available for local/CI). **M4** added AI assist
+— a "suggest cards" panel and single-card fit blurbs backed by Anthropic Claude
+(`internal/ai`), gated by `AI_ENABLED` (stub + `503` when off), with the
+anti-hallucination gate reusing `internal/deckrules`, per-user daily call caps,
+and a global monthly spend ceiling; a follow-on fix repaired `internal/cardsync`
+against Scryfall's current bulk API (`jsonl_download_uri` + gzipped JSONL). All
+milestones land on one branch as a single growing PR.
 
 ## Vision
 
@@ -103,7 +108,7 @@ Mirrors Waystone. See `docs/high-level-design.md` § Key Design Decisions and
 | Migrations | [golang-migrate](https://github.com/golang-migrate/migrate), embedded via `//go:embed` and applied by the API binary at startup before the pool opens |
 | Database | PostgreSQL 16 (Neon serverless in prod, direct non-pooled connection string) |
 | Card data | Mirror of the Scryfall bulk-data exports, synced daily |
-| AI provider | Anthropic Claude, `github.com/anthropics/anthropic-sdk-go`, developer-held key (no AI code ships in M1) |
+| AI provider | Anthropic Claude, `github.com/anthropics/anthropic-sdk-go`, developer-held key; `AI_ENABLED` gates it, stub + `503` when off (M4; suggest & explain) |
 | Auth | Manafold email + password (argon2id) + server-side sessions + `DEV_AUTH` stub (M3; M1 is stub-only) |
 | Hosting | Vercel (frontend) + Render Docker (backend) + Neon (Postgres); card-sync as a Render cron |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) with a Postgres service container, plus the shared no-mistakes pipeline (`.no-mistakes.yaml` sets `ci: { no_ci: true }`) |
@@ -257,3 +262,78 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
     (`ACCT-031`, waits on a transactional email sender — `email_verified_at` is
     stored but not enforced); sign-out-everywhere (`ACCT-032`); a shared
     rate-limit store for a multi-instance deploy.
+
+- **2026-09-03** — M4 increment (same branch, same growing PR). AI assist v1:
+  "suggest & explain" and the single-card fit blurb, per captain decision D1
+  (Anthropic Claude, developer-held key, no BYOK).
+  - **`internal/ai`** (`AI-001`, `AI-003`, `AI-004`): an `Assistant` interface
+    (`Enabled` / `Suggest` / `Explain`) with two implementations —
+    `NewAnthropic(key)`, one shared `anthropic-sdk-go` client reused per
+    request, and `Disabled()`, a stub whose methods return `ErrNotConfigured`.
+    `claude-sonnet-5` for suggestions, `claude-haiku-4-5` for the blurb — the
+    cheap tiers the design assigns each feature. The package holds no database
+    dependency: the handler passes it plain data plus, for suggest, a
+    `SearchFunc` closure over the mirror.
+  - **Enable switch** (`AI-002`): `AI_ENABLED` (default false). When true and
+    `ANTHROPIC_API_KEY` is missing, startup fails naming the key; when unset,
+    the wired assistant is `Disabled()` and every AI endpoint answers `503`, so
+    dev and CI build and boot with no key. Explicit rather than inferred from
+    the key's presence, so an accidental key never turns paid features on.
+  - **Suggest loop** (`AI-011`, `AI-012`, `AI-020`): the candidate pool is a
+    `cards` query ordered by `edhrec_rank`, filtered to the deck's colour
+    identity, non-banned, and not already in the deck — never the model's own
+    enumeration. The model runs a bounded `Messages.New` tool loop with a
+    `search_cards` tool (results forced through the same identity + legality
+    filter) and a `submit_suggestions` tool that ends the loop; a final forced
+    `submit_suggestions` call bounds the worst case.
+  - **Anti-hallucination gate** (`AI-010`, `AI-013`): every model-named card is
+    resolved with `ResolveCardByName` and re-validated by `internal/deckrules`
+    for the deck's colour identity; anything that does not resolve, is banned,
+    is off-colour, is already in the deck, or repeats an earlier survivor is
+    dropped. Nothing is substituted; the drop count is returned. One definition
+    of "legal for this deck" — `deckrules` — is reused, not reimplemented.
+  - **Cost control** (`AI-030..035`): `ai_usage` table
+    (`user_id, usage_date, feature` PK; call / token / `cost_micros` totals),
+    written whenever a model call comes back with token counts — a call that
+    reached the model has incurred cost and is metered even if its result is
+    unusable (no parseable suggestions, a truncated payload, empty prose) or a
+    later step (a gate database error) fails the request; only a call that never
+    reached the model escapes the meter. The assistant returns its accumulated
+    `Usage` on every error path and the handler meters it before mapping the
+    error to a status. Per-user
+    daily call caps per feature (`AI_SUGGEST_DAILY_LIMIT` 20,
+    `AI_EXPLAIN_DAILY_LIMIT` 40) → `429`; a global month-to-date estimated-spend
+    ceiling (`AI_MONTHLY_SPEND_USD` 50, 0 disables) → `503`; anonymous-draft
+    callers get `403` — AI unlocks on sign-in. Ownership is checked before the
+    quota and ceiling gates (`AI-035`) so a non-owner always gets `404` and
+    cannot probe either. Cost is estimated from returned token counts times a
+    per-model price table, in millionths of a USD.
+  - **Endpoints**: `POST /api/decks/{id}/suggestions` (`422` with no commander;
+    `502` on a provider error — suggestions have no non-model fallback) and
+    `POST /api/decks/{id}/cards/{cardId}/explain` (`404` unless the card is on
+    the deck's main or command board). Both behind the shared precheck:
+    `503` disabled → `403` anonymous → `404` not the caller's deck → `503`
+    ceiling → `429` daily limit.
+  - **Frontend**: a "Suggest cards" panel on the builder that shows only
+    gate-approved cards with the model's rationale and an inline "Add", plus the
+    dropped count and the model id.
+  - **Known gap** (LLD open question): both quotas are check-then-act, so
+    concurrent requests can slip a few calls over a limit; immaterial on one
+    small instance, a stricter design reserves the slot in the read statement.
+  - **Deferred / unchanged**: deck-health prose (`AI-022`, M5) and the bracket
+    estimate (`AI-023`, M6) remain gaps; EDHREC high-synergy data (`AI-040`) is
+    still blocked on a Terms-of-Service decision.
+
+- **2026-09-06** — Card-sync bulk-download fix (`card-data` segment, ships in the
+  M4 PR). A live run of the merged M1–M3 app failed: `cardsync` read the bulk
+  manifest's `download_uri` and decoded a JSON array, but Scryfall now exposes
+  only `jsonl_download_uri`, pointing at a gzip-compressed newline-delimited-JSON
+  file on `data.scryfall.io` served as `application/gzip` with no
+  `Content-Encoding`. The M1 implementation had diverged from the `card-data`
+  design, which already described the exports as gzipped JSONL. `internal/cardsync`
+  now follows `jsonl_download_uri`, inflates the body with `compress/gzip`
+  (`getBulk`), and decodes the stream object-by-object with `streamJSONObjects`;
+  a manifest entry missing the field fails the run. Fixtures moved to `.jsonl`.
+  `CARD-001` / `CARD-008` refined and `CARD-012` added, each with an httptest
+  covering the manifest lookup, the gunzip-then-JSONL decode, and the non-gzip
+  error path.

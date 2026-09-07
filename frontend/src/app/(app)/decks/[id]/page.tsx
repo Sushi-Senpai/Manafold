@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import {
   api,
   ApiError,
+  type AISuggestResponse,
   type CardSummary,
   type DeckDetail,
   type DeckStats,
@@ -18,6 +19,8 @@ import {
   boardCount,
   groupByCategory,
   formatValidationStrip,
+  formatSuggestionsFooter,
+  explainFitLabel,
   type BoardName,
 } from "@/lib/deck";
 import { curveRows, pipRows, categoryRows } from "@/lib/deckstats";
@@ -82,6 +85,8 @@ export default function BuilderPage() {
         <ImportExportPanel deckId={id} onImported={reload} />
         <StatsPanel deckId={id} detail={detail} />
       </section>
+
+      <SuggestionsPanel deckId={id} detail={detail} onChange={reload} />
 
       <ValidationStrip report={report} />
     </div>
@@ -309,31 +314,33 @@ function Decklist({
                   )}
                   <ul className="flex flex-col">
                     {group.entries.map((e) => (
-                      <li
-                        key={e.entry_id}
-                        className="flex items-center justify-between gap-2 py-1 text-sm"
-                      >
-                        <span className="truncate">
-                          {e.quantity > 1 && <span className="text-foreground/50">{e.quantity}× </span>}
-                          {e.name}
-                          {e.color_identity_violation && (
-                            <span className="ml-2 rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-600">
-                              outside identity{e.offending_colors.length > 0 && `: ${e.offending_colors.join("")}`}
-                            </span>
+                      <li key={e.entry_id} className="py-1 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate">
+                            {e.quantity > 1 && <span className="text-foreground/50">{e.quantity}× </span>}
+                            {e.name}
+                            {e.color_identity_violation && (
+                              <span className="ml-2 rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-600">
+                                outside identity{e.offending_colors.length > 0 && `: ${e.offending_colors.join("")}`}
+                              </span>
+                            )}
+                            {e.singleton_violation && (
+                              <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                                singleton
+                              </span>
+                            )}
+                          </span>
+                          {board !== "command" && (
+                            <button
+                              onClick={() => remove(e.card_id, e.board)}
+                              className="shrink-0 text-xs text-foreground/40 hover:text-red-600"
+                            >
+                              remove
+                            </button>
                           )}
-                          {e.singleton_violation && (
-                            <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                              singleton
-                            </span>
-                          )}
-                        </span>
-                        {board !== "command" && (
-                          <button
-                            onClick={() => remove(e.card_id, e.board)}
-                            className="shrink-0 text-xs text-foreground/40 hover:text-red-600"
-                          >
-                            remove
-                          </button>
+                        </div>
+                        {(board === "main" || board === "command") && (
+                          <ExplainFit deckId={deckId} cardId={e.card_id} />
                         )}
                       </li>
                     ))}
@@ -347,6 +354,46 @@ function Decklist({
           <p className="text-sm text-foreground/40">Empty. Set a commander and add some cards.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+// ---- ai explain fit --------------------------------------------------
+
+// Single-card fit blurb (@spec AI-021): a per-card action on the decklist that
+// asks the model why this card belongs alongside the deck's commander. The card
+// is already on a deck board, so the server accepts it; the blurb, its loading
+// state, and any error render inline under the card.
+function ExplainFit({ deckId, cardId }: { deckId: string; cardId: string }) {
+  const [text, setText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.explainCard(deckId, cardId);
+      setText(res.explanation);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not explain this card");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mt-0.5">
+      <button
+        type="button"
+        onClick={run}
+        disabled={loading}
+        className="text-xs text-foreground/40 hover:text-primary disabled:opacity-50"
+      >
+        {explainFitLabel({ loading, hasBlurb: text !== null })}
+      </button>
+      {error && <p className="mt-0.5 text-xs text-danger">{error}</p>}
+      {text && <p className="mt-0.5 text-xs text-foreground/70">{text}</p>}
     </div>
   );
 }
@@ -646,6 +693,106 @@ function StatsPanel({ deckId, detail }: { deckId: string; detail: DeckDetail }) 
               </li>
             ))}
           </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---- ai suggestions ----------------------------------------------------
+
+// "Suggest & explain" (@spec AI-020): one button runs the deck through the
+// model; every card shown here has already passed the server-side
+// anti-hallucination gate, so it is real, legal, in colour identity, and not
+// already in the deck. Dropped cards are counted, never replaced.
+function SuggestionsPanel({
+  deckId,
+  detail,
+  onChange,
+}: {
+  deckId: string;
+  detail: DeckDetail;
+  onChange: () => void;
+}) {
+  const [result, setResult] = useState<AISuggestResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [adding, setAdding] = useState<string | null>(null);
+
+  const hasCommander = detail.commander !== null;
+
+  async function run() {
+    setLoading(true);
+    setMessage(null);
+    try {
+      setResult(await api.suggestDeck(deckId));
+    } catch (e) {
+      setMessage(e instanceof ApiError ? e.message : "Suggestions failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function add(cardId: string) {
+    setAdding(cardId);
+    try {
+      await api.addCard(deckId, cardId, "main");
+      setResult((r) =>
+        r ? { ...r, suggestions: r.suggestions.filter((s) => s.card.id !== cardId) } : r,
+      );
+      onChange();
+    } catch (e) {
+      setMessage(e instanceof ApiError ? e.message : "Could not add card");
+    } finally {
+      setAdding(null);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">AI suggestions</h2>
+        <button
+          type="button"
+          onClick={run}
+          disabled={!hasCommander || loading}
+          className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+        >
+          {loading ? "Thinking…" : result ? "Refresh" : "Suggest cards"}
+        </button>
+      </div>
+
+      {!hasCommander && (
+        <p className="mt-3 text-sm text-muted">Assign a commander to get suggestions.</p>
+      )}
+      {message && <p className="mt-3 text-sm text-danger">{message}</p>}
+
+      {result && (
+        <>
+          {result.suggestions.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">No suggestions survived the legality check.</p>
+          ) : (
+            <ul className="mt-3 flex flex-col gap-2">
+              {result.suggestions.map((s) => (
+                <li key={s.card.id} className="flex items-start justify-between gap-3 text-sm">
+                  <div>
+                    <span className="font-medium">{s.card.name}</span>{" "}
+                    <span className="text-xs text-muted">{s.card.type_line}</span>
+                    <p className="text-xs text-foreground/70">{s.reason}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => add(s.card.id)}
+                    disabled={adding === s.card.id}
+                    className="shrink-0 rounded-md border border-border px-2 py-1 text-xs disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-xs text-muted">{formatSuggestionsFooter(result)}</p>
         </>
       )}
     </div>

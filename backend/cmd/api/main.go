@@ -40,12 +40,20 @@ func main() {
 	}
 	defer pool.Close()
 
+	assistant := ai.Disabled()
+	if cfg.AIEnabled {
+		assistant = ai.NewAnthropic(cfg.AnthropicAPIKey)
+	}
+
 	handler := server.New(server.Deps{
-		Pool:              pool,
-		Queries:           db.New(pool),
-		AI:                ai.NewClient(),
-		DevAuth:           cfg.DevAuth,
-		TrustedProxyCount: cfg.TrustedProxyCount,
+		Pool:                pool,
+		Queries:             db.New(pool),
+		AI:                  assistant,
+		DevAuth:             cfg.DevAuth,
+		TrustedProxyCount:   cfg.TrustedProxyCount,
+		AISuggestDailyLimit: cfg.AISuggestDailyLimit,
+		AIExplainDailyLimit: cfg.AIExplainDailyLimit,
+		AIMonthlySpendUSD:   cfg.AIMonthlySpendUSD,
 	})
 
 	srv := &http.Server{

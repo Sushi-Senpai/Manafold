@@ -43,8 +43,8 @@ func TestRun_IngestsFixture_DerivesFields(t *testing.T) {
 	t.Cleanup(pool.Close)
 
 	res, err := cardsync.Run(ctx, pool, cardsync.Options{
-		OracleCardsPath:  "testdata/oracle_cards.json",
-		DefaultCardsPath: "testdata/default_cards.json",
+		OracleCardsPath:  "testdata/oracle_cards.jsonl",
+		DefaultCardsPath: "testdata/default_cards.jsonl",
 	})
 	if err != nil {
 		t.Fatalf("cardsync.Run: %v", err)

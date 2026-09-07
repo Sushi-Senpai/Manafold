@@ -232,6 +232,29 @@ export type SessionState = {
   email?: string;
 };
 
+// ---- ai-assist ---------------------------------------------------
+
+// One surviving suggestion: a real card from the mirror that passed the
+// anti-hallucination gate, plus the model's one-sentence rationale.
+export type AISuggestion = {
+  card: CardSummary;
+  reason: string;
+};
+
+export type AISuggestResponse = {
+  suggestions: AISuggestion[];
+  // How many model-named cards the gate dropped (nonexistent / banned / off
+  // colour / already in the deck). Nothing is substituted for them.
+  dropped: number;
+  model: string;
+};
+
+export type AIExplainResponse = {
+  card_id: string;
+  explanation: string;
+  model: string;
+};
+
 // ---- deck stats ----------------------------------------------------
 
 export type DeckStats = {
@@ -316,6 +339,12 @@ export const api = {
     ),
   getValidation: (id: string) => request<ValidationReport>(`/api/decks/${id}/validation`),
   getDeckStats: (id: string) => request<DeckStats>(`/api/decks/${id}/stats`),
+
+  // ---- ai-assist ----
+  suggestDeck: (id: string) =>
+    request<AISuggestResponse>(`/api/decks/${id}/suggestions`, { method: "POST" }),
+  explainCard: (id: string, cardId: string) =>
+    request<AIExplainResponse>(`/api/decks/${id}/cards/${cardId}/explain`, { method: "POST" }),
 
   parseImport: (id: string, sourceFormat: ImportFormat, rawText: string) =>
     request<ImportPreview>(`/api/decks/${id}/import`, {

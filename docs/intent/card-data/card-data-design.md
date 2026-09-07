@@ -104,10 +104,18 @@ after `legalities->>'commander'`.
 `cmd/cardsync/main.go` (and, in tests, directly with a fixture).
 
 1. `GET https://api.scryfall.com/bulk-data` — the manifest. Read the
-   `download_uri` and `updated_at` for `oracle_cards` and `default_cards` (and
-   `rulings` when `opts.IncludeRulings`).
-2. For each, insert a `sync_runs` row with `status = 'running'`, stream the
-   gzipped JSONL from `download_uri`, decode one card object per line, and upsert.
+   `jsonl_download_uri` and `updated_at` for `oracle_cards` and `default_cards`
+   (and `rulings` when `opts.IncludeRulings`). A manifest entry missing
+   `jsonl_download_uri` fails the run.
+2. For each, insert a `sync_runs` row with `status = 'running'`, `GET` the
+   `jsonl_download_uri` (a `.jsonl.gz` on `data.scryfall.io`, served as
+   `application/gzip` with no `Content-Encoding`, so the job inflates the body
+   itself with `compress/gzip`), decode the inflated stream as newline-delimited
+   JSON — one card object per line — and upsert. A local fixture supplied through
+   `opts.OracleCardsPath` / `opts.DefaultCardsPath` is plain (uninflated) JSONL:
+   the gzip layer is transport-only. The decoder consumes consecutive JSON
+   values across newlines, so no per-line length limit applies and a
+   multi-hundred-MB export never lands in memory whole.
 3. **Oracle Cards → `cards`**: upsert by `scryfall_oracle_id`. Derive
    `singleton_limit`, `can_be_commander`, `commander_color_identity` (see below).
    `color_identity` is copied straight from the object's `color_identity` array.
@@ -188,6 +196,7 @@ plausible-but-wrong query silently returns the wrong cards.
 | Banlist source | Scryfall `legalities.commander` + a `banlist_overrides` table | A hand-curated banlist | Scryfall's field already merges functional bans, ante cards, *Conspiracy* cards, offensive-content bans, and `restricted`/`not_legal`, and tracks Panel action. The override table covers only the announcement-to-refresh gap. |
 | Query parsing | Hand-written tokenizer in `internal/cardsearch`, unit-tested, separate from the handler | Inline `if strings.Contains` in the handler; a full Scryfall-syntax library | The subset is small and grows predictably; keeping it isolated and tested is where a wrong-cards regression gets caught. A full library does not exist for Go and the full grammar is out of v1 scope. |
 | Sync invocation | `cmd/cardsync` binary as a Render cron | In-process goroutine ticker in `cmd/api` | A separate process has no HTTP surface and does not couple sync to API uptime or duplicate work across API instances. |
+| Bulk transport decode | Follow the manifest's `jsonl_download_uri`; inflate the `.jsonl.gz` body with `compress/gzip`; decode newline-delimited JSON one object at a time | Rely on `net/http` transparent decompression; buffer the whole file then `json.Unmarshal` an array | Scryfall serves the export as `application/gzip` with no `Content-Encoding`, so the transport never inflates it; the payload is JSONL, not a JSON array. Streaming the inflated stream keeps a multi-hundred-MB export off the heap. |
 | Full-text index | Postgres `tsvector` column (`oracle_search`) + GIN | `pg_trgm` only; an external search engine | `tsvector` handles the Oracle-text predicates natively at sub-10 ms; `pg_trgm` additionally backs the name prefix/`ILIKE` paths. No external dependency. |
 
 ## Open Questions & Future Decisions

@@ -1,8 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { groupByCategory, boardCount, formatValidationStrip } from "./deck.ts";
-import type { DeckEntry, ValidationReport } from "./api.ts";
+import {
+  groupByCategory,
+  boardCount,
+  formatValidationStrip,
+  formatSuggestionsFooter,
+  explainFitLabel,
+} from "./deck.ts";
+import type { AISuggestResponse, DeckEntry, ValidationReport } from "./api.ts";
 
 function entry(name: string, category: string | null, quantity = 1): DeckEntry {
   return {
@@ -100,4 +106,27 @@ test("formatValidationStrip says legal for a clean 100-card deck", () => {
     legal: true,
   };
   assert.deepEqual(formatValidationStrip(report), ["100/100", "legal"]);
+});
+
+// @spec AI-013, AI-020
+test("formatSuggestionsFooter shows just the model id when the gate dropped nothing", () => {
+  const result = { suggestions: [], dropped: 0, model: "claude-sonnet-5" } as AISuggestResponse;
+  assert.equal(formatSuggestionsFooter(result), "claude-sonnet-5");
+});
+
+// @spec AI-013
+test("formatSuggestionsFooter appends the dropped count when the gate rejected cards", () => {
+  const result = { suggestions: [], dropped: 3, model: "claude-sonnet-5" } as AISuggestResponse;
+  assert.equal(
+    formatSuggestionsFooter(result),
+    "claude-sonnet-5 · 3 dropped by the legality check",
+  );
+});
+
+// @spec AI-021
+test("explainFitLabel reflects the fetch state and whether a blurb is already shown", () => {
+  assert.equal(explainFitLabel({ loading: false, hasBlurb: false }), "Explain fit");
+  assert.equal(explainFitLabel({ loading: true, hasBlurb: false }), "Explaining…");
+  assert.equal(explainFitLabel({ loading: false, hasBlurb: true }), "Explain fit again");
+  assert.equal(explainFitLabel({ loading: true, hasBlurb: true }), "Explaining…");
 });

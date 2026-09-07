@@ -21,7 +21,7 @@ import (
 type Deps struct {
 	Pool    *pgxpool.Pool
 	Queries *db.Queries
-	AI      *ai.Client
+	AI      ai.Assistant
 
 	// DevAuth selects internal/middleware.DevAuth (fixed local-dev user)
 	// instead of session-based auth for every protected /api route — off by
@@ -32,6 +32,13 @@ type Deps struct {
 	// that append to X-Forwarded-For; the per-IP auth rate limiter reads the
 	// client address that many hops from the right (see internal/config).
 	TrustedProxyCount int
+
+	// AI cost controls (AI-031, AI-032). Limits are per-user-per-day call caps;
+	// MonthlySpendUSD is the global month-to-date estimated-spend ceiling, 0 to
+	// disable.
+	AISuggestDailyLimit int
+	AIExplainDailyLimit int
+	AIMonthlySpendUSD   float64
 }
 
 // New builds the chi router for the API.
@@ -51,11 +58,14 @@ func New(d Deps) http.Handler {
 	// Per-IP token bucket for the auth endpoints: a burst of 10, then ~1 per
 	// 6s (ACCT-017).
 	h := &api.API{
-		Pool:              d.Pool,
-		Queries:           d.Queries,
-		AI:                d.AI,
-		LoginLimiter:      ratelimit.New(10, 6*time.Second),
-		TrustedProxyCount: d.TrustedProxyCount,
+		Pool:                 d.Pool,
+		Queries:              d.Queries,
+		AI:                   d.AI,
+		LoginLimiter:         ratelimit.New(10, 6*time.Second),
+		TrustedProxyCount:    d.TrustedProxyCount,
+		AISuggestDailyLimit:  d.AISuggestDailyLimit,
+		AIExplainDailyLimit:  d.AIExplainDailyLimit,
+		AIMonthlySpendMicros: api.AISpendMicros(d.AIMonthlySpendUSD),
 	}
 
 	// Unauthenticated routes: the public deck view and the /api/auth/* flow.
@@ -75,6 +85,7 @@ func New(d Deps) http.Handler {
 		h.RegisterCardRoutes(r)
 		h.RegisterDeckRoutes(r)
 		h.RegisterImportRoutes(r)
+		h.RegisterAIRoutes(r)
 	})
 
 	return r

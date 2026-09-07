@@ -14,8 +14,20 @@ services:
         sync: false
       - key: DEV_AUTH
         sync: false
+      # AI assist (M4). Leave AI_ENABLED unset/false to run without the paid
+      # features (endpoints answer 503); set it true and supply ANTHROPIC_API_KEY
+      # to turn them on. Startup fails naming the key if AI_ENABLED=true without
+      # it. See docs/intent/ai-assist/.
+      - key: AI_ENABLED
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: AI_SUGGEST_DAILY_LIMIT
+        value: "20"
+      - key: AI_EXPLAIN_DAILY_LIMIT
+        value: "40"
+      - key: AI_MONTHLY_SPEND_USD
+        value: "50"
       # True hop count of proxies that append X-Forwarded-For in front of this
       # service. Gates the ACCT-017 per-IP auth rate limiter — see
       # docs/intent/account-access/account-access-design.md § Rate limiting.
