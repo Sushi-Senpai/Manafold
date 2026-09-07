@@ -202,8 +202,8 @@ outside colour identity — it does not silently reject or silently accept
 - **`/decks/[id]`** — the builder. `page.tsx` loads the deck + validation
   report, mounts the card-preview provider, and lays out the panels; the
   commander picker, card search, and decklist are their own components under
-  `frontend/src/components/builder/`. The import/export, stats, and validation
-  panels stay inline in `page.tsx`.
+  `frontend/src/components/builder/`. The import/export, stats, AI-suggestions
+  (see `ai-assist`), and validation panels stay inline in `page.tsx`.
   - **Commander picker** — an autocomplete (`/api/cards/search?q=is:commander …`)
     over legendary creatures; selecting one `PUT`s `/commander`. The assigned
     commander / partner names and every result option are hoverable previews.
@@ -218,7 +218,10 @@ outside colour identity — it does not silently reject or silently accept
     hoverable card name, its per-entry violation badges (never hidden), a
     `− n +` quantity stepper (decrement calls `PATCH …/cards/{cardId}` to set
     `quantity − 1`; the last decrement deletes the entry), and a hover action
-    menu (below).
+    menu (below). `DecklistRow` exposes a `footer` slot; `Decklist` fills it on
+    the main and command boards with the AI "Explain fit" control (see
+    `ai-assist`), so a per-row AI affordance hangs off the row without the
+    decklist depending on the AI feature itself.
   - **Card action menu** — on a hover-capable pointer, hovering a decklist row
     opens a small keyboard-navigable menu of the context-valid actions (Add
     One, Add More, Remove One, Remove All, Move to Sideboard / Considering /
@@ -253,7 +256,10 @@ outside colour identity — it does not silently reject or silently accept
   `HoverCardName` (the per-surface trigger), `CommanderPicker`, `CardSearch` /
   `SearchResultList` / `SearchResultRow`, `ManaSymbols` (`ManaCost` /
   `ColorIdentity` chips), `Decklist` / `DecklistRow` / `QuantityStepper`,
-  `CardActionMenu`. Each is `"use client"`; the preview provider portals into
+  `CardActionMenu`. `Decklist` also renders the AI "Explain fit" control
+  (`explainFitLabel` from `lib/deck.ts`) through `DecklistRow`'s `footer` slot
+  on the main / command boards — see `ai-assist`. Each is `"use client"`; the
+  preview provider portals into
   `document.body` inside a `.workspace` wrapper so it keeps the builder's light
   palette (`PLATFORM-023`).
 - `frontend/src/lib/cardPreview.ts` — pure: `computePreviewPlacement`

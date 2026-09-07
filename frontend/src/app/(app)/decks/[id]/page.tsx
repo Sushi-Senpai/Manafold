@@ -15,6 +15,7 @@ import {
 import { formatValidationStrip, formatSuggestionsFooter } from "@/lib/deck";
 import { curveRows, pipRows, categoryRows } from "@/lib/deckstats";
 import { CardPreviewProvider } from "@/components/builder/CardPreviewContext";
+import { HoverCardName } from "@/components/builder/HoverCardName";
 import { CommanderPicker } from "@/components/builder/CommanderPicker";
 import { CardSearch } from "@/components/builder/CardSearch";
 import { Decklist } from "@/components/builder/Decklist";
@@ -22,8 +23,9 @@ import { Decklist } from "@/components/builder/Decklist";
 // The builder page: it loads the deck + validation report, mounts the card
 // hover-preview provider, and lays out the builder panels. The commander picker,
 // card search, and decklist are their own components under
-// components/builder/; the import/export, stats, and validation panels are
-// still inline here.
+// components/builder/; the import/export, stats, AI-suggestions, and validation
+// panels are still inline here. Suggested card names use the same shared hover
+// preview (HoverCardName) as every other card-name surface.
 //
 // @spec DECK-004, DECK-007, DECK-008
 export default function BuilderPage() {
@@ -470,7 +472,9 @@ function SuggestionsPanel({
               {result.suggestions.map((s) => (
                 <li key={s.card.id} className="flex items-start justify-between gap-3 text-sm">
                   <div>
-                    <span className="font-medium">{s.card.name}</span>{" "}
+                    <HoverCardName card={s.card} className="font-medium">
+                      {s.card.name}
+                    </HoverCardName>{" "}
                     <span className="text-xs text-muted">{s.card.type_line}</span>
                     <p className="text-xs text-foreground/70">{s.reason}</p>
                   </div>

@@ -377,12 +377,24 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   - **Componentisation**: the builder moved out of the ~650-line `page.tsx`
     monolith into `frontend/src/components/builder/` (13 components) with pure
     logic in `frontend/src/lib/{cardPreview,searchNav,cardActions}.ts` +
-    unit tests; `page.tsx` now just mounts the provider and the panels.
+    unit tests; `page.tsx` now just mounts the provider, the extracted panels,
+    and the still-inline import/export, stats, AI-suggestions, and validation
+    panels.
+  - **Integration with M4 (AI assist)** — this pass was rebased onto the merged
+    M4 milestone. M4's per-card "Explain fit" control renders through
+    `DecklistRow`'s `footer` slot on the main / command boards (filled by
+    `Decklist`, so the decklist stays unaware of the AI feature); M4's AI
+    suggestions panel mounts alongside the other inline builder panels; and
+    suggested card names raise the same shared hover preview as every other
+    card-name surface.
   - **Dev card seed** (`CARD-040`): `backend/seed/cards.json` — ~40 real cards
     with genuine Scryfall `image_uris` (10 commanders, a colour / type / MV
     spread, two double-faced cards, one imageless printing) — loaded by
     `cmd/cardsync`'s `seedOptions` when `CARDSYNC_SEED_PATH` (or the per-pass
     `CARDSYNC_ORACLE_PATH` / `CARDSYNC_DEFAULT_PATH`) is set, so a local run and
-    CI both have searchable card data.
+    CI both have searchable card data. After the M4 rebase the seed file is a
+    JSON array (the shape Scryfall's card APIs return); `cardsync` detects the
+    leading `[` and unwraps it, so the same decoder handles both the seed and
+    the newline-delimited bulk exports (`CARD-012`, `CARD-040`).
   - **Deferred**: `DECK-077` (DFC preview flip); tap-to-preview on touch; the
     out-of-scope action-menu items.
