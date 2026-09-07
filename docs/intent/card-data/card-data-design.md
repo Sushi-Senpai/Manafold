@@ -121,10 +121,13 @@ without a live Scryfall fetch (`CARD-040`).
    `application/gzip` with no `Content-Encoding`, so the job inflates the body
    itself with `compress/gzip`), decode the inflated stream as newline-delimited
    JSON — one card object per line — and upsert. A local fixture supplied through
-   `opts.OracleCardsPath` / `opts.DefaultCardsPath` is plain (uninflated) JSONL:
-   the gzip layer is transport-only. The decoder consumes consecutive JSON
-   values across newlines, so no per-line length limit applies and a
-   multi-hundred-MB export never lands in memory whole.
+   `opts.OracleCardsPath` / `opts.DefaultCardsPath` is uninflated (the gzip layer
+   is transport-only) and may be either newline-delimited JSON or a single
+   top-level JSON array of card objects — the decoder detects the leading `[` and
+   unwraps it. `backend/seed/cards.json` is the array form, the shape Scryfall's
+   card APIs return. The decoder consumes consecutive JSON values across
+   newlines, so no per-line length limit applies and a multi-hundred-MB export
+   never lands in memory whole.
 3. **Oracle Cards → `cards`**: upsert by `scryfall_oracle_id`. Derive
    `singleton_limit`, `can_be_commander`, `commander_color_identity` (see below).
    `color_identity` is copied straight from the object's `color_identity` array.
