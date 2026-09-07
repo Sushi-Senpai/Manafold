@@ -1,11 +1,12 @@
 # Builder-experience pass — E2E screenshot evidence
 
-Captured against the real builder page (`/decks/[id]`) running the full local
-stack: Next.js dev server → same-origin `/api` proxy → Go API (`DEV_AUTH=true`)
-→ Postgres seeded from `backend/seed/cards.json` (`CARDSYNC_SEED_PATH`). Viewport
-1440×900. The demo deck is Atraxa (WUBG) with a spread of real cards plus
-11× Forest and the two mirror-imageless cards (`Malakir Rebirth // Malakir Mire`,
-`Fabricate`).
+`01`–`07` were captured against the real builder page (`/decks/[id]`) running
+the full local stack: Next.js dev server → same-origin `/api` proxy → Go API
+(`DEV_AUTH=true`) → Postgres seeded from `backend/seed/cards.json`
+(`CARDSYNC_SEED_PATH`). Viewport 1440×900. The demo deck is Atraxa (WUBG) with a
+spread of real cards plus 11× Forest and the two mirror-imageless cards
+(`Malakir Rebirth // Malakir Mire`, `Fabricate`). `08`–`09` are component-level
+captures — see the note above that table.
 
 The `chrome-devtools-axi` bridge was non-functional in this environment (every
 tool call returned `Invalid arguments … Required at pageId`), so the page was
@@ -27,12 +28,26 @@ CDP harness).
 
 ## After the M4 (AI assist) rebase
 
-This branch was rebased onto the merged M4 milestone. `06`–`08` show M4's
-AI-assist controls and this pass's componentised builder working together; the
-`01`–`05` surfaces are unchanged by that integration.
+This branch was rebased onto the merged M4 milestone. `06`–`07` show M4's
+AI-assist controls and this pass's componentised builder working together on the
+real builder page; the `01`–`05` surfaces are unchanged by that integration.
 
 | File | Shows | Specs |
 |---|---|---|
 | `06-componentised-builder-with-explain-fit.png` | The full builder — componentised commander picker / card search / decklist (`× 1 +` steppers) — with M4's per-row "Explain fit" control under every main / command row | DECK-004, DECK-007, DECK-086, AI-021 |
 | `07-decklist-hover-preview-action-menu-explain-fit.png` | Hovering the "Counterspell" decklist row at once: the floating card-image preview, the hover action menu (Add One `Alt+1` … Copy Card Name), and the "Explain fit" footer on that row and every other | DECK-070, DECK-076, DECK-090, DECK-092, AI-021 |
-| `08-ai-suggestions-panel.png` | M4's "AI suggestions" panel mounted alongside the other builder panels (collapsed until "Suggest cards" is pressed); suggested card names raise the same shared hover preview | AI-020 |
+
+### AI-suggestion rows raise the shared hover preview
+
+`08`–`09` are **component-level** captures, not full-builder-page shots: the
+`/decks/[id]` page needs a Postgres-backed stack that was unavailable in the
+capture environment, so `SuggestionsPanel`'s real post-change markup was mounted
+inside the real `CardPreviewProvider` / `HoverCardName` / `CardHoverPreview`
+components in headless Chromium and driven over the Chrome DevTools Protocol.
+They show the one behavioural delta this revision adds — a hovered AI-suggestion
+card name floating the same shared preview — for the image and imageless cases.
+
+| File | Shows | Specs |
+|---|---|---|
+| `08-ai-suggestion-hover-preview.png` | Hovering the "Smothering Tithe" row in the "AI SUGGESTIONS" panel floats the shared preview (`role="tooltip"`, with name / type / oracle text and the card-image slot) beside the row; the Scryfall image host was unreachable in the harness so the image slot renders empty rather than broken | AI-020, DECK-070, DECK-076 |
+| `09-ai-suggestion-hover-preview-textframe.png` | Hovering the imageless "Fabricate" suggestion row falls back to the text card frame ("NO CARD IMAGE" + name / mana cost / type line), never a broken image | AI-020, DECK-071 |
