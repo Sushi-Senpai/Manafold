@@ -32,12 +32,13 @@ export function CardImagePanel({ commander }: { commander: PreviewCard | null })
   // once that src has decoded, so the panel never flashes blank or broken while
   // the next art loads (DECK-073). A stale `shownSrc` for a since-changed card
   // is simply not rendered (the frame / placeholder branch runs instead).
+  //
+  // `failedSrc` is set-only: it records the last src whose decode failed. It is
+  // never cleared. `showFrame` derives the fallback-frame condition from it
+  // instead — a src that later decodes advances `shownSrc` to match `targetSrc`,
+  // which flips `showFrame` back off with no reset needed.
   const [shownSrc, setShownSrc] = useState<string | null>(null);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
-
-  useEffect(() => {
-    setFailedSrc(null);
-  }, [targetSrc]);
 
   useEffect(() => {
     if (!targetSrc || targetSrc === shownSrc) return;
