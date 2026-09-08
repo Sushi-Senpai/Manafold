@@ -3513,5 +3513,212 @@
     "promo": false,
     "reprint": true,
     "digital": false
+  },
+  {
+    "id": "40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd",
+    "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+    "name": "Chandra, Torch of Defiance",
+    "mana_cost": "{2}{R}{R}",
+    "cmc": 4,
+    "type_line": "Legendary Planeswalker — Chandra",
+    "oracle_text": "+1: Exile the top card of your library. You may cast that card. If you don't, Chandra deals 2 damage to each opponent.\n+1: Add {R}{R}.\n−3: Chandra deals 4 damage to target creature.\n−7: You get an emblem with \"Whenever you cast a spell, this emblem deals 5 damage to any target.\"",
+    "colors": [
+      "R"
+    ],
+    "color_identity": [
+      "R"
+    ],
+    "produced_mana": [
+      "R"
+    ],
+    "keywords": [],
+    "loyalty": "4",
+    "legalities": {
+      "standard": "not_legal",
+      "future": "not_legal",
+      "historic": "legal",
+      "timeless": "legal",
+      "gladiator": "legal",
+      "pioneer": "legal",
+      "modern": "legal",
+      "legacy": "legal",
+      "pauper": "not_legal",
+      "vintage": "legal",
+      "penny": "not_legal",
+      "commander": "legal",
+      "oathbreaker": "legal",
+      "standardbrawl": "not_legal",
+      "brawl": "legal",
+      "competitivebrawl": "legal",
+      "alchemy": "not_legal",
+      "paupercommander": "not_legal",
+      "duel": "legal",
+      "oldschool": "not_legal",
+      "premodern": "not_legal",
+      "predh": "not_legal",
+      "tlr": "not_legal"
+    },
+    "game_changer": false,
+    "reserved": false,
+    "layout": "normal",
+    "edhrec_rank": 1547,
+    "set": "fra",
+    "set_name": "Reality Fracture",
+    "collector_number": "244",
+    "rarity": "mythic",
+    "released_at": "2026-10-02",
+    "finishes": [
+      "nonfoil",
+      "foil"
+    ],
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/4/0/40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd.jpg?1788329325",
+      "normal": "https://cards.scryfall.io/normal/front/4/0/40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd.jpg?1788329325",
+      "large": "https://cards.scryfall.io/large/front/4/0/40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd.jpg?1788329325",
+      "png": "https://cards.scryfall.io/png/front/4/0/40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd.png?1788329325",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/4/0/40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd.jpg?1788329325",
+      "border_crop": "https://cards.scryfall.io/border_crop/front/4/0/40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd.jpg?1788329325",
+      "thumb": "https://cards.scryfall.io/thumb/front/4/0/40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd.webp?1788329325",
+      "grid": "https://cards.scryfall.io/grid/front/4/0/40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd.webp?1788329325",
+      "display": "https://cards.scryfall.io/display/front/4/0/40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd.webp?1788329325",
+      "art": "https://cards.scryfall.io/art/front/4/0/40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd.webp?1788329325",
+      "crop": "https://cards.scryfall.io/crop/front/4/0/40cb22c8-cb03-45c9-bb0e-b8cabdcc43cd.webp?1788329325"
+    },
+    "prices": {
+      "usd": "38.92",
+      "usd_foil": null,
+      "usd_etched": null,
+      "eur": "2.99",
+      "eur_foil": null,
+      "tix": null
+    },
+    "promo": false,
+    "reprint": true,
+    "digital": false
+  },
+  {
+    "id": "8fed056f-a8f5-41ec-a7d2-a80a238872d1",
+    "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+    "name": "Invasion of Zendikar // Awakened Skyclave",
+    "cmc": 4,
+    "type_line": "Battle — Siege // Creature — Elemental",
+    "color_identity": [
+      "G"
+    ],
+    "produced_mana": [
+      "B",
+      "G",
+      "R",
+      "U",
+      "W"
+    ],
+    "keywords": [
+      "Vigilance",
+      "Transform",
+      "Haste"
+    ],
+    "legalities": {
+      "standard": "not_legal",
+      "future": "not_legal",
+      "historic": "legal",
+      "timeless": "legal",
+      "gladiator": "legal",
+      "pioneer": "legal",
+      "modern": "legal",
+      "legacy": "legal",
+      "pauper": "not_legal",
+      "vintage": "legal",
+      "penny": "not_legal",
+      "commander": "legal",
+      "oathbreaker": "legal",
+      "standardbrawl": "not_legal",
+      "brawl": "legal",
+      "competitivebrawl": "legal",
+      "alchemy": "not_legal",
+      "paupercommander": "not_legal",
+      "duel": "legal",
+      "oldschool": "not_legal",
+      "premodern": "not_legal",
+      "predh": "not_legal",
+      "tlr": "not_legal"
+    },
+    "game_changer": false,
+    "reserved": false,
+    "layout": "transform",
+    "card_faces": [
+      {
+        "object": "card_face",
+        "name": "Invasion of Zendikar",
+        "mana_cost": "{3}{G}",
+        "type_line": "Battle — Siege",
+        "oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+        "colors": [
+          "G"
+        ],
+        "defense": "3",
+        "artist": "Diego Gisbert",
+        "image_uris": {
+          "small": "https://cards.scryfall.io/small/front/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.jpg?1783916973",
+          "normal": "https://cards.scryfall.io/normal/front/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.jpg?1783916973",
+          "large": "https://cards.scryfall.io/large/front/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.jpg?1783916973",
+          "png": "https://cards.scryfall.io/png/front/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.png?1783916973",
+          "art_crop": "https://cards.scryfall.io/art_crop/front/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.jpg?1783916973",
+          "border_crop": "https://cards.scryfall.io/border_crop/front/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.jpg?1783916973",
+          "thumb": "https://cards.scryfall.io/thumb/front/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.webp?1783916973",
+          "grid": "https://cards.scryfall.io/grid/front/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.webp?1783916973",
+          "display": "https://cards.scryfall.io/display/front/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.webp?1783916973",
+          "art": "https://cards.scryfall.io/art/front/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.webp?1783916973",
+          "crop": "https://cards.scryfall.io/crop/front/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.webp?1783916973"
+        }
+      },
+      {
+        "object": "card_face",
+        "name": "Awakened Skyclave",
+        "mana_cost": "",
+        "type_line": "Creature — Elemental",
+        "oracle_text": "Vigilance, haste\nAs long as this creature is on the battlefield, it's a land in addition to its other types.\n{T}: Add one mana of any color.",
+        "colors": [
+          "G"
+        ],
+        "power": "4",
+        "toughness": "4",
+        "flavor_text": "Nahiri tried to bend Zendikar to Phyrexia's will. In response, the world rose against her.",
+        "artist": "Diego Gisbert",
+        "image_uris": {
+          "small": "https://cards.scryfall.io/small/back/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.jpg?1783916973",
+          "normal": "https://cards.scryfall.io/normal/back/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.jpg?1783916973",
+          "large": "https://cards.scryfall.io/large/back/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.jpg?1783916973",
+          "png": "https://cards.scryfall.io/png/back/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.png?1783916973",
+          "art_crop": "https://cards.scryfall.io/art_crop/back/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.jpg?1783916973",
+          "border_crop": "https://cards.scryfall.io/border_crop/back/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.jpg?1783916973",
+          "thumb": "https://cards.scryfall.io/thumb/back/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.webp?1783916973",
+          "grid": "https://cards.scryfall.io/grid/back/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.webp?1783916973",
+          "display": "https://cards.scryfall.io/display/back/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.webp?1783916973",
+          "art": "https://cards.scryfall.io/art/back/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.webp?1783916973",
+          "crop": "https://cards.scryfall.io/crop/back/8/f/8fed056f-a8f5-41ec-a7d2-a80a238872d1.webp?1783916973"
+        }
+      }
+    ],
+    "edhrec_rank": 3459,
+    "set": "mom",
+    "set_name": "March of the Machine",
+    "collector_number": "194",
+    "rarity": "uncommon",
+    "released_at": "2023-04-21",
+    "finishes": [
+      "nonfoil",
+      "foil"
+    ],
+    "prices": {
+      "usd": "0.34",
+      "usd_foil": "0.43",
+      "usd_etched": null,
+      "eur": "0.26",
+      "eur_foil": "0.25",
+      "tix": "0.03"
+    },
+    "promo": false,
+    "reprint": false,
+    "digital": false
   }
 ]
