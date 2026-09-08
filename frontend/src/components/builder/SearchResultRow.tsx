@@ -141,9 +141,13 @@ function AddToBoardMenu({
     }
     document.addEventListener("mousedown", onDown, true);
     document.addEventListener("keydown", onKey, true);
+    window.addEventListener("scroll", onClose, { capture: true, passive: true });
+    window.addEventListener("resize", onClose);
     return () => {
       document.removeEventListener("mousedown", onDown, true);
       document.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("scroll", onClose, { capture: true });
+      window.removeEventListener("resize", onClose);
     };
   }, [onClose]);
 

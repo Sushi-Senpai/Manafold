@@ -12,7 +12,7 @@
 //
 // @spec DECK-076, DECK-086, DECK-090, DECK-092, DECK-093
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { api, ApiError, type DeckEntry } from "@/lib/api";
 import { buildCardActions, findShortcutAction, type CardAction } from "@/lib/cardActions";
@@ -40,7 +40,7 @@ function typingTarget(): boolean {
   );
 }
 
-export function DecklistRow({
+function DecklistRowImpl({
   entry,
   deckId,
   onChange,
@@ -56,11 +56,11 @@ export function DecklistRow({
   deckId: string;
   onChange: () => void;
   menuOpen: boolean;
-  onOpenMenu: () => void;
+  onOpenMenu: (entryId: string) => void;
   onCloseMenu: () => void;
   shortcutActive: boolean;
-  onPointerChange: (over: boolean) => void;
-  onFocusChange: (within: boolean) => void;
+  onPointerChange: (entryId: string, over: boolean) => void;
+  onFocusChange: (entryId: string, within: boolean) => void;
   footer?: ReactNode;
 }) {
   const kebabRef = useRef<HTMLButtonElement>(null);
@@ -124,6 +124,14 @@ export function DecklistRow({
     return () => window.removeEventListener("keydown", onKey);
   }, [shortcutActive, actions, run]);
 
+  useEffect(
+    () => () => {
+      onPointerChange(entry.entry_id, false);
+      onFocusChange(entry.entry_id, false);
+    },
+    [entry.entry_id, onPointerChange, onFocusChange],
+  );
+
   const incAction = actions.find((a) => a.id === "add-one");
   const decAction = actions.find((a) => a.id === "remove-one");
   const isCommand = entry.board === "command";
@@ -131,11 +139,12 @@ export function DecklistRow({
   return (
     <li
       className="group relative py-1 text-sm"
-      onMouseEnter={() => onPointerChange(true)}
-      onMouseLeave={() => onPointerChange(false)}
-      onFocus={() => onFocusChange(true)}
+      onMouseEnter={() => onPointerChange(entry.entry_id, true)}
+      onMouseLeave={() => onPointerChange(entry.entry_id, false)}
+      onFocus={() => onFocusChange(entry.entry_id, true)}
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onFocusChange(false);
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+          onFocusChange(entry.entry_id, false);
       }}
     >
       <div className="flex items-center justify-between gap-2">
@@ -175,7 +184,7 @@ export function DecklistRow({
             aria-label="Card actions"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            onClick={() => (menuOpen ? closeMenu() : onOpenMenu())}
+            onClick={() => (menuOpen ? closeMenu() : onOpenMenu(entry.entry_id))}
             className="rounded px-1 leading-none text-muted transition hover:text-foreground"
           >
             ⋯
@@ -213,3 +222,5 @@ export function DecklistRow({
     </li>
   );
 }
+
+export const DecklistRow = memo(DecklistRowImpl);

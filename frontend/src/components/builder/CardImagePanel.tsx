@@ -36,6 +36,10 @@ export function CardImagePanel({ commander }: { commander: PreviewCard | null })
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   useEffect(() => {
+    setFailedSrc(null);
+  }, [targetSrc]);
+
+  useEffect(() => {
     if (!targetSrc || targetSrc === shownSrc) return;
     let cancelled = false;
     const img = new Image();
@@ -52,7 +56,9 @@ export function CardImagePanel({ commander }: { commander: PreviewCard | null })
     };
   }, [targetSrc, shownSrc]);
 
-  const showFrame = panel.card != null && (targetSrc == null || failedSrc === targetSrc);
+  const showFrame =
+    panel.card != null &&
+    (targetSrc == null || (failedSrc === targetSrc && shownSrc !== targetSrc));
   const decoding = targetSrc != null && shownSrc !== targetSrc && !showFrame;
 
   return (

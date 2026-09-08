@@ -9,7 +9,7 @@
 //
 // @spec DECK-007, DECK-087, DECK-090, DECK-092, DECK-094
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { api, ApiError, type DeckDetail, type DeckEntry } from "@/lib/api";
 import {
@@ -41,6 +41,27 @@ export function Decklist({
   const [focusRowId, setFocusRowId] = useState<string | null>(null);
   const shortcutRowId = activeShortcutRow(pointerRowId, focusRowId);
 
+  const openMenu = useCallback((entryId: string) => setOpenMenuEntryId(entryId), []);
+  const closeMenu = useCallback(() => setOpenMenuEntryId(null), []);
+  const changePointer = useCallback((entryId: string, over: boolean) => {
+    setPointerRowId((cur) => (over ? entryId : cur === entryId ? null : cur));
+  }, []);
+  const changeFocus = useCallback((entryId: string, within: boolean) => {
+    setFocusRowId((cur) => (within ? entryId : cur === entryId ? null : cur));
+  }, []);
+
+  const footers = useMemo(() => {
+    const m = new Map<string, ReactNode>();
+    for (const board of BOARD_ORDER) {
+      for (const entry of detail.boards[board as BoardName] ?? []) {
+        if (entry.board === "main" || entry.board === "command") {
+          m.set(entry.entry_id, <ExplainFit deckId={deckId} cardId={entry.card_id} />);
+        }
+      }
+    }
+    return m;
+  }, [detail, deckId]);
+
   // One menu at a time; close it on any scroll (capture, so a scroll inside a
   // nested pane counts too) and on navigation.
   useEffect(() => {
@@ -66,24 +87,12 @@ export function Decklist({
         deckId={deckId}
         onChange={onChange}
         menuOpen={openMenuEntryId === entry.entry_id}
-        onOpenMenu={() => setOpenMenuEntryId(entry.entry_id)}
-        onCloseMenu={() => setOpenMenuEntryId(null)}
+        onOpenMenu={openMenu}
+        onCloseMenu={closeMenu}
         shortcutActive={shortcutRowId === entry.entry_id}
-        onPointerChange={(over) =>
-          setPointerRowId((cur) =>
-            over ? entry.entry_id : cur === entry.entry_id ? null : cur,
-          )
-        }
-        onFocusChange={(within) =>
-          setFocusRowId((cur) =>
-            within ? entry.entry_id : cur === entry.entry_id ? null : cur,
-          )
-        }
-        footer={
-          entry.board === "main" || entry.board === "command" ? (
-            <ExplainFit deckId={deckId} cardId={entry.card_id} />
-          ) : undefined
-        }
+        onPointerChange={changePointer}
+        onFocusChange={changeFocus}
+        footer={footers.get(entry.entry_id)}
       />
     );
   }
