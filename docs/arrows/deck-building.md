@@ -41,7 +41,7 @@ summary (`DECK-096`).
 - backend/internal/api/decks_test.go — DECK-001, DECK-002, DECK-003, DECK-004, DECK-005, DECK-008, DECK-009, DECK-010, DECK-012, DECK-013, DECK-030, DECK-031 (`TestPatchCard_QuantityAndBoardMove` — set quantity, 0 deletes, negative 400, board move carries + merges quantity, non-owner 404)
 - frontend/src/lib/cardPreview.test.ts — DECK-071 (image source fallback: normal → small → text frame)
 - frontend/src/lib/menuPlacement.test.ts — DECK-094 (open below the anchor, flip above near the viewport bottom, clamp horizontally)
-- frontend/src/lib/deck.test.ts — DECK-087, DECK-088 (`groupByType` — front-face `//` read, precedence, display order, per-group counts), DECK-072 (`panelCard` — active card → commander → placeholder)
+- frontend/src/lib/deck.test.ts — DECK-087, DECK-088 (`groupByType` — front-face `//` read, precedence, display order, per-group counts), DECK-072 (`resolvePanelCard` — active card → commander → placeholder), DECK-092 (`activeShortcutRow` — pointer-precedence chord owner)
 - frontend/src/lib/searchNav.test.ts — DECK-082, DECK-083 (cursor movement + clamping; per-card in-deck quantity)
 - frontend/src/lib/cardActions.test.ts — DECK-091, DECK-092, DECK-093 (context-filtered action list; Alt-chord mapping; commander limited to Copy Card Name)
 - E2E (Chrome DevTools Protocol against headless Chromium, evidence in repo — see `docs/evidence/builder-ux-v2/README.md`) — DECK-070, DECK-076, DECK-081, DECK-087, DECK-090, DECK-094: three-column layout, type-grouped decklist, image panel updating on hover, click-to-add, menu opening only from `⋯` and closing on scroll

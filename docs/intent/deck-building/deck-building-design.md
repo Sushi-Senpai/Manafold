@@ -305,8 +305,10 @@ outside colour identity — it does not silently reject or silently accept
   context-filtered action list, with the deck API passed in), `findShortcutAction`.
 - `frontend/src/lib/deck.ts` — pure helpers: `groupByType` (primary-type
   buckets in display order with counts, `DECK-087` / `DECK-088`), `boardCount`,
-  `formatValidationStrip(report)`, `panelCard` (active card → commander →
-  placeholder resolution for the image panel, `DECK-072`).
+  `formatValidationStrip(report)`, `primaryCardType` / `activeShortcutRow`
+  (physical-key chord owner: pointer row, else focus-within row, `DECK-092`),
+  `resolvePanelCard` (active card → commander → placeholder resolution for the
+  image panel, `DECK-072`).
 - `frontend/src/lib/deckstats.ts` — pure view helpers over the stats payload:
   `curveRows`, `pipRows`, `categoryRows`.
 
@@ -366,13 +368,15 @@ outside colour identity — it does not silently reject or silently accept
 7. **LLM deck-health prose** — `deckstats` numbers are deterministic; an
    `ai-assist` summary that reads them into a prioritised fix list is roadmap
    M5.
-11. **Double-faced card preview flip** (`DECK-077`) — the hover preview shows a
-    DFC's front face only. `CardSummary` / `DeckEntry` expose a single
-    `image_uris` object, so a per-face preview needs `card-data` to surface both
-    faces first.
-12. **Tap-to-preview on coarse pointers** — previews are simply not armed on
-    touch. A deliberate press-and-hold affordance would restore them without
-    breaking scroll; not built in v1.
+11. **Double-faced card preview flip** (`DECK-077`) — the card-image panel shows
+    a DFC's front face only. `CardSummary` / `DeckEntry` expose a single
+    `image_uris` object, so a per-face flip control needs `card-data` to surface
+    both faces first.
+12. **Tap-to-load on coarse pointers** — a touch user has no hover, so the
+    card-image panel updates only on keyboard focus of a card name (`DECK-075`)
+    and otherwise shows the commander or the placeholder. A deliberate tap
+    affordance that loads the tapped card name into the panel is not built in
+    v1.
 13. **Out-of-scope action-menu items** — Moxfield's menu also carries printing /
     foil / tag / deck-image / collection actions. They are omitted here until
     the features behind them exist (printing selection, tags, collections).
