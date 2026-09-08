@@ -60,9 +60,9 @@ export function CardSearch({
     };
   }, [q]);
 
-  async function add(card: CardSummary) {
+  async function add(card: CardSummary, board: "main" | "sideboard" | "maybe") {
     try {
-      await api.addCard(deckId, card.id, "main");
+      await api.addCard(deckId, card.id, board);
       onAdded();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not add card");

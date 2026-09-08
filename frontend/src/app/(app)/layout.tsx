@@ -7,7 +7,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="workspace min-h-full flex-1 bg-background font-sans text-foreground">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-4">
+        <div className="mx-auto flex max-w-[1800px] items-center gap-6 px-6 py-4">
           <Link href="/" className="text-lg">
             <Wordmark />
           </Link>
@@ -19,7 +19,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <HeaderAuth />
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      {/* Wide by default so the builder's three-column workspace (DECK-096) has
+          room; the narrower pages constrain their own content. */}
+      <main className="mx-auto max-w-[1800px] px-4 py-8 sm:px-6">{children}</main>
     </div>
   );
 }

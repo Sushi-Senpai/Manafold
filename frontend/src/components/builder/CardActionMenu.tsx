@@ -1,23 +1,33 @@
 "use client";
 
-// The hover action menu for a decklist row: a small keyboard-navigable list of
-// the context-valid actions (built by lib/cardActions) with their hover
-// shortcuts shown. Rendered inline beside the row (no portal) so it inherits the
-// builder palette; the row owns when it opens and the while-hovered shortcuts.
+// The decklist row's action menu: a small keyboard-navigable list of the
+// context-valid actions (built by lib/cardActions). It opens only when the row
+// asks it to (never on hover — DECK-090), renders `position: fixed` with a
+// placement computed by lib/menuPlacement so it never covers its own row or
+// leaves the viewport (DECK-094), and reports outside-click / Escape back to the
+// row so the row can close it. The row also closes it on scroll and navigation.
 //
-// @spec DECK-090, DECK-092
+// @spec DECK-090, DECK-091, DECK-094
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import type { CardAction } from "@/lib/cardActions";
+import { computeMenuPlacement, type MenuPlacement } from "@/lib/menuPlacement";
+
+function viewport() {
+  if (typeof window === "undefined") return { width: 1280, height: 800 };
+  return { width: window.innerWidth, height: window.innerHeight };
+}
 
 export function CardActionMenu({
   actions,
+  anchorRef,
   onRun,
   onClose,
   addMore,
 }: {
   actions: CardAction[];
+  anchorRef: RefObject<HTMLElement | null>;
   onRun: (action: CardAction) => void;
   onClose: () => void;
   addMore?: { open: boolean; onConfirm: (n: number) => void };
@@ -25,16 +35,52 @@ export function CardActionMenu({
   const ref = useRef<HTMLDivElement>(null);
   const [cursor, setCursor] = useState(0);
   const [amount, setAmount] = useState(2);
+  const [placement, setPlacement] = useState<MenuPlacement | null>(null);
+
+  // Measure the menu and the anchor, then place. Runs before paint so the menu
+  // never flashes at 0,0.
+  useLayoutEffect(() => {
+    const anchorEl = anchorRef.current;
+    if (!anchorEl || !ref.current) return;
+    const a = anchorEl.getBoundingClientRect();
+    const m = ref.current.getBoundingClientRect();
+    setPlacement(
+      computeMenuPlacement(
+        { top: a.top, left: a.left, width: a.width, height: a.height },
+        { width: m.width, height: m.height },
+        viewport(),
+      ),
+    );
+  }, [anchorRef, actions.length, addMore?.open]);
 
   useEffect(() => {
     ref.current?.querySelectorAll<HTMLButtonElement>("[data-item]")[cursor]?.focus();
   }, [cursor]);
 
+  // Outside-click and Escape dismissal. Scroll / navigation are the row's job
+  // (it owns the open flag).
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (!ref.current) return;
+      const t = e.target as Node;
+      if (!ref.current.contains(t) && !anchorRef.current?.contains(t)) onClose();
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", onDown, true);
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("mousedown", onDown, true);
+      document.removeEventListener("keydown", onKey, true);
+    };
+  }, [anchorRef, onClose]);
+
   function onKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      onClose();
-    } else if (e.key === "ArrowDown") {
+    if (e.key === "ArrowDown") {
       e.preventDefault();
       setCursor((c) => Math.min(c + 1, actions.length - 1));
     } else if (e.key === "ArrowUp") {
@@ -49,7 +95,12 @@ export function CardActionMenu({
       role="menu"
       aria-label="Card actions"
       onKeyDown={onKeyDown}
-      className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-lg border border-border bg-surface py-1 text-sm shadow-xl"
+      className="fixed z-50 w-52 overflow-hidden rounded-lg border border-border bg-surface py-1 text-sm shadow-xl"
+      style={
+        placement
+          ? { left: placement.left, top: placement.top }
+          : { left: 0, top: 0, visibility: "hidden" }
+      }
     >
       {actions.map((action) => (
         <button

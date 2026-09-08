@@ -2,8 +2,10 @@
 
 // The card-search results list: renders enriched rows and owns keyboard
 // navigation over them (Arrow keys move a cursor, Enter adds the row under the
-// cursor) plus the short-lived "Added ✓" confirmation. It is deliberately
-// presentational about data — the parent owns the query and the add call.
+// cursor to `main`) plus the short-lived "Added ✓" confirmation. It is
+// deliberately presentational about data — the parent owns the query and the
+// add call. A click anywhere on a row adds to `main`; a row's `⋯` adds to
+// another board (SearchResultRow).
 //
 // @spec DECK-081, DECK-082, DECK-084
 
@@ -24,7 +26,7 @@ export function SearchResultList({
   detail: DeckDetail;
   loading: boolean;
   query: string;
-  onAdd: (card: CardSummary) => void | Promise<void>;
+  onAdd: (card: CardSummary, board: "main" | "sideboard" | "maybe") => void | Promise<void>;
 }) {
   const [cursor, setCursor] = useState(-1);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
@@ -52,9 +54,9 @@ export function SearchResultList({
   }, []);
 
   const add = useCallback(
-    (card: CardSummary) => {
+    (card: CardSummary, board: "main" | "sideboard" | "maybe") => {
       flashAdded(card.id);
-      void onAdd(card);
+      void onAdd(card, board);
     },
     [flashAdded, onAdd],
   );
@@ -63,7 +65,7 @@ export function SearchResultList({
     if (e.key === "Enter") {
       if (cursor >= 0 && cursor < cards.length) {
         e.preventDefault();
-        add(cards[cursor]);
+        add(cards[cursor], "main");
       }
       return;
     }
@@ -103,7 +105,7 @@ export function SearchResultList({
           inDeck={deckCardQuantity(detail, card.id)}
           focused={i === cursor}
           justAdded={justAddedId === card.id}
-          onAdd={() => add(card)}
+          onAdd={(board) => add(card, board)}
           onPointerFocus={() => setCursor(i)}
         />
       ))}
