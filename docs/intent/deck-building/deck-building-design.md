@@ -184,6 +184,7 @@ All under the protected `/api` group (M1: `DevAuth`). Registered via
 | `/api/decks/{id}` | GET | — | `DeckDetail` | entries grouped by board and category, each with Oracle data + chosen/newest printing; `404` if not owned (unless public — see DECK-030) |
 | `/api/decks/{id}/commander` | PUT | `{ commander_card_id, partner_card_id? }` | `DeckDetail` | rejects `422` if `can_be_commander` is false; recomputes `color_identity` |
 | `/api/decks/{id}/cards` | POST | `{ card_id, board, quantity?, category?, print_id? }` | `DeckCard` (flagged) | increments an existing `(deck_id, card_id, board)` entry rather than duplicating; the response carries any colour-identity / singleton flag for that entry |
+| `/api/decks/{id}/cards/{cardId}` | PATCH | `{ board, quantity? }` or `{ board, to_board }` | `204` / `400` / `404` | edits one existing entry in place: sets its quantity (`0` deletes it; a negative or out-of-range quantity is `400`), or moves it to `to_board` carrying its quantity / printing / category and merging into any entry already there. Ownership scoped in the query; `404` when no such entry (`DECK-012`, `DECK-013`) |
 | `/api/decks/{id}/cards/{cardId}` | DELETE | — | `204` / `404` | scoped through `decks.user_id`; `204` only when a row was deleted, `404` when none matched |
 | `/api/decks/{id}/validation` | GET | — | `ValidationReport` | |
 | `/api/decks/{id}/stats` | GET | — | `Stats` + `category_targets` | deterministic; curve / pips / sources / category roll-up over `main` + `command` (`DECK-051`, `DECK-052`) |
@@ -198,13 +199,47 @@ outside colour identity — it does not silently reject or silently accept
 
 - **`/decks`** — the caller's decks as cards, plus a "New deck" action that
   `POST`s and routes to the builder.
-- **`/decks/[id]`** — the builder:
-  - **Commander picker** — an autocomplete (`/api/cards/autocomplete`) filtered
-    to `is:commander` results; selecting one `PUT`s `/commander`.
-  - **Card-search box** — `/api/cards/search`; results list with an "Add"
-    action per row that `POST`s `/cards` (board `main`).
-  - **Decklist** — entries grouped by board, then by `category`, each row
-    showing the card and any per-entry violation flag.
+- **`/decks/[id]`** — the builder. `page.tsx` loads the deck + validation
+  report, mounts the card-preview provider, and lays out the panels; the
+  commander picker, card search, and decklist are their own components under
+  `frontend/src/components/builder/`. The import/export, stats, AI-suggestions
+  (see `ai-assist`), and validation panels stay inline in `page.tsx`.
+  - **Commander picker** — an autocomplete (`/api/cards/search?q=is:commander …`)
+    over legendary creatures; selecting one `PUT`s `/commander`. The assigned
+    commander / partner names and every result option are hoverable previews.
+  - **Card search** — a debounced box whose raw text goes straight to
+    `/api/cards/search` (so `id:` / `t:` / `cmc` / `o:` / `is:commander` keep
+    working), feeding a result list where each row shows name, mana cost (as
+    pip chips), type line, and colour identity, a one-action Add, the card's
+    current total quantity in the deck when it is already present, and a
+    transient confirmation on add. The list is keyboard navigable — Arrow keys
+    move a cursor, Home/End jump, Enter adds the row under the cursor.
+  - **Decklist** — entries grouped by board then `category`, each row a
+    hoverable card name, its per-entry violation badges (never hidden), a
+    `− n +` quantity stepper (decrement calls `PATCH …/cards/{cardId}` to set
+    `quantity − 1`; the last decrement deletes the entry), and a hover action
+    menu (below). `DecklistRow` exposes a `footer` slot; `Decklist` fills it on
+    the main and command boards with the AI "Explain fit" control (see
+    `ai-assist`), so a per-row AI affordance hangs off the row without the
+    decklist depending on the AI feature itself.
+  - **Card action menu** — on a hover-capable pointer, hovering a decklist row
+    opens a small keyboard-navigable menu of the context-valid actions (Add
+    One, Add More, Remove One, Remove All, Move to Sideboard / Considering /
+    Main, Copy Card Name), each showing its hover shortcut. The chords
+    Alt+1 / Alt+2 / Alt+3 / Alt+4 fire Add One / Remove One / Move to Sideboard
+    / Move to Considering on the hovered row whether or not the menu is open,
+    matched on the physical digit key so macOS Option+digit characters do not
+    interfere, and suppressed while a text field is focused. A per-row control
+    opens the menu for coarse pointers; the commander row's menu offers only
+    Copy Card Name.
+  - **Card hover preview** — a single floating card image shared by every
+    card-name surface (search results, decklist rows, commander display,
+    commander autocomplete). It appears after a short intent delay, is anchored
+    near the pointer, flips to the anchor's left near the right edge and shifts
+    up near the bottom, decodes the image before revealing it (placeholder
+    until then), falls back to a text card frame when the card has no
+    `image_uris`, and dismisses on mouse-leave / scroll / Escape. It is not
+    armed at all on coarse / no-hover pointers.
   - **Validation strip** — a persistent bar reading the `/validation` report:
     "2 cards outside colour identity", "97/100", "singleton: 2× Sol Ring",
     "banned: Channel". Refetched after every mutation.
@@ -213,8 +248,29 @@ outside colour identity — it does not silently reject or silently accept
     the rules-of-thumb bands. Refetched when the deck's cards or commander
     change.
   - **Import / export panel** — see `import-export`.
-- `frontend/src/lib/deck.ts` — pure helpers: `groupByBoard`,
-  `groupByCategory`, `formatValidationStrip(report)`.
+
+### Builder components and helpers
+
+- `frontend/src/components/builder/` — `CardPreviewContext` (provider +
+  `useCardPreview`), `CardHoverPreview` (the portal), `useHoverPreview` /
+  `HoverCardName` (the per-surface trigger), `CommanderPicker`, `CardSearch` /
+  `SearchResultList` / `SearchResultRow`, `ManaSymbols` (`ManaCost` /
+  `ColorIdentity` chips), `Decklist` / `DecklistRow` / `QuantityStepper`,
+  `CardActionMenu`. `Decklist` also renders the AI "Explain fit" control
+  (`explainFitLabel` from `lib/deck.ts`) through `DecklistRow`'s `footer` slot
+  on the main / command boards — see `ai-assist`. Each is `"use client"`; the
+  preview provider portals into
+  `document.body` inside a `.workspace` wrapper so it keeps the builder's light
+  palette (`PLATFORM-023`).
+- `frontend/src/lib/cardPreview.ts` — pure: `computePreviewPlacement`
+  (edge flip + viewport clamp), `resolvePreviewImage` (normal → small → text
+  frame), the fixed preview dimensions and intent delay.
+- `frontend/src/lib/searchNav.ts` — pure: `moveCursor` (keyboard cursor over
+  the result list), `deckCardQuantity` (a card's total across all boards).
+- `frontend/src/lib/cardActions.ts` — pure: `buildCardActions` (the ordered,
+  context-filtered action list, with the deck API passed in), `findShortcutAction`.
+- `frontend/src/lib/deck.ts` — pure helpers: `groupByCategory`, `boardCount`,
+  `formatValidationStrip(report)`.
 - `frontend/src/lib/deckstats.ts` — pure view helpers over the stats payload:
   `curveRows`, `pipRows`, `categoryRows`.
 
@@ -229,6 +285,9 @@ outside colour identity — it does not silently reject or silently accept
 | Banlist override semantics | `override_banned` tri-state: `true` bans, `false` un-bans a Scryfall-banned card, `nil` defers to Scryfall | Overrides can only *add* bans | The gap the table covers runs both ways — the Panel un-bans cards too, and Scryfall's next refresh lags. |
 | Partner detection | Parse partner variants from `keywords` + `oracle_text` at validation time | A `partner_type` column derived at sync | Partner wording is stable and rare; parsing it in the validator keeps `card-data` from carrying deck-shape logic, and the five variants are a small closed set. |
 | `deck_cards` uniqueness | `unique (deck_id, card_id, board)`; add increments `quantity` | One row per physical copy | Quantity is only ever > 1 for basics and `singleton_limit` cards; a row-per-copy model multiplies rows for no query benefit. |
+| Editing an existing entry | One `PATCH …/cards/{cardId}` that both sets an absolute quantity (`0` = delete) and moves an entry between boards (`to_board`) | A `delta`-based increment/decrement endpoint; separate `/quantity` and `/move` endpoints; client-side delete-then-re-add loop for a decrement | The builder needs per-copy quantity edits (basic lands) and board moves (the action menu), and `POST` (only `+1`) plus `DELETE` (whole entry) cannot express either without N round-trips. An absolute `quantity` is idempotent and needs no read-modify-write. The move is the same "edit one entry" shape, so it rides the same endpoint rather than doubling the surface; it is one statement (delete-returning + insert-on-conflict) so the quantity merges if the target board already holds the card. |
+| Card hover preview delivery | One provider holds the single preview and portals it into `document.body` (wrapped in `.workspace`); every card-name surface is a `HoverCardName` that calls `useCardPreview().show` | A popover rendered inside each row; a preview per surface | One instance cannot double up or leak, `document.body` escapes every `overflow:hidden`/stacking-context ancestor, and the placement math stays in one pure function. The `.workspace` wrapper is needed because the portal target is outside the `(app)` layout that scopes the light palette. |
+| Hover action-menu shortcuts | Match Alt+1..4 on `event.code` (`Digit1`..`Digit4`) while the row is hovered and no field is focused | Match on `event.key`; a global shortcut layer independent of hover | Alt+digit mirrors Moxfield's muscle memory, but on macOS `event.key` for Option+digit is a typographic character; `event.code` is the physical key and sidesteps that. Scoping to the hovered row keeps the chords unambiguous without a focus model, and the field-focus guard stops them firing mid-search. |
 
 ## Open Questions & Future Decisions
 
@@ -266,6 +325,16 @@ outside colour identity — it does not silently reject or silently accept
 7. **LLM deck-health prose** — `deckstats` numbers are deterministic; an
    `ai-assist` summary that reads them into a prioritised fix list is roadmap
    M5.
+11. **Double-faced card preview flip** (`DECK-077`) — the hover preview shows a
+    DFC's front face only. `CardSummary` / `DeckEntry` expose a single
+    `image_uris` object, so a per-face preview needs `card-data` to surface both
+    faces first.
+12. **Tap-to-preview on coarse pointers** — previews are simply not armed on
+    touch. A deliberate press-and-hold affordance would restore them without
+    breaking scroll; not built in v1.
+13. **Out-of-scope action-menu items** — Moxfield's menu also carries printing /
+    foil / tag / deck-image / collection actions. They are omitted here until
+    the features behind them exist (printing selection, tags, collections).
 
 ### Gaps
 8. **`maybe` and `sideboard` boards are stored but not colour-identity checked**
@@ -288,8 +357,15 @@ outside colour identity — it does not silently reject or silently accept
   `backend/internal/deckstats/deckstats_test.go`,
   `backend/internal/api/decks_test.go`, `backend/internal/api/stats_test.go`
 - Frontend: `frontend/src/app/(app)/decks/page.tsx`,
-  `frontend/src/app/(app)/decks/[id]/page.tsx`, `frontend/src/lib/deck.ts`,
+  `frontend/src/app/(app)/decks/[id]/page.tsx`,
+  `frontend/src/components/builder/` (preview provider + portal, hover trigger,
+  commander picker, card search + result rows, mana chips, decklist + row +
+  quantity stepper, card action menu),
+  `frontend/src/lib/cardPreview.ts`, `frontend/src/lib/searchNav.ts`,
+  `frontend/src/lib/cardActions.ts`, `frontend/src/lib/deck.ts`,
   `frontend/src/lib/deckstats.ts`
+- Frontend tests: `frontend/src/lib/cardPreview.test.ts`,
+  `frontend/src/lib/searchNav.test.ts`, `frontend/src/lib/cardActions.test.ts`
 - Cross-segment: reads `card-data` (`cards`, `card_prints`, `banlist_overrides`);
   `user_id` / `anon_token` ownership comes from `account-access` (M1: the
   `DevAuth` user). `ai-assist` reuses `internal/deckrules` to gate model output.

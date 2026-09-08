@@ -337,6 +337,21 @@ export const api = {
       `/api/decks/${id}/cards/${cardId}?board=${encodeURIComponent(board)}`,
       { method: "DELETE" },
     ),
+  // Set an existing entry's quantity in place; a quantity of 0 removes the
+  // entry. Ownership-scoped exactly like add/remove (DECK-012).
+  setCardQuantity: (id: string, cardId: string, board: string, quantity: number) =>
+    request<void>(`/api/decks/${id}/cards/${cardId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ board, quantity }),
+    }),
+  // Move an entry to another board, carrying its quantity / printing / category;
+  // merges into any existing entry for the same card on the target board
+  // (DECK-013).
+  moveCard: (id: string, cardId: string, board: string, toBoard: string) =>
+    request<void>(`/api/decks/${id}/cards/${cardId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ board, to_board: toBoard }),
+    }),
   getValidation: (id: string) => request<ValidationReport>(`/api/decks/${id}/validation`),
   getDeckStats: (id: string) => request<DeckStats>(`/api/decks/${id}/stats`),
 

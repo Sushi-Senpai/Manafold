@@ -92,6 +92,13 @@ type Querier interface {
 	// handler returns 409 (PORT-006).
 	// @spec PORT-006
 	MarkImportApplied(ctx context.Context, id pgtype.UUID) (int64, error)
+	// Moves an entry to another board in one statement: the source row is deleted
+	// (ownership-scoped through decks) and re-inserted on the target board,
+	// merging into any entry that already exists there for the same card. execrows
+	// of 0 means the source entry did not exist or the deck is not the caller's,
+	// which the handler maps to 404 (DECK-009).
+	// @spec DECK-009, DECK-013
+	MoveDeckCard(ctx context.Context, arg MoveDeckCardParams) (int64, error)
 	// @spec AI-030, AI-034
 	RecordAIUsage(ctx context.Context, arg RecordAIUsageParams) error
 	// Resolve a decklist line's card name to one cards row: an exact
@@ -100,6 +107,14 @@ type Querier interface {
 	// whole-name match (PORT-005).
 	// @spec PORT-005
 	ResolveCardByName(ctx context.Context, name string) (Card, error)
+	// Sets an existing entry's quantity in place, ownership-scoped through decks
+	// exactly like the other deck_cards mutations. The handler routes a requested
+	// quantity of 0 to DeleteDeckCard, so this query is only ever called with a
+	// value the deck_cards `quantity > 0` CHECK accepts. execrows of 0 means no
+	// entry matched — a wrong board, an absent card, or a deck the caller does not
+	// own — which the handler maps to 404 (DECK-009).
+	// @spec DECK-009, DECK-012
+	SetDeckCardQuantity(ctx context.Context, arg SetDeckCardQuantityParams) (int64, error)
 	// @spec DECK-002, DECK-003
 	SetDeckCommander(ctx context.Context, arg SetDeckCommanderParams) (Deck, error)
 	// Month-to-date estimated spend across every user, in micro-USD.

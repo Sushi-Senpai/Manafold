@@ -9,6 +9,7 @@
 package cardsync
 
 import (
+	"bufio"
 	"compress/gzip"
 	"context"
 	"encoding/json"
@@ -227,14 +228,39 @@ func ingestPrints(ctx context.Context, q *db.Queries, r io.Reader, updatedAt tim
 	return int(count), skips, nil
 }
 
-// streamJSONObjects decodes a Scryfall bulk export — newline-delimited JSON, one
-// card object per line — one object at a time, so a multi-hundred-MB export
-// never lands in memory whole. A json.Decoder consumes consecutive JSON values
-// across the newlines that separate them natively, so no per-line length limit
-// applies (CARD-012).
+// streamJSONObjects decodes a stream of Scryfall card objects one at a time, so
+// a multi-hundred-MB export never lands in memory whole. It accepts both shapes
+// the project ingests: the bulk exports are newline-delimited JSON (a
+// json.Decoder consumes consecutive values across the separating newlines
+// natively, so no per-line length limit applies), while the dev / CI seed file
+// (backend/seed/cards.json) is a single JSON array of card objects, the shape
+// Scryfall's card APIs return. The first non-whitespace byte picks the path: a
+// '[' means unwrap the array and stream its elements; anything else is decoded
+// as consecutive top-level values (CARD-012, CARD-040).
 func streamJSONObjects(r io.Reader, fn func(json.RawMessage) error) error {
-	dec := json.NewDecoder(r)
+	br := bufio.NewReader(r)
+
+	array := false
+	if prefix, _ := br.Peek(512); len(prefix) > 0 {
+		for _, b := range prefix {
+			if b == ' ' || b == '\t' || b == '\r' || b == '\n' {
+				continue
+			}
+			array = b == '['
+			break
+		}
+	}
+
+	dec := json.NewDecoder(br)
+	if array {
+		if _, err := dec.Token(); err != nil { // consume the opening '['
+			return err
+		}
+	}
 	for {
+		if array && !dec.More() {
+			return nil
+		}
 		var raw json.RawMessage
 		if err := dec.Decode(&raw); err != nil {
 			if errors.Is(err, io.EOF) {

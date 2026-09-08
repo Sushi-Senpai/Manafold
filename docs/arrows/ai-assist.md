@@ -38,7 +38,7 @@ remain gaps.
 - backend/internal/db/migrations/000005_create_ai_usage.up.sql
 - backend/internal/config/config.go (`AIEnabled`, `AISuggestDailyLimit`, `AIExplainDailyLimit`, `AIMonthlySpendUSD`)
 - backend/internal/server/server.go (`RegisterAIRoutes` in the authenticated `/api` group; `Deps.AI` is `ai.Assistant`)
-- frontend/src/lib/api.ts (`suggestDeck`, `explainCard`), frontend/src/app/(app)/decks/[id]/page.tsx (Suggestions panel + per-card "why?")
+- frontend/src/lib/api.ts (`suggestDeck`, `explainCard`), frontend/src/lib/deck.ts (`formatSuggestionsFooter`, `explainFitLabel`), frontend/src/app/(app)/decks/[id]/page.tsx (inline `SuggestionsPanel`; suggested names use the shared hover preview), frontend/src/components/builder/Decklist.tsx (inline `ExplainFit`, rendered through `DecklistRow`'s footer slot on the main / command boards)
 
 ## Architecture
 

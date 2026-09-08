@@ -18,10 +18,11 @@ path corrected to `jsonl_download_uri` + gzip-inflated JSONL (CARD-012, 2026-09-
 - docs/intent/card-data/card-data-design.md
 
 ### EARS
-- docs/intent/card-data/card-data-specs.md (CARD-001..012, CARD-020..024, CARD-030)
+- docs/intent/card-data/card-data-specs.md (CARD-001..012, CARD-020..024, CARD-030, CARD-040)
 
 ### Tests
 - backend/internal/cardsync/cardsync_test.go (`TestRun_IngestsFixture_DerivesFields`) — CARD-001, CARD-002 (verbatim color_identity), CARD-003, CARD-004, CARD-005, CARD-007; reads the checked-in `.jsonl` fixtures
+- backend/internal/cardsync/seed_test.go (`TestRun_DevSeed`) — CARD-040 (backend/seed/cards.json ingests through both passes; real Scryfall art on most prints, at least one imageless, commander rules fields derived)
 - backend/internal/cardsync/derive_test.go (`TestDeriveSingletonLimit`, `TestDeriveCanBeCommander`) — CARD-003, CARD-004
 - backend/internal/cardsync/httpfetch_test.go (`TestFetcher_SendsEtiquetteHeadersAndRetriesOn429`, `TestFetcher_NonRetryableStatusIsAnError`) — CARD-006 (descriptive User-Agent + explicit Accept on every request; exactly one retry after the back-off on HTTP 429), CARD-007
 - backend/internal/cardsync/httpfetch_test.go (`TestManifest_ResolvesJSONLDownloadURI`, `TestGetBulk_InflatesGzippedJSONL`, `TestGetBulk_NonGzipBodyIsAnError`, `TestStreamJSONObjects_DecodesNewlineDelimited`) — CARD-001 (manifest → `jsonl_download_uri`, missing field fails), CARD-012 (gunzip the `application/gzip` body, decode newline-delimited JSON incrementally, non-gzip body is an error), CARD-007
@@ -36,7 +37,8 @@ path corrected to `jsonl_download_uri` + gzip-inflated JSONL (CARD-012, 2026-09-
 - backend/internal/cardsync/ (`Run`, bulk manifest fetch → `jsonl_download_uri`, `getBulk` gzip inflation, `streamJSONObjects` incremental JSONL upsert, derived fields)
 - backend/internal/cardsearch/ (`Parse`, predicate → SQL via `Query.WhereSQL`)
 - backend/internal/api/cards.go (`registerCardRoutes`, search + autocomplete handlers)
-- backend/cmd/cardsync/main.go
+- backend/cmd/cardsync/main.go (`seedOptions` — CARDSYNC_SEED_PATH / CARDSYNC_ORACLE_PATH / CARDSYNC_DEFAULT_PATH, CARD-040)
+- backend/seed/cards.json (checked-in dev / CI card seed — CARD-040)
 - backend/internal/db/migrations/000001_create_card_data.up.sql / .down.sql
 - backend/internal/db/queries/cards.sql
 
@@ -66,6 +68,7 @@ path corrected to `jsonl_download_uri` + gzip-inflated JSONL (CARD-012, 2026-09-
 | oracle_tags / all_cards | CARD-010, CARD-011 | 0 | 2 | 0 |
 | Search & autocomplete | CARD-020..024 | 5 | 0 | 0 |
 | Banlist overrides | CARD-030 | 1 | 0 | 0 |
+| Dev / CI seed | CARD-040 | 1 | 0 | 0 |
 
 **Summary:** 15 of 17 implemented; one gap: CARD-009, the single-printing
 Scryfall fallback, deferred past M2's import/export (import resolves names

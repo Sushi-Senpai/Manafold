@@ -245,3 +245,37 @@ func TestStreamJSONObjects_DecodesNewlineDelimited(t *testing.T) {
 		t.Errorf("empty stream returned %v, want nil", err)
 	}
 }
+
+// TestStreamJSONObjects_DecodesTopLevelArray pins the other shape the ingest
+// accepts: backend/seed/cards.json is a single JSON array of card objects (the
+// shape Scryfall's card APIs return, and what the dev / CI seed run feeds
+// through both the oracle and printing passes). Each element must be delivered
+// once, with leading whitespace tolerated and the enclosing brackets stripped
+// (CARD-012, CARD-040).
+func TestStreamJSONObjects_DecodesTopLevelArray(t *testing.T) {
+	in := "\n  [\n  {\"n\":1},\n  {\"n\":2},\n  {\"n\":3}\n]\n"
+	var got []int
+	err := streamJSONObjects(strings.NewReader(in), func(raw json.RawMessage) error {
+		var o struct {
+			N int `json:"n"`
+		}
+		if err := json.Unmarshal(raw, &o); err != nil {
+			return err
+		}
+		got = append(got, o.N)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("streamJSONObjects over top-level array: %v", err)
+	}
+	if len(got) != 3 || got[0] != 1 || got[1] != 2 || got[2] != 3 {
+		t.Errorf("decoded = %v, want [1 2 3]", got)
+	}
+
+	if err := streamJSONObjects(strings.NewReader("[]"), func(json.RawMessage) error {
+		t.Fatal("callback ran on an empty array")
+		return nil
+	}); err != nil {
+		t.Errorf("empty array returned %v, want nil", err)
+	}
+}

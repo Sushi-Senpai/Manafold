@@ -103,6 +103,15 @@ after `legalities->>'commander'`.
 `cardsync.Run(ctx, pool, opts)` is the ingestion entry point, called by
 `cmd/cardsync/main.go` (and, in tests, directly with a fixture).
 
+`opts.OracleCardsPath` / `opts.DefaultCardsPath` replace the download with a
+local file for that pass. `cmd/cardsync` sets them from `CARDSYNC_SEED_PATH`
+(one file feeds both passes) or the per-pass `CARDSYNC_ORACLE_PATH` /
+`CARDSYNC_DEFAULT_PATH`. `backend/seed/cards.json` is the checked-in dev / CI
+seed — a JSON array of real Scryfall card objects (commanders, a colour / type /
+mana-value spread, two modal double-faced cards, one deliberately imageless
+printing) so a local run and CI have searchable, image-bearing card data
+without a live Scryfall fetch (`CARD-040`).
+
 1. `GET https://api.scryfall.com/bulk-data` — the manifest. Read the
    `jsonl_download_uri` and `updated_at` for `oracle_cards` and `default_cards`
    (and `rulings` when `opts.IncludeRulings`). A manifest entry missing
@@ -112,10 +121,13 @@ after `legalities->>'commander'`.
    `application/gzip` with no `Content-Encoding`, so the job inflates the body
    itself with `compress/gzip`), decode the inflated stream as newline-delimited
    JSON — one card object per line — and upsert. A local fixture supplied through
-   `opts.OracleCardsPath` / `opts.DefaultCardsPath` is plain (uninflated) JSONL:
-   the gzip layer is transport-only. The decoder consumes consecutive JSON
-   values across newlines, so no per-line length limit applies and a
-   multi-hundred-MB export never lands in memory whole.
+   `opts.OracleCardsPath` / `opts.DefaultCardsPath` is uninflated (the gzip layer
+   is transport-only) and may be either newline-delimited JSON or a single
+   top-level JSON array of card objects — the decoder detects the leading `[` and
+   unwraps it. `backend/seed/cards.json` is the array form, the shape Scryfall's
+   card APIs return. The decoder consumes consecutive JSON values across
+   newlines, so no per-line length limit applies and a multi-hundred-MB export
+   never lands in memory whole.
 3. **Oracle Cards → `cards`**: upsert by `scryfall_oracle_id`. Derive
    `singleton_limit`, `can_be_commander`, `commander_color_identity` (see below).
    `color_identity` is copied straight from the object's `color_identity` array.
@@ -231,10 +243,12 @@ plausible-but-wrong query silently returns the wrong cards.
 ## References
 
 - Code: `backend/internal/cardsync/`, `backend/internal/cardsearch/`,
-  `backend/internal/api/cards.go`, `backend/cmd/cardsync/main.go`,
-  `backend/internal/db/migrations/000001_create_card_data.up.sql`,
+  `backend/internal/api/cards.go`, `backend/cmd/cardsync/main.go`
+  (`seedOptions`), `backend/internal/db/migrations/000001_create_card_data.up.sql`,
   `backend/internal/db/queries/cards.sql`
-- Test fixtures: `backend/internal/cardsync/testdata/`
+- Seed: `backend/seed/cards.json` (dev / CI card seed, `CARD-040`)
+- Test fixtures: `backend/internal/cardsync/testdata/`; seed test
+  `backend/internal/cardsync/seed_test.go`
 - Cross-segment: `deck-building`'s validator reads `cards.color_identity`,
   `cards.singleton_limit`, `cards.can_be_commander`, `cards.legalities`, and
   `banlist_overrides` (`DECK-004` / `DECK-006` / `DECK-008`). `import-export`
