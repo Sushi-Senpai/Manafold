@@ -429,9 +429,11 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
      re-scoping.
   4. **De-verticalised layout** (`DECK-087`, `DECK-088`, `DECK-095`,
      `DECK-096`). The page is a three-column workspace above a breakpoint
-     (sticky left: image panel + always-visible legality summary + collapsible
-     stats; center: decklist; right: AI suggestions on top, then search),
-     collapsing to one column on a narrow viewport. The decklist groups each
+     (sticky left: image panel + collapsible stats; center: decklist; right: AI
+     suggestions on top, then search), collapsing to one column on a narrow
+     viewport. The slim legality summary is pinned (sticky) directly under the
+     deck header, outside the three columns, so it stays visible while building
+     at every breakpoint. The decklist groups each
      board by **primary card type** (`groupByType` — front face of a `//` line,
      precedence mirroring `internal/deckstats`) with a per-group count in the
      header; the board split stays the outer level and the commander is its own

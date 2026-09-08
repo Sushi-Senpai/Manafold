@@ -85,11 +85,13 @@ summary (`DECK-096`).
    `is_public`.
 5. Builder frontend — a three-column workspace, componentised under
    `frontend/src/components/builder/`: a sticky left column with the card-image
-   panel (fed by shared active-card state from every card-name surface) plus an
-   always-visible legality summary and a collapsible stats section; a center
-   column with the decklist grouped by board then primary card type (per-group
-   counts); a right column with AI suggestions above card search; the deck
-   header carries a Tools menu opening the import/export dialog. Search rows add
+   panel (fed by shared active-card state from every card-name surface) and a
+   collapsible stats section; a center column with the decklist grouped by board
+   then primary card type (per-group counts); a right column with AI suggestions
+   above card search; the deck header carries a Tools menu opening the
+   import/export dialog and, pinned (sticky) directly beneath it — outside the
+   three columns so it stays visible at every breakpoint — the slim legality
+   summary. Search rows add
    to `main` on a row click; decklist rows carry a quantity stepper and an
    action menu that opens only from `⋯` (single-open, closes on
    scroll/outside/Escape/nav) with pointer-or-focus Alt+1..4 shortcuts.
