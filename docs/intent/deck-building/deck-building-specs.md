@@ -41,30 +41,39 @@
 
 - [x] **DECK-060**: When `import-export` supplies a parsed decklist, the system shall create `deck_cards` entries for every resolved card in one transaction, preserving each entry's board and category.
 
-## Builder Card Previews
+## Builder Card-Image Panel
 
-- [x] **DECK-070**: While the builder runs on a device whose primary pointer supports hover, when the pointer rests on a card-name surface for a short intent delay, the system shall show a single floating preview of that card anchored near the pointed element; moving to another card-name surface moves the one preview rather than opening a second.
-- [x] **DECK-071**: The card preview shall render `image_uris.normal` when present, otherwise `image_uris.small`, otherwise a compact text card frame (name, mana cost, type line); it shall never mount an empty or broken image element.
-- [x] **DECK-072**: The card preview shall stay wholly within the viewport — opening toward the anchor's left when it would otherwise overflow the right edge, and shifting up when it would otherwise overflow the bottom edge.
-- [x] **DECK-073**: The system shall decode the preview image before revealing the preview, showing a placeholder state until decoding completes so the preview never first appears blank.
-- [x] **DECK-074**: The card preview shall be dismissed when the pointer leaves the anchor, when any scroll container scrolls, or when the user presses Escape.
-- [x] **DECK-075**: While the primary pointer does not support hover (touch or other coarse pointer), the system shall not arm card previews, and the builder shall remain fully operable without them.
-- [x] **DECK-076**: The system shall arm the card preview on every card-name surface of the builder: each search result, each decklist entry, the assigned commander and partner, and each commander-picker autocomplete option.
-- [D] **DECK-077**: When the card mirror exposes a distinct back-face image for a double-faced card, the preview shall offer a control to flip between faces; until then it shows the front face only. (`CardSummary` / `DeckEntry` carry one `image_uris` object, so a mirror change is the prerequisite.)
+- [x] **DECK-070**: The builder shall present a dedicated card-image panel fixed in the layout's left column and sticky within the layout, so it stays visible while the decklist and search lists scroll, showing exactly one card at a time.
+- [x] **DECK-071**: The card-image panel shall render `image_uris.normal` when present, otherwise `image_uris.small`, otherwise a compact text card frame (name, mana cost, type line); it shall never mount an empty or broken image element.
+- [x] **DECK-072**: When a card-name surface anywhere in the builder is hovered by the pointer or has keyboard focus, the panel shall show that card; when no card-name surface is hovered or focused, the panel shall show the deck's commander, or a neutral placeholder when the deck has no commander.
+- [x] **DECK-073**: The system shall decode the panel's image before revealing it, keeping the previous image or a placeholder visible until decoding completes so the panel never flashes blank or broken.
+- [x] **DECK-074**: When the pointer or focus moves directly from one card-name surface to an adjacent one, the panel shall hand over from the first card to the second without reverting to the commander in the gap between them.
+- [x] **DECK-075**: On a device whose primary pointer does not support hover, the builder shall remain fully operable: the card-image panel then updates on keyboard focus of a card name and otherwise shows the commander or the placeholder.
+- [x] **DECK-076**: Every card-name surface of the builder shall drive the card-image panel: each search result, each decklist entry, the assigned commander and partner, each commander-picker autocomplete option, and each AI-suggestion row.
+- [D] **DECK-077**: When the card mirror exposes a distinct back-face image for a double-faced card, the panel shall offer a control to flip between faces; until then it shows the front face only. (`CardSummary` / `DeckEntry` carry one `image_uris` object, so a mirror change is the prerequisite.)
+- [x] **DECK-078**: The builder shall deliver card previews only through the fixed panel — no floating tooltip and no preview element portalled outside the builder layout.
 
 ## Builder Search & Decklist UX
 
 - [x] **DECK-080**: Each card-search result row shall identify the card by name, mana cost, type line, and colour identity.
-- [x] **DECK-081**: The system shall add a search result's card to the deck's `main` board from a single interaction — activating the row's add control, or pressing Enter while that row holds the keyboard cursor.
+- [x] **DECK-081**: The builder shall add a search result's card to the deck's `main` board from a single primary interaction — a click anywhere on the result row, or pressing Enter while that row holds the keyboard cursor — and shall offer adding the same card to the `sideboard` or `maybe` board only through a secondary control on the row that a row click does not trigger.
 - [x] **DECK-082**: The card-search result list shall be keyboard navigable — ArrowDown and ArrowUp move a selection cursor over the rows (clamping at the ends), Home and End jump to the first and last row, and Enter adds the card of the row under the cursor.
 - [x] **DECK-083**: When a search result's card already has entries anywhere in the deck, its row shall show the card's current total quantity across the deck rather than presenting it as absent.
 - [x] **DECK-084**: When a card is added from a search result, that row shall give an explicit transient confirmation of the addition.
 - [x] **DECK-085**: The card-search box shall pass its raw text to `GET /api/cards/search` unmodified, so the `id:` / `t:` / `cmc` / `o:` / `is:commander` predicates and bare terms keep working.
-- [x] **DECK-086**: Each decklist entry on a non-`command` board shall present a quantity stepper — one control adds a copy, the other removes a copy (calling `PATCH …/cards/{cardId}` to set `quantity - 1`) and removes the entry when the last copy is taken — while the entry's colour-identity and singleton violation badges and its board-and-category grouping stay visible.
+- [x] **DECK-086**: Each decklist entry on a non-`command` board shall present a quantity stepper — one control adds a copy, the other removes a copy (calling `PATCH …/cards/{cardId}` to set `quantity - 1`) and removes the entry when the last copy is taken — while the entry's colour-identity and singleton violation badges and its grouping stay visible.
+- [x] **DECK-087**: The decklist shall group each board's entries by primary card type — Creatures, Instants, Sorceries, Artifacts, Enchantments, Planeswalkers, Battles, Lands, then any Other — showing the summed card count in each group header, keeping the board split (`main` / `sideboard` / `maybe`) as the outer level, and showing the commander as its own section above the boards.
+- [x] **DECK-088**: The decklist's primary-type derivation shall read the front face of a `//` type line and classify it as the first match in the order Creature, Planeswalker, Land, Artifact, Enchantment, Instant, Sorcery, Battle, else Other — so a multi-type card such as "Artifact Creature — Golem" groups under Creature — mirroring `internal/deckstats`' type precedence.
 
 ## Builder Card Action Menu
 
-- [x] **DECK-090**: While a decklist entry is hovered on a hover-capable pointer, the system shall, after a short delay, show an action menu anchored to that row offering the actions valid for the entry, and shall also open it on demand from a per-row control (the path a coarse pointer uses).
+- [x] **DECK-090**: The builder shall open a decklist row's action menu only from that row's dedicated `⋯` control and never on hover, and shall keep at most one action menu open at a time — opening one closes any other.
 - [x] **DECK-091**: The action menu shall offer only actions valid for the entry in context: Add One, Add More, Remove One, Move to each board the entry is not already on, and Copy Card Name for every editable entry; Remove All only when the entry's quantity exceeds one.
-- [x] **DECK-092**: While a decklist entry is hovered and the caller is not typing in a field, the chords Alt+1 (Add One), Alt+2 (Remove One), Alt+3 (Move to Sideboard), and Alt+4 (Move to Considering) shall fire their action whether or not the menu is open, matched on the physical digit key.
-- [x] **DECK-093**: For the commander entry the action menu shall offer only Copy Card Name — no quantity or board actions — and the while-hovered quantity/board chords shall do nothing.
+- [x] **DECK-092**: While the pointer is over a decklist row or the keyboard focus is within it, and the caller is not typing in a field, the chords Alt+1 (Add One), Alt+2 (Remove One), Alt+3 (Move to Sideboard), and Alt+4 (Move to Considering) shall fire their action on that row — whether or not any menu is open, and without any menu being rendered — matched on the physical digit key.
+- [x] **DECK-093**: For the commander entry the action menu shall offer only Copy Card Name — no quantity or board actions — and the pointer/focus quantity and board chords shall do nothing.
+- [x] **DECK-094**: An open action menu shall close on an outside click, on Escape, when the decklist scroll region scrolls, and on navigation away; and it shall be positioned so it neither covers its own row nor leaves the viewport, flipping above the row or clamping to the viewport edge as needed.
+
+## Builder Layout
+
+- [x] **DECK-095**: The builder shall not render the import/export panel inline; it shall be reached from a "Tools" control on the deck header that opens it in a dialog dismissible by Escape, an outside click, or a close control.
+- [x] **DECK-096**: Above a narrow-viewport breakpoint the builder shall lay out as three columns — a sticky left column carrying the card-image panel and the legality summary, a center column for the type-grouped decklist, and a right column carrying AI suggestions at its top with card search below — and shall collapse to a single column on a narrow viewport; the legality validation summary shall remain visible while building at every breakpoint.
