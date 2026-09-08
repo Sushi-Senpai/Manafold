@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { computeMenuPlacement, MENU_GAP, MENU_MARGIN } from "./menuPlacement.ts";
+import { computeMenuPlacement, viewport, MENU_GAP, MENU_MARGIN } from "./menuPlacement.ts";
 
 const VIEWPORT = { width: 1280, height: 800 };
 const MENU = { width: 208, height: 220 };
@@ -36,6 +36,21 @@ test("computeMenuPlacement clamps into the viewport horizontally near the left e
   const anchor = { top: 200, left: 4, width: 24, height: 20 };
   const p = computeMenuPlacement(anchor, MENU, VIEWPORT);
   assert.ok(p.left >= MENU_MARGIN, `left ${p.left} below margin`);
+});
+
+// @spec DECK-094
+test("viewport falls back to a desktop size when there is no window (SSR / node)", () => {
+  assert.equal(typeof window, "undefined", "precondition: node test env has no window");
+  assert.deepEqual(viewport(), { width: 1280, height: 800 });
+});
+
+// @spec DECK-094
+test("computeMenuPlacement defaults its viewport to the shared helper when omitted", () => {
+  const anchor = { top: 200, left: 900, width: 24, height: 20 };
+  assert.deepEqual(
+    computeMenuPlacement(anchor, MENU),
+    computeMenuPlacement(anchor, MENU, viewport()),
+  );
 });
 
 // @spec DECK-094

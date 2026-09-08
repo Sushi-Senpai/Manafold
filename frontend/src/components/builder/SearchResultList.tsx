@@ -32,6 +32,10 @@ export function SearchResultList({
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Card ids whose add is still in flight. A whole-row click target makes a
+  // rapid double-click or a stray second click easy; ignore a repeat add for a
+  // card until its first add settles so one interaction never adds two copies.
+  const inFlight = useRef<Set<string>>(new Set());
 
   // A fresh result set starts with no row focused — adjust during render when
   // the `cards` identity changes rather than in an effect.
@@ -55,8 +59,12 @@ export function SearchResultList({
 
   const add = useCallback(
     (card: CardSummary, board: "main" | "sideboard" | "maybe") => {
+      if (inFlight.current.has(card.id)) return;
+      inFlight.current.add(card.id);
       flashAdded(card.id);
-      void onAdd(card, board);
+      Promise.resolve(onAdd(card, board)).finally(() => {
+        inFlight.current.delete(card.id);
+      });
     },
     [flashAdded, onAdd],
   );

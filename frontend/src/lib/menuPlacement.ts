@@ -25,6 +25,16 @@ function clamp(value: number, lo: number, hi: number): number {
   return Math.min(Math.max(value, lo), hi);
 }
 
+// SSR-safe viewport size. The two menu call sites (CardActionMenu,
+// SearchResultRow) measure against the live window on the client; on the server
+// there is no window, so fall back to a typical desktop size. Shared here so
+// both call sites use one implementation and `computeMenuPlacement` can default
+// to it.
+export function viewport(): Size {
+  if (typeof window === "undefined") return { width: 1280, height: 800 };
+  return { width: window.innerWidth, height: window.innerHeight };
+}
+
 // computeMenuPlacement positions the menu against the anchor (the row's `⋯`
 // button). It opens directly below the anchor, right-aligned to it; flips to sit
 // directly above when it would overflow the viewport bottom and there is more
@@ -36,7 +46,7 @@ function clamp(value: number, lo: number, hi: number): number {
 export function computeMenuPlacement(
   anchor: Rect,
   menu: Size,
-  viewport: Size,
+  vp: Size = viewport(),
   opts: { gap?: number; margin?: number } = {},
 ): MenuPlacement {
   const gap = opts.gap ?? MENU_GAP;
@@ -44,7 +54,7 @@ export function computeMenuPlacement(
 
   const below = anchor.top + anchor.height + gap;
   const above = anchor.top - gap - menu.height;
-  const spaceBelow = viewport.height - below;
+  const spaceBelow = vp.height - below;
   const spaceAbove = anchor.top - margin;
 
   let placement: "below" | "above";
@@ -56,12 +66,12 @@ export function computeMenuPlacement(
     placement = "above";
     top = above;
   }
-  top = clamp(top, margin, Math.max(margin, viewport.height - menu.height - margin));
+  top = clamp(top, margin, Math.max(margin, vp.height - menu.height - margin));
 
   // Right-align the menu to the anchor, then clamp into the viewport.
   const right = anchor.left + anchor.width;
   let left = right - menu.width;
-  left = clamp(left, margin, Math.max(margin, viewport.width - menu.width - margin));
+  left = clamp(left, margin, Math.max(margin, vp.width - menu.width - margin));
 
   return { left, top, placement };
 }

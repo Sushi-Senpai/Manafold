@@ -90,6 +90,23 @@ export function groupByType(entries: DeckEntry[]): TypeGroup[] {
   return groups;
 }
 
+// ---- decklist shortcut ownership (DECK-092) --------------------------
+
+// activeShortcutRow picks the single decklist row that owns the Alt+1..4 chords.
+// A row can be marked by the pointer resting over it and, independently, by
+// keyboard focus being within it; when both are set the pointer row wins. Only
+// the returned row binds the window keydown listener, so a chord can never fire
+// on two rows at once (which would issue a duplicate PATCH). Either id may be
+// null.
+//
+// @spec DECK-092
+export function activeShortcutRow(
+  pointerRowId: string | null,
+  focusRowId: string | null,
+): string | null {
+  return pointerRowId ?? focusRowId;
+}
+
 // ---- card-image panel active card (DECK-072) --------------------------
 
 export type PanelCard =

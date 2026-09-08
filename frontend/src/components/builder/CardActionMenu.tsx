@@ -14,11 +14,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "re
 import type { CardAction } from "@/lib/cardActions";
 import { computeMenuPlacement, type MenuPlacement } from "@/lib/menuPlacement";
 
-function viewport() {
-  if (typeof window === "undefined") return { width: 1280, height: 800 };
-  return { width: window.innerWidth, height: window.innerHeight };
-}
-
 export function CardActionMenu({
   actions,
   anchorRef,
@@ -48,7 +43,6 @@ export function CardActionMenu({
       computeMenuPlacement(
         { top: a.top, left: a.left, width: a.width, height: a.height },
         { width: m.width, height: m.height },
-        viewport(),
       ),
     );
   }, [anchorRef, actions.length, addMore?.open]);

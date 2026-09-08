@@ -10,7 +10,7 @@
 //
 // @spec DECK-080, DECK-081, DECK-083, DECK-084
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import type { CardSummary } from "@/lib/api";
 import { computeMenuPlacement, type MenuPlacement } from "@/lib/menuPlacement";
@@ -33,6 +33,7 @@ export function SearchResultRow({
   onPointerFocus: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const kebabRef = useRef<HTMLButtonElement>(null);
 
   return (
     <li
@@ -74,6 +75,7 @@ export function SearchResultRow({
 
       <div className="relative shrink-0">
         <button
+          ref={kebabRef}
           type="button"
           aria-label={`Add ${card.name} to another board`}
           aria-haspopup="menu"
@@ -88,6 +90,7 @@ export function SearchResultRow({
         </button>
         {menuOpen && (
           <AddToBoardMenu
+            anchorRef={kebabRef}
             onPick={(board) => {
               setMenuOpen(false);
               onAdd(board);
@@ -100,18 +103,16 @@ export function SearchResultRow({
   );
 }
 
-function viewport() {
-  if (typeof window === "undefined") return { width: 1280, height: 800 };
-  return { width: window.innerWidth, height: window.innerHeight };
-}
-
 // The secondary add-to-board menu: two items, positioned like the decklist
 // action menu (fixed, flip/clamp) so it is never clipped by the result list's
-// scroll pane.
+// scroll pane. The anchor is passed in explicitly (like CardActionMenu) rather
+// than found by DOM traversal, so it survives markup changes around the button.
 function AddToBoardMenu({
+  anchorRef,
   onPick,
   onClose,
 }: {
+  anchorRef: RefObject<HTMLElement | null>;
   onPick: (board: "sideboard" | "maybe") => void;
   onClose: () => void;
 }) {
@@ -119,7 +120,7 @@ function AddToBoardMenu({
   const [placement, setPlacement] = useState<MenuPlacement | null>(null);
 
   useLayoutEffect(() => {
-    const anchor = ref.current?.previousElementSibling as HTMLElement | null;
+    const anchor = anchorRef.current;
     if (!anchor || !ref.current) return;
     const a = anchor.getBoundingClientRect();
     const m = ref.current.getBoundingClientRect();
@@ -127,10 +128,9 @@ function AddToBoardMenu({
       computeMenuPlacement(
         { top: a.top, left: a.left, width: a.width, height: a.height },
         { width: m.width, height: m.height },
-        viewport(),
       ),
     );
-  }, []);
+  }, [anchorRef]);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {

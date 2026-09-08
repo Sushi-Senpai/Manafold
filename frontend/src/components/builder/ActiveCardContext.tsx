@@ -37,6 +37,10 @@ type ActiveCardApi = {
   // pointer already left cannot wipe the card the next row just set.
   set: (key: string, card: PreviewCard) => void;
   clear: (key: string) => void;
+  // `clearNow` blanks the panel immediately (no debounce) when `key` is what is
+  // showing. Used when a surface unmounts: the debounced `clear` shares one
+  // timer, so a batch of unmounts races and the wrong key's timer wins.
+  clearNow: (key: string) => void;
 };
 
 const ActiveCardContext = createContext<ActiveCardApi | null>(null);
@@ -71,9 +75,17 @@ export function ActiveCardProvider({ children }: { children: ReactNode }) {
     [cancelClear],
   );
 
+  const clearNow = useCallback<ActiveCardApi["clearNow"]>(
+    (key) => {
+      cancelClear();
+      setState((prev) => (prev?.key === key ? null : prev));
+    },
+    [cancelClear],
+  );
+
   const api = useMemo<ActiveCardApi>(
-    () => ({ active: state?.card ?? null, set, clear }),
-    [state, set, clear],
+    () => ({ active: state?.card ?? null, set, clear, clearNow }),
+    [state, set, clear, clearNow],
   );
 
   return <ActiveCardContext.Provider value={api}>{children}</ActiveCardContext.Provider>;
@@ -88,6 +100,7 @@ export function useActiveCard(): ActiveCardApi {
       active: null,
       set: () => {},
       clear: () => {},
+      clearNow: () => {},
     }
   );
 }

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   groupByType,
   primaryCardType,
+  activeShortcutRow,
   resolvePanelCard,
   boardCount,
   formatValidationStrip,
@@ -76,6 +77,17 @@ test("groupByType buckets entries in display order, counts copies, sorts by name
   );
   assert.deepEqual(groups[0].entries.map((e) => e.name), ["Birds of Paradise", "Llanowar Elves"]);
   assert.deepEqual(groups[2].entries.map((e) => e.name), ["Blasphemous Act", "Wrath of God"]);
+});
+
+// @spec DECK-092
+test("activeShortcutRow gives the pointer row precedence over the focus row", () => {
+  // Pointer over one row while keyboard focus sits in another: only the pointer
+  // row must own the Alt+1..4 chords, so the chord never double-fires.
+  assert.equal(activeShortcutRow("row-a", "row-b"), "row-a");
+  // Pointer alone, focus alone, and neither.
+  assert.equal(activeShortcutRow("row-a", null), "row-a");
+  assert.equal(activeShortcutRow(null, "row-b"), "row-b");
+  assert.equal(activeShortcutRow(null, null), null);
 });
 
 // @spec DECK-072

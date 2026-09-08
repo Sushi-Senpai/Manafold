@@ -5,8 +5,9 @@
 // quantity stepper (non-command boards), a `⋯` control that opens the action
 // menu, and the pointer/focus Alt+1..4 shortcuts. The menu's open state is owned
 // by `Decklist` (one menu at a time); this row only asks it to open / close.
-// The shortcuts are bound whenever the pointer is over the row or the keyboard
-// focus is within it — never through the menu, which may not be rendered.
+// The row reports pointer-enter/leave and focus-in/out to `Decklist`, which
+// marks exactly one row `shortcutActive`; only that row binds the Alt+1..4
+// window listener — never through the menu, which may not be rendered.
 // `footer` is a slot other builder features hang per-row UI from.
 //
 // @spec DECK-076, DECK-086, DECK-090, DECK-092, DECK-093
@@ -46,6 +47,9 @@ export function DecklistRow({
   menuOpen,
   onOpenMenu,
   onCloseMenu,
+  shortcutActive,
+  onPointerChange,
+  onFocusChange,
   footer,
 }: {
   entry: DeckEntry;
@@ -54,10 +58,12 @@ export function DecklistRow({
   menuOpen: boolean;
   onOpenMenu: () => void;
   onCloseMenu: () => void;
+  shortcutActive: boolean;
+  onPointerChange: (over: boolean) => void;
+  onFocusChange: (within: boolean) => void;
   footer?: ReactNode;
 }) {
   const kebabRef = useRef<HTMLButtonElement>(null);
-  const [active, setActive] = useState(false); // pointer over OR focus within
   const [addMoreOpen, setAddMoreOpen] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -101,10 +107,10 @@ export function DecklistRow({
     onCloseMenu();
   }, [onCloseMenu]);
 
-  // Alt+1..4 on the row under the pointer or with keyboard focus-within, menu or
-  // no menu, unless the caller is typing in a field.
+  // Alt+1..4 on the one row `Decklist` marks active (pointer row, else
+  // focus-within row), menu or no menu, unless the caller is typing in a field.
   useEffect(() => {
-    if (!active) return;
+    if (!shortcutActive) return;
     function onKey(e: KeyboardEvent) {
       if (!e.altKey) return;
       const chord = SHORTCUT_CODE[e.code];
@@ -116,7 +122,7 @@ export function DecklistRow({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, actions, run]);
+  }, [shortcutActive, actions, run]);
 
   const incAction = actions.find((a) => a.id === "add-one");
   const decAction = actions.find((a) => a.id === "remove-one");
@@ -125,11 +131,11 @@ export function DecklistRow({
   return (
     <li
       className="group relative py-1 text-sm"
-      onMouseEnter={() => setActive(true)}
-      onMouseLeave={() => setActive(false)}
-      onFocus={() => setActive(true)}
+      onMouseEnter={() => onPointerChange(true)}
+      onMouseLeave={() => onPointerChange(false)}
+      onFocus={() => onFocusChange(true)}
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setActive(false);
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onFocusChange(false);
       }}
     >
       <div className="flex items-center justify-between gap-2">

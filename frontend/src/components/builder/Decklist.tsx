@@ -7,7 +7,7 @@
 // "which row's action menu is open" id so at most one is ever open, and closes
 // it on any scroll or navigation (outside-click / Escape are the menu's own).
 //
-// @spec DECK-007, DECK-087, DECK-090, DECK-094
+// @spec DECK-007, DECK-087, DECK-090, DECK-092, DECK-094
 
 import { useEffect, useState } from "react";
 
@@ -17,6 +17,7 @@ import {
   BOARD_LABELS,
   boardCount,
   groupByType,
+  activeShortcutRow,
   explainFitLabel,
   type BoardName,
 } from "@/lib/deck";
@@ -32,6 +33,13 @@ export function Decklist({
   onChange: () => void;
 }) {
   const [openMenuEntryId, setOpenMenuEntryId] = useState<string | null>(null);
+
+  // The single row that owns the Alt+1..4 chords: the pointer row, or failing
+  // that the keyboard-focus row (activeShortcutRow). Tracked as two ids so a
+  // chord is never bound on two rows at once.
+  const [pointerRowId, setPointerRowId] = useState<string | null>(null);
+  const [focusRowId, setFocusRowId] = useState<string | null>(null);
+  const shortcutRowId = activeShortcutRow(pointerRowId, focusRowId);
 
   // One menu at a time; close it on any scroll (capture, so a scroll inside a
   // nested pane counts too) and on navigation.
@@ -60,6 +68,17 @@ export function Decklist({
         menuOpen={openMenuEntryId === entry.entry_id}
         onOpenMenu={() => setOpenMenuEntryId(entry.entry_id)}
         onCloseMenu={() => setOpenMenuEntryId(null)}
+        shortcutActive={shortcutRowId === entry.entry_id}
+        onPointerChange={(over) =>
+          setPointerRowId((cur) =>
+            over ? entry.entry_id : cur === entry.entry_id ? null : cur,
+          )
+        }
+        onFocusChange={(within) =>
+          setFocusRowId((cur) =>
+            within ? entry.entry_id : cur === entry.entry_id ? null : cur,
+          )
+        }
         footer={
           entry.board === "main" || entry.board === "command" ? (
             <ExplainFit deckId={deckId} cardId={entry.card_id} />

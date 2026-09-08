@@ -26,8 +26,12 @@ export function useActiveCardTrigger(card: PreviewCard | null) {
   }, [panel, key]);
 
   // If the surface unmounts while it is the one showing (e.g. a search result
-  // list is replaced mid-hover), release the panel.
-  useEffect(() => () => panel.clear(key), [panel, key]);
+  // list is replaced mid-hover), release the panel immediately. `clearNow` is a
+  // stable reference, so this effect runs its cleanup only on real unmount — not
+  // on every re-render — and it skips the debounced `clear`, whose shared timer
+  // races when a whole list unmounts at once and leaves the panel stuck.
+  const { clearNow } = panel;
+  useEffect(() => () => clearNow(key), [clearNow, key]);
 
   return {
     open,

@@ -203,17 +203,19 @@ outside colour identity — it does not silently reject or silently accept
   `page.tsx` loads the deck + validation report, mounts the active-card
   provider, and arranges three columns above a narrow-viewport breakpoint,
   collapsing to one column below it:
-  - **left column (sticky)** — the card-image panel (`DECK-070`) above a compact
-    always-visible legality summary (`DECK-096`) and a collapsible deck-stats
-    section;
+  - **left column (sticky)** — the card-image panel (`DECK-070`) above a
+    collapsible deck-stats section (the legality summary is not in this column —
+    it is pinned under the deck header, `DECK-096`);
   - **center column** — the type-grouped decklist;
   - **right column** — AI suggestions at the top (prominent — `ai-assist`), card
     search below.
 
   The deck header carries the deck name, colour identity, and a **Tools** menu
   whose only item opens the import/export panel in a dismissible dialog
-  (`DECK-095`) — it is never inline. The commander picker sits above the
-  columns.
+  (`DECK-095`) — it is never inline. The slim legality summary is pinned
+  (sticky) directly under the deck header, outside the three columns, so it
+  stays visible while building at every breakpoint (`DECK-096`). The commander
+  picker sits above the columns.
   - **Commander picker** — an autocomplete (`/api/cards/search?q=is:commander …`)
     over legendary creatures; selecting one `PUT`s `/commander`. The assigned
     commander / partner names and every result option drive the card-image
@@ -268,8 +270,9 @@ outside colour identity — it does not silently reject or silently accept
     directly.
   - **Legality summary** — a compact always-visible reading of the
     `/validation` report ("97/100", "2 cards outside colour identity",
-    "singleton: 2× Sol Ring", "banned: Channel") pinned in the sticky left
-    column (`DECK-096`). Refetched after every mutation.
+    "singleton: 2× Sol Ring", "banned: Channel") pinned (sticky) directly under
+    the deck header, visible at every breakpoint (`DECK-096`). Refetched after
+    every mutation.
   - **Deck stats** — a collapsible left-column section reading `/stats`: land /
     non-land / average MV, a bar-chart mana curve, colour pips vs sources, and
     category counts against the rules-of-thumb bands. Refetched when the deck's
