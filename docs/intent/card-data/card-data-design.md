@@ -160,15 +160,15 @@ Every request sends `User-Agent: Manafold/1.0
 application/json;q=0.9,*/*;q=0.8`. Sustained traffic stays under 10 req/s with
 50–100 ms between calls; the bulk downloads are two large streamed GETs spooled
 to a temp file, not a crawl. An HTTP `429` triggers a 30 s back-off then one
-retry. The non-body phase of every bulk HTTP call — the manifest fetch and the
-wait for response headers on each bulk GET — is bounded by a **response-header
-timeout**, so a connection that completes TLS but never sends a status line
-fails instead of hanging a `context.Background()` run. Each bulk download's body
-is bounded by an **idle deadline** — the run fails if the connection delivers no
-bytes for a bounded interval. Neither is a single whole-request timeout, which
-would span the subsequent ingest and abort a healthy run. The
-`/cards/collection` batch endpoint (used only by the M2 single-printing
-fallback) is held under ~2 req/s.
+retry. The non-body phases are each bounded so a stalled connection cannot hang
+a `context.Background()` run: the manifest fetch **and its JSON decode** run
+under a short `context.WithTimeout` (a few-KB document fetched once), and each
+bulk GET's wait for response headers is bounded by a **response-header
+timeout**. Each bulk download's body is bounded by an **idle deadline** — the
+run fails if the connection delivers no bytes for a bounded interval. None of
+these is a single whole-request timeout, which would span the subsequent ingest
+and abort a healthy run. The `/cards/collection` batch endpoint (used only by
+the M2 single-printing fallback) is held under ~2 req/s.
 
 ### Derived fields
 
@@ -232,7 +232,7 @@ plausible-but-wrong query silently returns the wrong cards.
 | Bulk transport decode | Follow the manifest's `jsonl_download_uri`; inflate the `.jsonl.gz` body with `compress/gzip`; decode newline-delimited JSON one object at a time | Rely on `net/http` transparent decompression; buffer the whole file then `json.Unmarshal` an array | Scryfall serves the export as `application/gzip` with no `Content-Encoding`, so the transport never inflates it; the payload is JSONL, not a JSON array. Streaming the inflated stream keeps a multi-hundred-MB export off the heap. |
 | Download vs. ingest coupling | Spool each export to a temp file first (closing the connection), then ingest from local disk; remove the temp file on every exit path | Ingest straight off the live HTTP body, one object read interleaved with its DB write | Interleaving made every body read wait on Postgres write latency, so the connection stayed open for the whole ingest and was torn down mid-stream (a `PROTOCOL_ERROR` surfaced from the CDN or an `http.Client` deadline), losing ~87% of `card_prints`. A spooled download is bounded and quick; the disk cost is the compressed export size, released immediately after. |
 | Printing upsert shape | `COPY` all printings into a session `TEMP` table, then one `INSERT … SELECT … JOIN cards … ON CONFLICT DO UPDATE` | One `SELECT` for `card_id` plus one `INSERT … ON CONFLICT` per printing (~430 k × 2 round-trips) | The per-row path is the reason a real sync cannot finish inside the cron wall-clock and why the connection is held open so long. `COPY` + a set-based merge is two statements for the whole export, resolves `card_id` in SQL, and yields the orphan-skip count from a `LEFT JOIN`. The `TEMP` table is session-scoped so concurrent syncs never collide. |
-| Bulk download deadline | `Transport.ResponseHeaderTimeout` for the non-body phase (manifest + wait for response headers) plus a per-download idle/read deadline for the body (fail if no bytes arrive for a bounded interval) | A single `http.Client{Timeout}` covering the whole request | A whole-request timeout has to be set long enough for the full ingest, so it cannot also catch a genuinely stalled download promptly; once download and ingest are decoupled it would only ever fire spuriously on a healthy long ingest. `ResponseHeaderTimeout` fails a connection that completes TLS but never answers — otherwise unbounded under `cmd/cardsync`'s `context.Background()` — while the idle deadline fails a dead connection mid-body; neither touches the ingest. |
+| Bulk download deadline | A short `context.WithTimeout` around the manifest fetch+decode, `Transport.ResponseHeaderTimeout` for each bulk GET's response-header wait, and a per-download idle/read deadline for each bulk body (fail if no bytes arrive for a bounded interval) | A single `http.Client{Timeout}` covering the whole request | A whole-request timeout has to be set long enough for the full ingest, so it cannot also catch a genuinely stalled download promptly; once download and ingest are decoupled it would only ever fire spuriously on a healthy long ingest. The manifest timeout and `ResponseHeaderTimeout` fail a connection that completes TLS but never answers (or stalls mid-manifest) — otherwise unbounded under `cmd/cardsync`'s `context.Background()` — while the idle deadline fails a dead connection mid-body; none touches the ingest. |
 | Full-text index | Postgres `tsvector` column (`oracle_search`) + GIN | `pg_trgm` only; an external search engine | `tsvector` handles the Oracle-text predicates natively at sub-10 ms; `pg_trgm` additionally backs the name prefix/`ILIKE` paths. No external dependency. |
 
 ## Open Questions & Future Decisions

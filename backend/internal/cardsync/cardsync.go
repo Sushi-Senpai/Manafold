@@ -6,9 +6,10 @@
 // A run downloads each export to a temporary file and closes the HTTP
 // connection before it does any database write (CARD-013): the download must
 // not be gated on Postgres write latency, or the connection is held open for
-// the whole ingest and torn down mid-stream. The non-body phase is bounded by a
-// response-header timeout and the body download by an idle deadline; neither is
-// a whole-request cap over the ingest (CARD-015). The spooled export is
+// the whole ingest and torn down mid-stream. The non-body phases — the manifest
+// fetch and decode, and each bulk GET's response-header wait — are bounded by
+// short timeouts; each bulk body download is bounded by an idle deadline; none
+// is a whole-request cap over the ingest (CARD-015). The spooled export is
 // then read back from disk, gzip-inflated, and decoded object by object
 // (CARD-012). Oracle Cards upserts one row at a time; Default Cards is
 // bulk-upserted with COPY into a session TEMP table plus one set-based merge
@@ -51,13 +52,19 @@ var retryBackoff = 30 * time.Second
 // timeout: that would span the ingest. A var so tests can shorten it.
 var downloadIdleTimeout = 2 * time.Minute
 
-// responseHeaderTimeout bounds the non-body phase of every bulk HTTP call — the
-// manifest fetch and the wait for response headers on each bulk GET — so a
-// connection that completes TLS but never sends a response status line fails
+// responseHeaderTimeout bounds the wait for response headers on each bulk GET so
+// a connection that completes TLS but never sends a response status line fails
 // instead of hanging a context.Background() run forever (CARD-015). It does not
 // cover body reads; downloadToTemp's idle deadline does that. A var so tests can
 // shorten it.
 var responseHeaderTimeout = 2 * time.Minute
+
+// manifestTimeout bounds the whole manifest fetch — the response-header wait and
+// the JSON decode of the response body — so a stalled /bulk-data connection
+// cannot hang a context.Background() run forever (CARD-015). The manifest is a
+// few KB fetched once, so this never spans the ingest. A var so tests can
+// shorten it.
+var manifestTimeout = 2 * time.Minute
 
 // tempFileDir is the directory downloadToTemp writes its spool files to; ""
 // means the OS default (os.TempDir). A var so tests can point it at a scratch
@@ -94,9 +101,10 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 	client := opts.HTTPClient
 	if client == nil {
 		// No whole-request timeout: it would span the multi-minute ingest and
-		// abort a healthy run. The non-body phase is bounded by a
-		// response-header timeout; the body download by downloadToTemp's idle
-		// deadline; neither is a whole-request cap over the ingest (CARD-015).
+		// abort a healthy run. Each bulk GET's response-header wait is bounded
+		// by responseHeaderTimeout; the manifest fetch by manifestTimeout; each
+		// body download by downloadToTemp's idle deadline; none is a
+		// whole-request cap over the ingest (CARD-015).
 		transport := http.DefaultTransport.(*http.Transport).Clone()
 		transport.ResponseHeaderTimeout = responseHeaderTimeout
 		client = &http.Client{Transport: transport}
@@ -126,7 +134,9 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 	}
 
 	if oracleRC == nil || defaultRC == nil {
-		man, err := f.manifest(ctx, baseURL)
+		manifestCtx, cancel := context.WithTimeout(ctx, manifestTimeout)
+		man, err := f.manifest(manifestCtx, baseURL)
+		cancel()
 		if err != nil {
 			return res, err
 		}
