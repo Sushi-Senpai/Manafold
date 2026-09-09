@@ -1,19 +1,23 @@
 "use client";
 
-// The decklist: entries grouped by board then functional category (helpers in
-// lib/deck.ts). Each row is a DecklistRow, which owns its own quantity stepper
-// and hover action menu against the deck API.
+// The decklist: the board split (Commander / Mainboard / Considering /
+// Sideboard) is the outer level; within each non-command board, entries are
+// grouped by primary card type with a copy count in each header
+// ("Creatures (15)"). Each row is a DecklistRow. This component owns the single
+// "which row's action menu is open" id so at most one is ever open, and closes
+// it on any scroll or navigation (outside-click / Escape are the menu's own).
 //
-// @spec DECK-007
+// @spec DECK-007, DECK-087, DECK-090, DECK-092, DECK-094
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { api, ApiError, type DeckDetail } from "@/lib/api";
+import { api, ApiError, type DeckDetail, type DeckEntry } from "@/lib/api";
 import {
   BOARD_ORDER,
   BOARD_LABELS,
   boardCount,
-  groupByCategory,
+  groupByType,
+  activeShortcutRow,
   explainFitLabel,
   type BoardName,
 } from "@/lib/deck";
@@ -28,43 +32,97 @@ export function Decklist({
   deckId: string;
   onChange: () => void;
 }) {
+  const [openMenuEntryId, setOpenMenuEntryId] = useState<string | null>(null);
+
+  // The single row that owns the Alt+1..4 chords: the pointer row, or failing
+  // that the keyboard-focus row (activeShortcutRow). Tracked as two ids so a
+  // chord is never bound on two rows at once.
+  const [pointerRowId, setPointerRowId] = useState<string | null>(null);
+  const [focusRowId, setFocusRowId] = useState<string | null>(null);
+  const shortcutRowId = activeShortcutRow(pointerRowId, focusRowId);
+
+  const openMenu = useCallback((entryId: string) => setOpenMenuEntryId(entryId), []);
+  const closeMenu = useCallback(() => setOpenMenuEntryId(null), []);
+  const changePointer = useCallback((entryId: string, over: boolean) => {
+    setPointerRowId((cur) => (over ? entryId : cur === entryId ? null : cur));
+  }, []);
+  const changeFocus = useCallback((entryId: string, within: boolean) => {
+    setFocusRowId((cur) => (within ? entryId : cur === entryId ? null : cur));
+  }, []);
+
+  const footers = useMemo(() => {
+    const m = new Map<string, ReactNode>();
+    for (const board of BOARD_ORDER) {
+      for (const entry of detail.boards[board as BoardName] ?? []) {
+        if (entry.board === "main" || entry.board === "command") {
+          m.set(entry.entry_id, <ExplainFit deckId={deckId} cardId={entry.card_id} />);
+        }
+      }
+    }
+    return m;
+  }, [detail, deckId]);
+
+  // One menu at a time; close it on any scroll (capture, so a scroll inside a
+  // nested pane counts too) and on navigation.
+  useEffect(() => {
+    if (openMenuEntryId == null) return;
+    const close = () => setOpenMenuEntryId(null);
+    window.addEventListener("scroll", close, { capture: true, passive: true });
+    window.addEventListener("resize", close);
+    window.addEventListener("popstate", close);
+    return () => {
+      window.removeEventListener("scroll", close, { capture: true });
+      window.removeEventListener("resize", close);
+      window.removeEventListener("popstate", close);
+    };
+  }, [openMenuEntryId]);
+
   const empty = BOARD_ORDER.every((b) => (detail.boards[b as BoardName] ?? []).length === 0);
+
+  function row(entry: DeckEntry) {
+    return (
+      <DecklistRow
+        key={entry.entry_id}
+        entry={entry}
+        deckId={deckId}
+        onChange={onChange}
+        menuOpen={openMenuEntryId === entry.entry_id}
+        onOpenMenu={openMenu}
+        onCloseMenu={closeMenu}
+        shortcutActive={shortcutRowId === entry.entry_id}
+        onPointerChange={changePointer}
+        onFocusChange={changeFocus}
+        footer={footers.get(entry.entry_id)}
+      />
+    );
+  }
 
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Decklist</h2>
-      <div className="mt-3 flex flex-col gap-5">
+      <div className="mt-3 flex flex-col gap-6">
         {BOARD_ORDER.map((board) => {
           const entries = detail.boards[board as BoardName] ?? [];
           if (entries.length === 0) return null;
+          const isCommand = board === "command";
           return (
-            <div key={board}>
+            <section key={board}>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground/40">
                 {BOARD_LABELS[board as BoardName]} · {boardCount(entries)}
               </h3>
-              {groupByCategory(entries).map((group) => (
-                <div key={group.category} className="mt-2">
-                  {group.category !== "Uncategorised" && (
-                    <p className="text-xs text-foreground/40">{group.category}</p>
-                  )}
-                  <ul className="flex flex-col">
-                    {group.entries.map((entry) => (
-                      <DecklistRow
-                        key={entry.entry_id}
-                        entry={entry}
-                        deckId={deckId}
-                        onChange={onChange}
-                        footer={
-                          entry.board === "main" || entry.board === "command" ? (
-                            <ExplainFit deckId={deckId} cardId={entry.card_id} />
-                          ) : undefined
-                        }
-                      />
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
+              {isCommand ? (
+                <ul className="mt-2 flex flex-col">{entries.map(row)}</ul>
+              ) : (
+                groupByType(entries).map((group) => (
+                  <div key={group.type} className="mt-3">
+                    <p className="text-xs font-medium text-foreground/50">
+                      {group.type} ({group.count})
+                    </p>
+                    <ul className="mt-1 flex flex-col">{group.entries.map(row)}</ul>
+                  </div>
+                ))
+              )}
+            </section>
           );
         })}
         {empty && (

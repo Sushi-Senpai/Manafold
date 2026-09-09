@@ -2,7 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  groupByCategory,
+  groupByType,
+  primaryCardType,
+  activeShortcutRow,
+  resolvePanelCard,
   boardCount,
   formatValidationStrip,
   formatSuggestionsFooter,
@@ -10,18 +13,18 @@ import {
 } from "./deck.ts";
 import type { AISuggestResponse, DeckEntry, ValidationReport } from "./api.ts";
 
-function entry(name: string, category: string | null, quantity = 1): DeckEntry {
+function entry(name: string, typeLine: string, quantity = 1): DeckEntry {
   return {
     entry_id: name,
     card_id: name,
     name,
     mana_cost: null,
     mana_value: 0,
-    type_line: "",
+    type_line: typeLine,
     color_identity: [],
     quantity,
     board: "main",
-    category,
+    category: null,
     image_uris: null,
     prices: null,
     set_code: "",
@@ -32,31 +35,77 @@ function entry(name: string, category: string | null, quantity = 1): DeckEntry {
   };
 }
 
-test("groupByCategory buckets and sorts entries, folding blanks into Uncategorised", () => {
-  const groups = groupByCategory([
-    entry("Cultivate", "Ramp"),
-    entry("Sol Ring", "Ramp"),
-    entry("Swords to Plowshares", "Removal"),
-    entry("Some Card", null),
-    entry("Blank Card", "  "),
+// @spec DECK-088
+test("primaryCardType classifies by precedence and reads the front face of a // line", () => {
+  assert.equal(primaryCardType("Legendary Creature — Phyrexian Angel Horror"), "Creatures");
+  assert.equal(primaryCardType("Artifact Creature — Golem"), "Creatures");
+  assert.equal(primaryCardType("Legendary Planeswalker — Chandra"), "Planeswalkers");
+  assert.equal(primaryCardType("Basic Land — Forest"), "Lands");
+  assert.equal(primaryCardType("Artifact — Equipment"), "Artifacts");
+  assert.equal(primaryCardType("Enchantment"), "Enchantments");
+  assert.equal(primaryCardType("Instant"), "Instants");
+  assert.equal(primaryCardType("Sorcery — Arcane"), "Sorceries");
+  // Battle DFC: the front face wins.
+  assert.equal(primaryCardType("Battle — Siege // Creature — Elemental"), "Battles");
+  // MDFC: the castable front face, not the land back.
+  assert.equal(primaryCardType("Instant // Land"), "Instants");
+  assert.equal(primaryCardType("Tribal Sorcery — Elf"), "Sorceries");
+  assert.equal(primaryCardType("Scheme"), "Other");
+});
+
+// @spec DECK-087
+test("groupByType buckets entries in display order, counts copies, sorts by name, drops empties", () => {
+  const groups = groupByType([
+    entry("Wrath of God", "Sorcery"),
+    entry("Sol Ring", "Artifact"),
+    entry("Birds of Paradise", "Creature — Bird"),
+    entry("Forest", "Basic Land — Forest", 12),
+    entry("Counterspell", "Instant"),
+    entry("Blasphemous Act", "Sorcery"),
+    entry("Llanowar Elves", "Creature — Elf Druid"),
   ]);
 
   assert.deepEqual(
-    groups.map((g) => g.category),
-    ["Ramp", "Removal", "Uncategorised"],
+    groups.map((g) => [g.type, g.count]),
+    [
+      ["Creatures", 2],
+      ["Instants", 1],
+      ["Sorceries", 2],
+      ["Artifacts", 1],
+      ["Lands", 12],
+    ],
   );
-  assert.deepEqual(
-    groups[0].entries.map((e) => e.name),
-    ["Cultivate", "Sol Ring"],
-  );
-  assert.deepEqual(
-    groups[2].entries.map((e) => e.name),
-    ["Blank Card", "Some Card"],
-  );
+  assert.deepEqual(groups[0].entries.map((e) => e.name), ["Birds of Paradise", "Llanowar Elves"]);
+  assert.deepEqual(groups[2].entries.map((e) => e.name), ["Blasphemous Act", "Wrath of God"]);
+});
+
+// @spec DECK-092
+test("activeShortcutRow gives the pointer row precedence over the focus row", () => {
+  // Pointer over one row while keyboard focus sits in another: only the pointer
+  // row must own the Alt+1..4 chords, so the chord never double-fires.
+  assert.equal(activeShortcutRow("row-a", "row-b"), "row-a");
+  // Pointer alone, focus alone, and neither.
+  assert.equal(activeShortcutRow("row-a", null), "row-a");
+  assert.equal(activeShortcutRow(null, "row-b"), "row-b");
+  assert.equal(activeShortcutRow(null, null), null);
+});
+
+// @spec DECK-072
+test("resolvePanelCard falls back active card -> commander -> placeholder", () => {
+  const active = { name: "Sol Ring", mana_cost: "{1}", type_line: "Artifact", image_uris: null };
+  const commander = {
+    name: "Atraxa",
+    mana_cost: "{G}{W}{U}{B}",
+    type_line: "Legendary Creature",
+    image_uris: null,
+  };
+  assert.deepEqual(resolvePanelCard(active, commander), { card: active, source: "active" });
+  assert.deepEqual(resolvePanelCard(null, commander), { card: commander, source: "commander" });
+  assert.deepEqual(resolvePanelCard(null, null), { card: null, source: "placeholder" });
 });
 
 test("boardCount sums quantities", () => {
-  assert.equal(boardCount([entry("Mountain", "Land", 34), entry("Sol Ring", "Ramp", 1)]), 35);
+  assert.equal(boardCount([entry("Mountain", "Basic Land — Mountain", 34), entry("Sol Ring", "Artifact", 1)]), 35);
 });
 
 test("formatValidationStrip renders count, violations, and commander issues", () => {

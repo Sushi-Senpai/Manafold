@@ -199,78 +199,116 @@ outside colour identity — it does not silently reject or silently accept
 
 - **`/decks`** — the caller's decks as cards, plus a "New deck" action that
   `POST`s and routes to the builder.
-- **`/decks/[id]`** — the builder. `page.tsx` loads the deck + validation
-  report, mounts the card-preview provider, and lays out the panels; the
-  commander picker, card search, and decklist are their own components under
-  `frontend/src/components/builder/`. The import/export, stats, AI-suggestions
-  (see `ai-assist`), and validation panels stay inline in `page.tsx`.
+- **`/decks/[id]`** — the builder, a multi-column workspace (`DECK-096`).
+  `page.tsx` loads the deck + validation report, mounts the active-card
+  provider, and arranges three columns above a narrow-viewport breakpoint,
+  collapsing to one column below it:
+  - **left column (sticky)** — the card-image panel (`DECK-070`) above a
+    collapsible deck-stats section (the legality summary is not in this column —
+    it is pinned under the deck header, `DECK-096`);
+  - **center column** — the type-grouped decklist;
+  - **right column** — AI suggestions at the top (prominent — `ai-assist`), card
+    search below.
+
+  The deck header carries the deck name, colour identity, and a **Tools** menu
+  whose only item opens the import/export panel in a dismissible dialog
+  (`DECK-095`) — it is never inline. The slim legality summary is pinned
+  (sticky) directly under the deck header, outside the three columns, so it
+  stays visible while building at every breakpoint (`DECK-096`). The commander
+  picker sits above the columns.
   - **Commander picker** — an autocomplete (`/api/cards/search?q=is:commander …`)
     over legendary creatures; selecting one `PUT`s `/commander`. The assigned
-    commander / partner names and every result option are hoverable previews.
+    commander / partner names and every result option drive the card-image
+    panel on hover / focus.
   - **Card search** — a debounced box whose raw text goes straight to
     `/api/cards/search` (so `id:` / `t:` / `cmc` / `o:` / `is:commander` keep
     working), feeding a result list where each row shows name, mana cost (as
-    pip chips), type line, and colour identity, a one-action Add, the card's
-    current total quantity in the deck when it is already present, and a
-    transient confirmation on add. The list is keyboard navigable — Arrow keys
-    move a cursor, Home/End jump, Enter adds the row under the cursor.
-  - **Decklist** — entries grouped by board then `category`, each row a
-    hoverable card name, its per-entry violation badges (never hidden), a
-    `− n +` quantity stepper (decrement calls `PATCH …/cards/{cardId}` to set
-    `quantity − 1`; the last decrement deletes the entry), and a hover action
-    menu (below). `DecklistRow` exposes a `footer` slot; `Decklist` fills it on
-    the main and command boards with the AI "Explain fit" control (see
-    `ai-assist`), so a per-row AI affordance hangs off the row without the
-    decklist depending on the AI feature itself.
-  - **Card action menu** — on a hover-capable pointer, hovering a decklist row
-    opens a small keyboard-navigable menu of the context-valid actions (Add
-    One, Add More, Remove One, Remove All, Move to Sideboard / Considering /
-    Main, Copy Card Name), each showing its hover shortcut. The chords
-    Alt+1 / Alt+2 / Alt+3 / Alt+4 fire Add One / Remove One / Move to Sideboard
-    / Move to Considering on the hovered row whether or not the menu is open,
-    matched on the physical digit key so macOS Option+digit characters do not
-    interfere, and suppressed while a text field is focused. A per-row control
-    opens the menu for coarse pointers; the commander row's menu offers only
-    Copy Card Name.
-  - **Card hover preview** — a single floating card image shared by every
-    card-name surface (search results, decklist rows, commander display,
-    commander autocomplete). It appears after a short intent delay, is anchored
-    near the pointer, flips to the anchor's left near the right edge and shifts
-    up near the bottom, decodes the image before revealing it (placeholder
-    until then), falls back to a text card frame when the card has no
-    `image_uris`, and dismisses on mouse-leave / scroll / Escape. It is not
-    armed at all on coarse / no-hover pointers.
-  - **Validation strip** — a persistent bar reading the `/validation` report:
-    "2 cards outside colour identity", "97/100", "singleton: 2× Sol Ring",
-    "banned: Channel". Refetched after every mutation.
-  - **Deck stats panel** — reads `/stats`: land / non-land / average MV, a
-    bar-chart mana curve, colour pips vs sources, and category counts against
-    the rules-of-thumb bands. Refetched when the deck's cards or commander
-    change.
-  - **Import / export panel** — see `import-export`.
+    pip chips), type line, and colour identity, the card's current total
+    quantity in the deck when it is already present, and a transient
+    confirmation on add. A **click anywhere on a row** — or Enter while the row
+    holds the keyboard cursor — adds the card to `main` (`DECK-081`); a small
+    secondary `⋯` control on the row (which a row click does not trigger) adds
+    it to `sideboard` or `maybe` instead. The list is keyboard navigable —
+    Arrow keys move a cursor, Home/End jump, Enter adds the row under the
+    cursor.
+  - **Decklist** — the board split (`command` shown as its own "Commander"
+    section, then `main` / `maybe` / `sideboard`) is the outer level; within
+    each board, entries are grouped by **primary card type** derived from
+    `type_line` (`DECK-087`, `DECK-088`) with the summed count in each header
+    ("Creatures (15)"). Each row is a card name that drives the image panel, its
+    per-entry violation badges (never hidden), a `− n +` quantity stepper
+    (decrement calls `PATCH …/cards/{cardId}` to set `quantity − 1`; the last
+    decrement deletes the entry), and a `⋯` control that opens the action menu.
+    `DecklistRow` exposes a `footer` slot; `Decklist` fills it on the main and
+    command boards with the AI "Explain fit" control (see `ai-assist`), so a
+    per-row AI affordance hangs off the row without the decklist depending on
+    the AI feature itself.
+  - **Card action menu** — opens **only** from the row's `⋯` control, never on
+    hover (`DECK-090`); opening one row's menu closes any other (a single
+    `openMenuEntryId` held by `Decklist`). It closes on outside click, Escape,
+    a scroll of the decklist region, and navigation (`DECK-094`), and is
+    `position: fixed` with a computed placement that opens below the row,
+    flips above it near the viewport bottom, and clamps horizontally
+    (`menuPlacement.ts`). It offers the context-valid actions (Add One, Add
+    More, Remove One, Remove All, Move to Sideboard / Considering / Main, Copy
+    Card Name), each showing its shortcut. Independently of the menu, while the
+    pointer is over a row or the keyboard focus is within it and no field is
+    focused, Alt+1 / Alt+2 / Alt+3 / Alt+4 fire Add One / Remove One / Move to
+    Sideboard / Move to Considering on that row (`DECK-092`), matched on the
+    physical digit key so macOS Option+digit characters do not interfere. The
+    commander row's menu offers only Copy Card Name (`DECK-093`).
+  - **Card-image panel** — a single sticky panel in the left column
+    (`DECK-070`, Moxfield-style). Hovering or keyboard-focusing any card-name
+    surface (`DECK-076`) sets it to that card; at rest it shows the deck's
+    commander, or a neutral placeholder when there is none (`DECK-072`). It
+    resolves `image_uris.normal` → `small` → a compact text card frame
+    (`DECK-071`), decodes the image before swapping it in so it never flashes
+    blank (`DECK-073`), and a short clear-delay hands the panel from one card
+    directly to the next when the pointer crosses between adjacent surfaces
+    (`DECK-074`). There is no floating tooltip and no portal (`DECK-078`); the
+    panel lives inside the `.workspace` subtree and inherits the light palette
+    directly.
+  - **Legality summary** — a compact always-visible reading of the
+    `/validation` report ("97/100", "2 cards outside colour identity",
+    "singleton: 2× Sol Ring", "banned: Channel") pinned (sticky) directly under
+    the deck header, visible at every breakpoint (`DECK-096`). Refetched after
+    every mutation.
+  - **Deck stats** — a collapsible left-column section reading `/stats`: land /
+    non-land / average MV, a bar-chart mana curve, colour pips vs sources, and
+    category counts against the rules-of-thumb bands. Refetched when the deck's
+    cards or commander change.
+  - **Import / export dialog** — see `import-export`; reached from the header
+    Tools menu (`DECK-095`).
 
 ### Builder components and helpers
 
-- `frontend/src/components/builder/` — `CardPreviewContext` (provider +
-  `useCardPreview`), `CardHoverPreview` (the portal), `useHoverPreview` /
-  `HoverCardName` (the per-surface trigger), `CommanderPicker`, `CardSearch` /
-  `SearchResultList` / `SearchResultRow`, `ManaSymbols` (`ManaCost` /
-  `ColorIdentity` chips), `Decklist` / `DecklistRow` / `QuantityStepper`,
-  `CardActionMenu`. `Decklist` also renders the AI "Explain fit" control
+- `frontend/src/components/builder/` — `ActiveCardContext` (provider +
+  `useActiveCard` state of which card the image panel shows), `CardImagePanel`
+  (the sticky panel), `CardFrame` (the shared text-frame fallback),
+  `HoverCardName` / `useActiveCardTrigger` (the per-surface hover/focus
+  trigger), `CommanderPicker`, `CardSearch` / `SearchResultList` /
+  `SearchResultRow`, `ManaSymbols` (`ManaCost` / `ColorIdentity` chips),
+  `Decklist` / `DecklistRow` / `QuantityStepper`, `CardActionMenu`,
+  `ToolsMenu` + `ImportExportDialog`. `Decklist` owns the single
+  `openMenuEntryId` and also renders the AI "Explain fit" control
   (`explainFitLabel` from `lib/deck.ts`) through `DecklistRow`'s `footer` slot
   on the main / command boards — see `ai-assist`. Each is `"use client"`; the
-  preview provider portals into
-  `document.body` inside a `.workspace` wrapper so it keeps the builder's light
-  palette (`PLATFORM-023`).
-- `frontend/src/lib/cardPreview.ts` — pure: `computePreviewPlacement`
-  (edge flip + viewport clamp), `resolvePreviewImage` (normal → small → text
-  frame), the fixed preview dimensions and intent delay.
+  whole builder renders inside the `(app)` layout's `.workspace` wrapper, so
+  every panel already carries the light palette (`PLATFORM-023`) with no portal.
+- `frontend/src/lib/cardPreview.ts` — pure: `resolvePreviewImage`
+  (normal → small → text frame) and the card-image aspect dimensions.
+- `frontend/src/lib/menuPlacement.ts` — pure: `computeMenuPlacement` (open
+  below the anchor, flip above near the viewport bottom, clamp horizontally).
 - `frontend/src/lib/searchNav.ts` — pure: `moveCursor` (keyboard cursor over
   the result list), `deckCardQuantity` (a card's total across all boards).
 - `frontend/src/lib/cardActions.ts` — pure: `buildCardActions` (the ordered,
   context-filtered action list, with the deck API passed in), `findShortcutAction`.
-- `frontend/src/lib/deck.ts` — pure helpers: `groupByCategory`, `boardCount`,
-  `formatValidationStrip(report)`.
+- `frontend/src/lib/deck.ts` — pure helpers: `groupByType` (primary-type
+  buckets in display order with counts, `DECK-087` / `DECK-088`), `boardCount`,
+  `formatValidationStrip(report)`, `primaryCardType` / `activeShortcutRow`
+  (physical-key chord owner: pointer row, else focus-within row, `DECK-092`),
+  `resolvePanelCard` (active card → commander → placeholder resolution for the
+  image panel, `DECK-072`).
 - `frontend/src/lib/deckstats.ts` — pure view helpers over the stats payload:
   `curveRows`, `pipRows`, `categoryRows`.
 
@@ -286,8 +324,12 @@ outside colour identity — it does not silently reject or silently accept
 | Partner detection | Parse partner variants from `keywords` + `oracle_text` at validation time | A `partner_type` column derived at sync | Partner wording is stable and rare; parsing it in the validator keeps `card-data` from carrying deck-shape logic, and the five variants are a small closed set. |
 | `deck_cards` uniqueness | `unique (deck_id, card_id, board)`; add increments `quantity` | One row per physical copy | Quantity is only ever > 1 for basics and `singleton_limit` cards; a row-per-copy model multiplies rows for no query benefit. |
 | Editing an existing entry | One `PATCH …/cards/{cardId}` that both sets an absolute quantity (`0` = delete) and moves an entry between boards (`to_board`) | A `delta`-based increment/decrement endpoint; separate `/quantity` and `/move` endpoints; client-side delete-then-re-add loop for a decrement | The builder needs per-copy quantity edits (basic lands) and board moves (the action menu), and `POST` (only `+1`) plus `DELETE` (whole entry) cannot express either without N round-trips. An absolute `quantity` is idempotent and needs no read-modify-write. The move is the same "edit one entry" shape, so it rides the same endpoint rather than doubling the surface; it is one statement (delete-returning + insert-on-conflict) so the quantity merges if the target board already holds the card. |
-| Card hover preview delivery | One provider holds the single preview and portals it into `document.body` (wrapped in `.workspace`); every card-name surface is a `HoverCardName` that calls `useCardPreview().show` | A popover rendered inside each row; a preview per surface | One instance cannot double up or leak, `document.body` escapes every `overflow:hidden`/stacking-context ancestor, and the placement math stays in one pure function. The `.workspace` wrapper is needed because the portal target is outside the `(app)` layout that scopes the light palette. |
-| Hover action-menu shortcuts | Match Alt+1..4 on `event.code` (`Digit1`..`Digit4`) while the row is hovered and no field is focused | Match on `event.key`; a global shortcut layer independent of hover | Alt+digit mirrors Moxfield's muscle memory, but on macOS `event.key` for Option+digit is a typographic character; `event.code` is the physical key and sidesteps that. Scoping to the hovered row keeps the chords unambiguous without a focus model, and the field-focus guard stops them firing mid-search. |
+| Card preview delivery | A fixed, sticky image panel in the builder's left column; every card-name surface is a `HoverCardName` that sets shared "active card" state on hover / focus, and the panel shows the active card, else the commander, else a placeholder | The earlier floating tooltip portalled into `document.body`; a popover per row | The captain ran the floating version and found it unusable — sweeping or scrolling the lists left tooltips stranded over the content. A single panel that never overlaps anything, is always in the same place, and stays put while lists scroll is the Moxfield pattern and removes the portal, the placement math, and the scroll/Escape dismissal entirely. It also needs no `.workspace` re-scoping because it renders inside the builder subtree. |
+| Action-menu open trigger | Open **only** from the row's `⋯` control; `Decklist` holds one `openMenuEntryId` so opening one closes any other; close on outside click / Escape / decklist scroll / navigation | Open on hover after a delay (the earlier behaviour); allow several open at once | Hover-open stranded menus over the list on scroll exactly as the tooltip did, and several could stack. A click trigger with a single-open invariant and scroll-close is unambiguous and cannot litter the list. |
+| Action-menu shortcut binding | Bind Alt+1..4 to exactly one row — the row under the pointer, else the row with keyboard focus-within, pointer winning when both are set — resolved by `Decklist` (`activeShortcutRow`) so only that one row's effect listens; the effect does not depend on the menu being rendered; match on `event.code` (`Digit1`..`Digit4`); guard against a focused field | Bind on every row that is either hovered or focus-within (fires the chord twice — once per matching row — when the pointer and the keyboard focus are on different rows); bind only while the menu is open; match on `event.key`; a global shortcut layer | The chords must keep working now that the menu no longer opens on hover, so they cannot hang off the menu. Binding on hover-or-focus independently let a chord fire on two rows at once (pointer over row A, focus in row B), issuing a duplicate PATCH — resolving a single owner id in the parent, pointer first, removes that. `event.code` is the physical key, sidestepping macOS Option+digit typography, and the field guard stops the chords firing mid-search. |
+| Add-from-search interaction | A click anywhere on the result row (and Enter on the cursor row) adds to `main`; a secondary `⋯` on the row adds to `sideboard` / `maybe` | Keep the dedicated "Add" button as the primary action | The captain asked for "click the name = add". The overwhelmingly common action is "add this to my deck"; making the whole row that action removes a target the user otherwise has to aim for, and the rare other-board add stays available behind a control that a row click does not reach. |
+| Decklist grouping | Group each board's entries by primary card type derived from `type_line` (front face of a `//` line; precedence Creature → Planeswalker → Land → Artifact → Enchantment → Instant → Sorcery → Battle → Other), board split as the outer level, commander as its own section | Keep grouping by the free-text `category` field; group by type only within `main` | `category` is hand-entered and empty for most entries, so it collapsed to one "Uncategorised" list — the captain asked for the Moxfield type sections with counts. Type is always derivable. Precedence mirrors `internal/deckstats` so the decklist sections and the stats type counts agree. The free-text category grouping returns with the M5 auto-categorizer. |
+| Import/export placement | Behind a "Tools" menu on the deck header, opening a dismissible dialog | Keep it as an always-on inline panel | It is used once or twice per session; an always-on panel was pure vertical bloat on a page the captain already found too long. |
 
 ## Open Questions & Future Decisions
 
@@ -300,12 +342,13 @@ outside colour identity — it does not silently reject or silently accept
    for the "top cards by colour" step. The `deck_cards` model already supports
    it — bulk inserts with `category = 'Land'`. Related to roadmap M8.
 2. **Functional-subtype grouping as first-class** (captain bonus #4) — the
-   `category` field is free-text in M1; the full auto-categorizer (Oracle-text
-   heuristics + Scryfall `oracle_tags`) and a builder UI that groups by
-   Removal / Counterspell / Ramp / Card Draw / Board Wipe / Land / … land at
-   M2/M5. The category vocabulary should be a known enum-like set with free-text
-   as an escape hatch, and `deckstats` should roll counts up by it against the
-   Commander rules-of-thumb.
+   decklist now groups by primary card *type* (`DECK-087`), which is always
+   derivable. Grouping by *functional category* (Removal / Counterspell / Ramp /
+   Card Draw / Board Wipe / …) still waits on the full auto-categorizer
+   (Oracle-text heuristics + Scryfall `oracle_tags`, roadmap M5, depends on
+   `CARD-010`), since the hand-entered `category` field is empty for most
+   entries. `deckstats` already rolls category counts up against the Commander
+   rules-of-thumb bands; the builder shows those in the stats section.
 3. **Low-friction swap UX** (captain bonus #5) — a "replace this card"
    interaction in the builder that removes one entry and adds another in one
    move, preserving `board` and `category`, and (when `ai-assist` is live)
@@ -325,13 +368,15 @@ outside colour identity — it does not silently reject or silently accept
 7. **LLM deck-health prose** — `deckstats` numbers are deterministic; an
    `ai-assist` summary that reads them into a prioritised fix list is roadmap
    M5.
-11. **Double-faced card preview flip** (`DECK-077`) — the hover preview shows a
-    DFC's front face only. `CardSummary` / `DeckEntry` expose a single
-    `image_uris` object, so a per-face preview needs `card-data` to surface both
-    faces first.
-12. **Tap-to-preview on coarse pointers** — previews are simply not armed on
-    touch. A deliberate press-and-hold affordance would restore them without
-    breaking scroll; not built in v1.
+11. **Double-faced card preview flip** (`DECK-077`) — the card-image panel shows
+    a DFC's front face only. `CardSummary` / `DeckEntry` expose a single
+    `image_uris` object, so a per-face flip control needs `card-data` to surface
+    both faces first.
+12. **Tap-to-load on coarse pointers** — a touch user has no hover, so the
+    card-image panel updates only on keyboard focus of a card name (`DECK-075`)
+    and otherwise shows the commander or the placeholder. A deliberate tap
+    affordance that loads the tapped card name into the panel is not built in
+    v1.
 13. **Out-of-scope action-menu items** — Moxfield's menu also carries printing /
     foil / tag / deck-image / collection actions. They are omitted here until
     the features behind them exist (printing selection, tags, collections).
@@ -358,13 +403,15 @@ outside colour identity — it does not silently reject or silently accept
   `backend/internal/api/decks_test.go`, `backend/internal/api/stats_test.go`
 - Frontend: `frontend/src/app/(app)/decks/page.tsx`,
   `frontend/src/app/(app)/decks/[id]/page.tsx`,
-  `frontend/src/components/builder/` (preview provider + portal, hover trigger,
-  commander picker, card search + result rows, mana chips, decklist + row +
-  quantity stepper, card action menu),
-  `frontend/src/lib/cardPreview.ts`, `frontend/src/lib/searchNav.ts`,
-  `frontend/src/lib/cardActions.ts`, `frontend/src/lib/deck.ts`,
-  `frontend/src/lib/deckstats.ts`
+  `frontend/src/components/builder/` (active-card provider, sticky card-image
+  panel + shared text frame, hover/focus trigger, commander picker, card search
+  + result rows, mana chips, decklist + row + quantity stepper, card action
+  menu, Tools menu + import/export dialog),
+  `frontend/src/lib/cardPreview.ts`, `frontend/src/lib/menuPlacement.ts`,
+  `frontend/src/lib/searchNav.ts`, `frontend/src/lib/cardActions.ts`,
+  `frontend/src/lib/deck.ts`, `frontend/src/lib/deckstats.ts`
 - Frontend tests: `frontend/src/lib/cardPreview.test.ts`,
+  `frontend/src/lib/menuPlacement.test.ts`, `frontend/src/lib/deck.test.ts`,
   `frontend/src/lib/searchNav.test.ts`, `frontend/src/lib/cardActions.test.ts`
 - Cross-segment: reads `card-data` (`cards`, `card_prints`, `banlist_overrides`);
   `user_id` / `anon_token` ownership comes from `account-access` (M1: the

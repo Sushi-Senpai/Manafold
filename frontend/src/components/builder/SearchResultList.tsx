@@ -2,8 +2,10 @@
 
 // The card-search results list: renders enriched rows and owns keyboard
 // navigation over them (Arrow keys move a cursor, Enter adds the row under the
-// cursor) plus the short-lived "Added ✓" confirmation. It is deliberately
-// presentational about data — the parent owns the query and the add call.
+// cursor to `main`) plus the short-lived "Added ✓" confirmation. It is
+// deliberately presentational about data — the parent owns the query and the
+// add call. A click anywhere on a row adds to `main`; a row's `⋯` adds to
+// another board (SearchResultRow).
 //
 // @spec DECK-081, DECK-082, DECK-084
 
@@ -24,12 +26,16 @@ export function SearchResultList({
   detail: DeckDetail;
   loading: boolean;
   query: string;
-  onAdd: (card: CardSummary) => void | Promise<void>;
+  onAdd: (card: CardSummary, board: "main" | "sideboard" | "maybe") => void | Promise<void>;
 }) {
   const [cursor, setCursor] = useState(-1);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Card ids whose add is still in flight. A whole-row click target makes a
+  // rapid double-click or a stray second click easy; ignore a repeat add for a
+  // card until its first add settles so one interaction never adds two copies.
+  const inFlight = useRef<Set<string>>(new Set());
 
   // A fresh result set starts with no row focused — adjust during render when
   // the `cards` identity changes rather than in an effect.
@@ -52,9 +58,13 @@ export function SearchResultList({
   }, []);
 
   const add = useCallback(
-    (card: CardSummary) => {
+    (card: CardSummary, board: "main" | "sideboard" | "maybe") => {
+      if (inFlight.current.has(card.id)) return;
+      inFlight.current.add(card.id);
       flashAdded(card.id);
-      void onAdd(card);
+      Promise.resolve(onAdd(card, board)).finally(() => {
+        inFlight.current.delete(card.id);
+      });
     },
     [flashAdded, onAdd],
   );
@@ -63,7 +73,7 @@ export function SearchResultList({
     if (e.key === "Enter") {
       if (cursor >= 0 && cursor < cards.length) {
         e.preventDefault();
-        add(cards[cursor]);
+        add(cards[cursor], "main");
       }
       return;
     }
@@ -103,7 +113,7 @@ export function SearchResultList({
           inDeck={deckCardQuantity(detail, card.id)}
           focused={i === cursor}
           justAdded={justAddedId === card.id}
-          onAdd={() => add(card)}
+          onAdd={(board) => add(card, board)}
           onPointerFocus={() => setCursor(i)}
         />
       ))}

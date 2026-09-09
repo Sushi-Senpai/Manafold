@@ -1,5 +1,5 @@
 schema_version: 2
-last_updated: 2026-09-06
+last_updated: 2026-09-08
 # M1: LID bootstrap + Waystone-mirrored skeleton + Commander deck vertical slice.
 # M2: import/export (deckio + parse-then-apply endpoints) + deterministic deck
 #     stats + the Slate & Signet palette wire-in.
@@ -65,7 +65,7 @@ arrows:
     blocks: [ai-assist, import-export]
     blockedBy: [card-data, account-access]
     detail: deck-building.md
-    next: "M1 landed: decks / deck_cards schema; internal/deckrules; deck CRUD + commander assignment + add/remove cards + GET /validation; ownership in-query (404); read-only public deck view; /decks list + /decks/[id] builder. M2 landed: internal/deckstats (curve / pips-vs-sources / category roll-up + CategoryTargets) + GET /decks/{id}/stats + stats panel (DECK-051, DECK-052); DECK-060 bulk import write. M3 landed: deck queries scoped to a polymorphic owner key (user_id OR anon_token); CreateDeck takes either; ClaimAnonDecks reassignment (DECK-040/041). Builder-experience pass (2026-09-06): PATCH /decks/{id}/cards/{cardId} set-quantity + board-move (DECK-012/013); componentised builder (frontend/src/components/builder/) with a shared card hover preview (DECK-070..077), enriched keyboard-navigable search (DECK-080..086), and a hover action menu + Alt+1..4 shortcuts (DECK-090..093); DECK-077 (DFC preview flip) deferred on card-data. Deferred: auto-categorizer, bootstrapping wizard, swap UX, cut suggestions (M4+)."
+    next: "M1 landed: decks / deck_cards schema; internal/deckrules; deck CRUD + commander assignment + add/remove cards + GET /validation; ownership in-query (404); read-only public deck view; /decks list + /decks/[id] builder. M2 landed: internal/deckstats (curve / pips-vs-sources / category roll-up + CategoryTargets) + GET /decks/{id}/stats + stats panel (DECK-051, DECK-052); DECK-060 bulk import write. M3 landed: deck queries scoped to a polymorphic owner key (user_id OR anon_token); CreateDeck takes either; ClaimAnonDecks reassignment (DECK-040/041). Builder-experience pass (2026-09-06): PATCH /decks/{id}/cards/{cardId} set-quantity + board-move (DECK-012/013); componentised builder (frontend/src/components/builder/) with a shared card hover preview (DECK-070..077), enriched keyboard-navigable search (DECK-080..086), and a hover action menu + Alt+1..4 shortcuts (DECK-090..093); DECK-077 (DFC preview flip) deferred on card-data. Builder UX v2 (2026-09-08, frontend-only): floating preview -> sticky left-column card-image panel (DECK-070..078); action menu opens only from the row control, single-open, closes on scroll/outside/Escape/nav (DECK-090, DECK-094), shortcuts rebind to the pointer-or-focused row (DECK-092); click a search row to add to main (DECK-081); decklist grouped by primary card type with counts (DECK-087, DECK-088); import/export behind a header Tools dialog (DECK-095); three-column workspace with an always-visible legality summary (DECK-096). Deferred: functional-category grouping + auto-categorizer, bootstrapping wizard, swap UX, cut suggestions (M5+)."
     drift: null
 
   import-export:

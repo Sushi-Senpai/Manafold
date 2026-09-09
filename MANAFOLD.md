@@ -398,3 +398,48 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
     the newline-delimited bulk exports (`CARD-012`, `CARD-040`).
   - **Deferred**: `DECK-077` (DFC preview flip); tap-to-preview on touch; the
     out-of-scope action-menu items.
+
+- **2026-09-08** — Builder UX v2 (own branch / PR, **frontend only** — the
+  backend already exposed everything needed). The captain ran the 2026-09-06
+  builder locally and gave four concrete corrections:
+  1. **Action menu opens on click, never on hover** (`DECK-090`, `DECK-094`).
+     The hover-open menu stranded multiple menus over the list on scroll. It now
+     opens only from the row's `⋯` control; `Decklist` holds one
+     `openMenuEntryId` so opening one closes any other; it closes on outside
+     click, Escape, a scroll of the decklist region, and navigation. It renders
+     `position: fixed` with a computed placement (`menuPlacement.ts`) that opens
+     below the row, flips above near the viewport bottom, and clamps
+     horizontally. The `Alt+1..4` chords were decoupled from the menu: an effect
+     that never depends on the menu being rendered binds them to the row under
+     the pointer or with keyboard focus-within (`DECK-092`).
+  2. **Click a search row to add** (`DECK-081`). A click anywhere on a result
+     row (and Enter on the cursor row) adds the card to `main`; the dedicated
+     "Add" button is gone. Adding to `sideboard` / `maybe` moved to a small
+     secondary `⋯` on the row that a row click does not trigger. "N in deck" and
+     the transient added-confirmation are kept.
+  3. **Fixed image panel replaces the floating tooltip** (`DECK-070..078`). The
+     portalled `CardHoverPreview` and its `computePreviewPlacement` /
+     scroll-Escape-dismissal machinery are removed. A sticky `CardImagePanel` in
+     the left column shows the card under the pointer / keyboard focus of any
+     card-name surface (search results, decklist rows, commander, AI
+     suggestions), and the deck's commander — or a neutral placeholder — at
+     rest. `image_uris.normal` → `small` → the shared `CardFrame` text
+     fallback; decode-before-swap so it never flashes blank; a short clear-delay
+     hands the panel between adjacent surfaces. No portal, so no `.workspace`
+     re-scoping.
+  4. **De-verticalised layout** (`DECK-087`, `DECK-088`, `DECK-095`,
+     `DECK-096`). The page is a three-column workspace above a breakpoint
+     (sticky left: image panel + collapsible stats; center: decklist; right: AI
+     suggestions on top, then search), collapsing to one column on a narrow
+     viewport. The slim legality summary is pinned (sticky) directly under the
+     deck header, outside the three columns, so it stays visible while building
+     at every breakpoint. The decklist groups each
+     board by **primary card type** (`groupByType` — front face of a `//` line,
+     precedence mirroring `internal/deckstats`) with a per-group count in the
+     header; the board split stays the outer level and the commander is its own
+     section. Import/export moved off the page behind a header **Tools** menu
+     that opens it in a dialog. Grouping by free-text functional *category*
+     stays deferred to the M5 auto-categorizer (the field is empty for most
+     entries); the dev seed gained a planeswalker (Chandra, Torch of Defiance)
+     and a battle (Invasion of Zendikar // Awakened Skyclave) so the type
+     sections have something to show.

@@ -4,33 +4,127 @@
 // @spec DECK-007, DECK-008
 
 import type { AISuggestResponse, DeckEntry, ValidationReport } from "./api";
+import type { PreviewCard } from "./cardPreview";
 
 export const BOARD_ORDER = ["command", "main", "maybe", "sideboard"] as const;
 export type BoardName = (typeof BOARD_ORDER)[number];
 
 export const BOARD_LABELS: Record<BoardName, string> = {
-  command: "Command zone",
+  command: "Commander",
   main: "Mainboard",
-  maybe: "Maybeboard",
+  maybe: "Considering",
   sideboard: "Sideboard",
 };
 
-// groupByCategory buckets a board's entries by their functional category,
-// with uncategorised entries under "Uncategorised", each bucket name sorted.
-export function groupByCategory(entries: DeckEntry[]): { category: string; entries: DeckEntry[] }[] {
+// ---- decklist type grouping (DECK-087, DECK-088) -----------------------
+
+// The card types the decklist buckets entries into. TYPE_PRECEDENCE is the
+// order a multi-type card is classified in (first substring match wins), chosen
+// to mirror `internal/deckstats`' type precedence so the decklist sections and
+// the stats type counts agree — "Artifact Creature — Golem" lands under
+// Creature, "Artifact Land" under Land. TYPE_DISPLAY_ORDER is the order the
+// sections are shown in, matching the Moxfield reading order the captain asked
+// for. "Other" catches tribal, scheme, and anything unrecognised.
+const TYPE_PRECEDENCE: { label: string; needle: string }[] = [
+  { label: "Creatures", needle: "creature" },
+  { label: "Planeswalkers", needle: "planeswalker" },
+  { label: "Lands", needle: "land" },
+  { label: "Artifacts", needle: "artifact" },
+  { label: "Enchantments", needle: "enchantment" },
+  { label: "Instants", needle: "instant" },
+  { label: "Sorceries", needle: "sorcery" },
+  { label: "Battles", needle: "battle" },
+];
+
+export const TYPE_DISPLAY_ORDER = [
+  "Creatures",
+  "Instants",
+  "Sorceries",
+  "Artifacts",
+  "Enchantments",
+  "Planeswalkers",
+  "Battles",
+  "Lands",
+  "Other",
+] as const;
+
+// primaryCardType derives a decklist bucket from a Scryfall type line. It reads
+// the front face of a `//` card (the face you cast) and returns the first
+// TYPE_PRECEDENCE label whose needle appears in it, else "Other".
+//
+// @spec DECK-088
+export function primaryCardType(typeLine: string): string {
+  const front = typeLine.split(" // ")[0].toLowerCase();
+  for (const { label, needle } of TYPE_PRECEDENCE) {
+    if (front.includes(needle)) return label;
+  }
+  return "Other";
+}
+
+export type TypeGroup = { type: string; count: number; entries: DeckEntry[] };
+
+// groupByType buckets a board's entries by primary card type, in
+// TYPE_DISPLAY_ORDER, dropping empty buckets. `count` is the summed quantity of
+// the bucket (so "Creatures (15)" counts copies, not rows); entries are sorted
+// by name within a bucket.
+//
+// @spec DECK-087
+export function groupByType(entries: DeckEntry[]): TypeGroup[] {
   const buckets = new Map<string, DeckEntry[]>();
   for (const e of entries) {
-    const key = e.category && e.category.trim() !== "" ? e.category : "Uncategorised";
+    const key = primaryCardType(e.type_line);
     const list = buckets.get(key) ?? [];
     list.push(e);
     buckets.set(key, list);
   }
-  return [...buckets.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([category, list]) => ({
-      category,
+  const groups: TypeGroup[] = [];
+  for (const type of TYPE_DISPLAY_ORDER) {
+    const list = buckets.get(type);
+    if (!list || list.length === 0) continue;
+    groups.push({
+      type,
+      count: list.reduce((n, e) => n + e.quantity, 0),
       entries: [...list].sort((x, y) => x.name.localeCompare(y.name)),
-    }));
+    });
+  }
+  return groups;
+}
+
+// ---- decklist shortcut ownership (DECK-092) --------------------------
+
+// activeShortcutRow picks the single decklist row that owns the Alt+1..4 chords.
+// A row can be marked by the pointer resting over it and, independently, by
+// keyboard focus being within it; when both are set the pointer row wins. Only
+// the returned row binds the window keydown listener, so a chord can never fire
+// on two rows at once (which would issue a duplicate PATCH). Either id may be
+// null.
+//
+// @spec DECK-092
+export function activeShortcutRow(
+  pointerRowId: string | null,
+  focusRowId: string | null,
+): string | null {
+  return pointerRowId ?? focusRowId;
+}
+
+// ---- card-image panel active card (DECK-072) --------------------------
+
+export type PanelCard =
+  | { card: PreviewCard; source: "active" | "commander" }
+  | { card: null; source: "placeholder" };
+
+// resolvePanelCard decides what the sticky card-image panel shows: the card
+// currently hovered / keyboard-focused, else the deck's commander, else a
+// neutral placeholder.
+//
+// @spec DECK-072
+export function resolvePanelCard(
+  active: PreviewCard | null,
+  commander: PreviewCard | null,
+): PanelCard {
+  if (active) return { card: active, source: "active" };
+  if (commander) return { card: commander, source: "commander" };
+  return { card: null, source: "placeholder" };
 }
 
 // boardCount sums the quantities on a board.

@@ -1,5 +1,10 @@
 # Builder-experience pass — E2E screenshot evidence
 
+> **Superseded.** This is the dated evidence archive for the 2026-09-06
+> builder-experience pass. The floating hover preview and the hover-opened
+> action menu shown below were reworked in Builder UX v2 — current builder
+> evidence lives in [`../builder-ux-v2/`](../builder-ux-v2/README.md).
+
 `01`–`07` were captured against the real builder page (`/decks/[id]`) running
 the full local stack: Next.js dev server → same-origin `/api` proxy → Go API
 (`DEV_AUTH=true`) → Postgres seeded from `backend/seed/cards.json`

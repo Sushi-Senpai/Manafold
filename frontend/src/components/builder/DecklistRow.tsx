@@ -1,18 +1,21 @@
 "use client";
 
-// One decklist entry row: a hoverable card name, its per-entry violation badges
-// (colour identity / singleton — never hidden), a quantity stepper (non-command
-// boards), and the hover action menu with its while-hovered keyboard shortcuts.
-// `footer` is a slot other builder features hang per-row UI from without
-// re-touching this file.
+// One decklist entry row: a card name that drives the image panel, its
+// per-entry violation badges (colour identity / singleton — never hidden), a
+// quantity stepper (non-command boards), a `⋯` control that opens the action
+// menu, and the pointer/focus Alt+1..4 shortcuts. The menu's open state is owned
+// by `Decklist` (one menu at a time); this row only asks it to open / close.
+// The row reports pointer-enter/leave and focus-in/out to `Decklist`, which
+// marks exactly one row `shortcutActive`; only that row binds the Alt+1..4
+// window listener — never through the menu, which may not be rendered.
+// `footer` is a slot other builder features hang per-row UI from.
 //
 // @spec DECK-076, DECK-086, DECK-090, DECK-092, DECK-093
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { api, ApiError, type DeckEntry } from "@/lib/api";
 import { buildCardActions, findShortcutAction, type CardAction } from "@/lib/cardActions";
-import { useCardPreview } from "./CardPreviewContext";
 import { HoverCardName } from "./HoverCardName";
 import { QuantityStepper } from "./QuantityStepper";
 import { CardActionMenu } from "./CardActionMenu";
@@ -37,30 +40,35 @@ function typingTarget(): boolean {
   );
 }
 
-export function DecklistRow({
+function DecklistRowImpl({
   entry,
   deckId,
   onChange,
+  menuOpen,
+  onOpenMenu,
+  onCloseMenu,
+  shortcutActive,
+  onPointerChange,
+  onFocusChange,
   footer,
 }: {
   entry: DeckEntry;
   deckId: string;
   onChange: () => void;
+  menuOpen: boolean;
+  onOpenMenu: (entryId: string) => void;
+  onCloseMenu: () => void;
+  shortcutActive: boolean;
+  onPointerChange: (entryId: string, over: boolean) => void;
+  onFocusChange: (entryId: string, within: boolean) => void;
   footer?: ReactNode;
 }) {
-  const { hoverable } = useCardPreview();
-  const isCommand = entry.board === "command";
-
-  const rowRef = useRef<HTMLLIElement>(null);
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [hovered, setHovered] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const kebabRef = useRef<HTMLButtonElement>(null);
   const [addMoreOpen, setAddMoreOpen] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
   const flash = useCallback((msg: string) => setNote(msg), []);
 
-  // Auto-clear the transient row note.
   useEffect(() => {
     if (!note) return;
     const t = setTimeout(() => setNote(null), 1400);
@@ -94,20 +102,15 @@ export function DecklistRow({
     [entry, deckId, onChange, flash],
   );
 
-  const actionById = useCallback(
-    (id: string) => actions.find((a) => a.id === id),
-    [actions],
-  );
-
   const closeMenu = useCallback(() => {
-    setMenuOpen(false);
     setAddMoreOpen(false);
-  }, []);
+    onCloseMenu();
+  }, [onCloseMenu]);
 
-  // While the row is hovered, Alt+1..4 fire their action even with the menu
-  // closed — unless the caller is typing in a field.
+  // Alt+1..4 on the one row `Decklist` marks active (pointer row, else
+  // focus-within row), menu or no menu, unless the caller is typing in a field.
   useEffect(() => {
-    if (!hovered || !hoverable) return;
+    if (!shortcutActive) return;
     function onKey(e: KeyboardEvent) {
       if (!e.altKey) return;
       const chord = SHORTCUT_CODE[e.code];
@@ -119,38 +122,30 @@ export function DecklistRow({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [hovered, hoverable, actions, run]);
+  }, [shortcutActive, actions, run]);
 
   useEffect(
     () => () => {
-      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+      onPointerChange(entry.entry_id, false);
+      onFocusChange(entry.entry_id, false);
     },
-    [],
+    [entry.entry_id, onPointerChange, onFocusChange],
   );
 
-  function onEnter() {
-    if (!hoverable) return;
-    setHovered(true);
-    hoverTimer.current = setTimeout(() => setMenuOpen(true), 220);
-  }
-  function onLeave() {
-    setHovered(false);
-    if (hoverTimer.current) clearTimeout(hoverTimer.current);
-    // Leave the menu open if focus moved into it (keyboard use).
-    requestAnimationFrame(() => {
-      if (!rowRef.current?.contains(document.activeElement)) closeMenu();
-    });
-  }
-
-  const incAction = actionById("add-one");
-  const decAction = actionById("remove-one");
+  const incAction = actions.find((a) => a.id === "add-one");
+  const decAction = actions.find((a) => a.id === "remove-one");
+  const isCommand = entry.board === "command";
 
   return (
     <li
-      ref={rowRef}
       className="group relative py-1 text-sm"
-      onMouseEnter={onEnter}
-      onMouseLeave={onLeave}
+      onMouseEnter={() => onPointerChange(entry.entry_id, true)}
+      onMouseLeave={() => onPointerChange(entry.entry_id, false)}
+      onFocus={() => onFocusChange(entry.entry_id, true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+          onFocusChange(entry.entry_id, false);
+      }}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1">
@@ -184,16 +179,13 @@ export function DecklistRow({
             />
           )}
           <button
+            ref={kebabRef}
             type="button"
             aria-label="Card actions"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((o) => !o)}
-            className={`rounded px-1 leading-none text-muted transition hover:text-foreground ${
-              hoverable && !menuOpen
-                ? "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                : ""
-            }`}
+            onClick={() => (menuOpen ? closeMenu() : onOpenMenu(entry.entry_id))}
+            className="rounded px-1 leading-none text-muted transition hover:text-foreground"
           >
             ⋯
           </button>
@@ -203,6 +195,7 @@ export function DecklistRow({
       {menuOpen && (
         <CardActionMenu
           actions={actions}
+          anchorRef={kebabRef}
           onRun={(action) => {
             void run(action);
             if (action.id !== "add-more") closeMenu();
@@ -229,3 +222,5 @@ export function DecklistRow({
     </li>
   );
 }
+
+export const DecklistRow = memo(DecklistRowImpl);
