@@ -1,11 +1,19 @@
 // Package cardsync ingests Scryfall's bulk-data exports into Manafold's own
 // Postgres. cmd/cardsync calls Run; tests call it directly with local fixture
 // files. Scryfall's card endpoints are never touched here beyond the two large
-// streamed bulk GETs and the manifest (CARD-008). Each downloaded export is a
-// gzip-compressed newline-delimited-JSON stream that Run inflates and decodes
-// object by object (CARD-012).
+// bulk GETs and the manifest (CARD-008).
 //
-// @spec CARD-001, CARD-002, CARD-005, CARD-006, CARD-007, CARD-012
+// A run downloads each export to a temporary file and closes the HTTP
+// connection before it does any database write (CARD-013): the download must
+// not be gated on Postgres write latency, or the connection is held open for
+// the whole ingest and torn down mid-stream. The download is bounded by an idle
+// deadline rather than a whole-request timeout (CARD-015). The spooled export is
+// then read back from disk, gzip-inflated, and decoded object by object
+// (CARD-012). Oracle Cards upserts one row at a time; Default Cards is
+// bulk-upserted with COPY into a session TEMP table plus one set-based merge
+// (CARD-014).
+//
+// @spec CARD-001, CARD-002, CARD-005, CARD-006, CARD-007, CARD-012, CARD-013, CARD-014, CARD-015
 package cardsync
 
 import (
@@ -37,10 +45,20 @@ const (
 // It is a var so tests can shorten it.
 var retryBackoff = 30 * time.Second
 
+// downloadIdleTimeout bounds how long a bulk download may deliver no bytes
+// before the run fails (CARD-015). It is deliberately not a whole-request
+// timeout: that would span the ingest. A var so tests can shorten it.
+var downloadIdleTimeout = 2 * time.Minute
+
+// tempFileDir is the directory downloadToTemp writes its spool files to; ""
+// means the OS default (os.TempDir). A var so tests can point it at a scratch
+// directory and assert the spool file is cleaned up (CARD-013).
+var tempFileDir = ""
+
 // Options configures a run. With OracleCardsPath / DefaultCardsPath set the run
-// reads those local files — plain, uninflated JSONL — instead of downloading;
-// otherwise it fetches the Scryfall bulk manifest and streams the gzip-inflated
-// exports.
+// reads those local files — plain, uninflated JSONL or a JSON array — instead of
+// downloading; otherwise it fetches the Scryfall bulk manifest, spools each
+// gzip export to a temp file, and ingests it from disk.
 type Options struct {
 	BaseURL          string
 	HTTPClient       *http.Client
@@ -66,7 +84,10 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 
 	client := opts.HTTPClient
 	if client == nil {
-		client = &http.Client{Timeout: 15 * time.Minute}
+		// No whole-request timeout: it would span the multi-minute ingest and
+		// abort a healthy run. downloadToTemp bounds each download with its own
+		// idle deadline instead (CARD-015).
+		client = &http.Client{}
 	}
 	baseURL := opts.BaseURL
 	if baseURL == "" {
@@ -103,7 +124,12 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 				return res, err
 			}
 			oracleUpdatedAt = updated
-			rc, err := f.getBulk(ctx, uri)
+			path, err := f.downloadToTemp(ctx, uri)
+			if err != nil {
+				return res, err
+			}
+			defer os.Remove(path)
+			rc, err := openBulkFile(path)
 			if err != nil {
 				return res, err
 			}
@@ -115,7 +141,12 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 				return res, err
 			}
 			defaultUpdatedAt = updated
-			rc, err := f.getBulk(ctx, uri)
+			path, err := f.downloadToTemp(ctx, uri)
+			if err != nil {
+				return res, err
+			}
+			defer os.Remove(path)
+			rc, err := openBulkFile(path)
 			if err != nil {
 				return res, err
 			}
@@ -131,7 +162,7 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 	}
 	res.OracleUpserted = oracleCount
 
-	prints, skipped, err := ingestPrints(ctx, q, defaultRC, defaultUpdatedAt)
+	prints, skipped, err := ingestPrints(ctx, pool, q, defaultRC, defaultUpdatedAt)
 	if err != nil {
 		return res, err
 	}
@@ -181,7 +212,14 @@ func ingestOracle(ctx context.Context, q *db.Queries, r io.Reader, updatedAt tim
 	return int(count), nil
 }
 
-func ingestPrints(ctx context.Context, q *db.Queries, r io.Reader, updatedAt time.Time) (upserted, skipped int, err error) {
+// ingestPrints ingests the Default Cards export into card_prints, recording a
+// sync_runs row (CARD-001, CARD-007). It bulk-upserts rather than issuing a
+// round trip per printing (CARD-014); a printing whose oracle_id has no cards
+// row — or no parseable oracle_id at all — is skipped and counted, not treated
+// as an error (CARD-005).
+//
+// @spec CARD-001, CARD-005, CARD-007, CARD-014
+func ingestPrints(ctx context.Context, pool *pgxpool.Pool, q *db.Queries, r io.Reader, updatedAt time.Time) (upserted, skipped int, err error) {
 	run, err := q.CreateSyncRun(ctx, db.CreateSyncRunParams{
 		BulkType:          "default_cards",
 		ScryfallUpdatedAt: tstz(updatedAt),
@@ -190,46 +228,141 @@ func ingestPrints(ctx context.Context, q *db.Queries, r io.Reader, updatedAt tim
 		return 0, 0, err
 	}
 
-	var count int32
-	var skips int
-	streamErr := streamJSONObjects(r, func(raw json.RawMessage) error {
-		var o scryfallObject
-		if err := json.Unmarshal(raw, &o); err != nil {
-			return err
-		}
-		oracleUUID, ok := parseUUID(o.OracleID)
-		if !ok {
-			skips++
-			return nil
-		}
-		card, gerr := q.GetCardByScryfallOracleID(ctx, oracleUUID)
-		if gerr != nil {
-			if errors.Is(gerr, pgx.ErrNoRows) {
-				skips++
-				return nil
-			}
-			return gerr
-		}
-		if _, err := q.UpsertCardPrint(ctx, o.toUpsertCardPrintParams(card.ID)); err != nil {
-			return err
-		}
-		count++
-		return nil
-	})
-	if streamErr != nil {
+	upserted, skipped, ingestErr := copyUpsertPrints(ctx, pool, r)
+	if ingestErr != nil {
 		_ = q.FailSyncRun(ctx, db.FailSyncRunParams{
-			ID: run.ID, Error: text(streamErr.Error()), RowsUpserted: count,
+			ID: run.ID, Error: text(ingestErr.Error()), RowsUpserted: int32(upserted),
 		})
-		return 0, 0, fmt.Errorf("default_cards ingest: %w", streamErr)
+		return 0, 0, fmt.Errorf("default_cards ingest: %w", ingestErr)
 	}
-	if err := q.FinishSyncRun(ctx, db.FinishSyncRunParams{ID: run.ID, RowsUpserted: count}); err != nil {
+	if err := q.FinishSyncRun(ctx, db.FinishSyncRunParams{ID: run.ID, RowsUpserted: int32(upserted)}); err != nil {
 		return 0, 0, err
 	}
-	return int(count), skips, nil
+	return upserted, skipped, nil
 }
 
-// streamJSONObjects decodes a stream of Scryfall card objects one at a time, so
-// a multi-hundred-MB export never lands in memory whole. It accepts both shapes
+// printImportDDL creates the session-scoped staging table copyUpsertPrints
+// streams every decoded printing into. TEMP + ON COMMIT DROP means it is
+// private to this transaction's connection, so concurrent syncs never collide,
+// and it is gone the moment the merge commits.
+const printImportDDL = `CREATE TEMP TABLE card_prints_import (
+	scryfall_id      uuid NOT NULL,
+	oracle_id        uuid NOT NULL,
+	set_code         text NOT NULL,
+	set_name         text NOT NULL,
+	collector_number text NOT NULL,
+	rarity           text NOT NULL,
+	released_at      date,
+	finishes         text[] NOT NULL,
+	image_uris       jsonb,
+	prices           jsonb,
+	is_promo         boolean NOT NULL,
+	is_reprint       boolean NOT NULL,
+	is_digital       boolean NOT NULL
+) ON COMMIT DROP`
+
+// printImportColumns is the COPY column order; it must match printCopyRow.
+var printImportColumns = []string{
+	"scryfall_id", "oracle_id", "set_code", "set_name", "collector_number",
+	"rarity", "released_at", "finishes", "image_uris", "prices",
+	"is_promo", "is_reprint", "is_digital",
+}
+
+// printMergeSQL folds the staging table into card_prints in one statement. The
+// JOIN on cards resolves card_id and drops orphan printings (CARD-005); the
+// column list and ON CONFLICT set mirror the per-row UpsertCardPrint query so
+// the resulting rows are identical. DISTINCT ON tolerates a duplicated
+// scryfall_id within one export instead of failing the merge.
+const printMergeSQL = `
+INSERT INTO card_prints (
+	scryfall_id, card_id, set_code, set_name, collector_number, rarity,
+	released_at, finishes, image_uris, prices, is_promo, is_reprint, is_digital
+)
+SELECT DISTINCT ON (i.scryfall_id)
+	i.scryfall_id, c.id, i.set_code, i.set_name, i.collector_number, i.rarity,
+	i.released_at, i.finishes, i.image_uris, i.prices, i.is_promo, i.is_reprint, i.is_digital
+FROM card_prints_import i
+JOIN cards c ON c.scryfall_oracle_id = i.oracle_id
+ORDER BY i.scryfall_id
+ON CONFLICT (scryfall_id) DO UPDATE SET
+	card_id          = EXCLUDED.card_id,
+	set_code         = EXCLUDED.set_code,
+	set_name         = EXCLUDED.set_name,
+	collector_number = EXCLUDED.collector_number,
+	rarity           = EXCLUDED.rarity,
+	released_at      = EXCLUDED.released_at,
+	finishes         = EXCLUDED.finishes,
+	image_uris       = EXCLUDED.image_uris,
+	prices           = EXCLUDED.prices,
+	is_promo         = EXCLUDED.is_promo,
+	is_reprint       = EXCLUDED.is_reprint,
+	is_digital       = EXCLUDED.is_digital`
+
+// copyUpsertPrints streams every printing from r into a TEMP staging table with
+// COPY, then merges the batch into card_prints with one set-based statement
+// (CARD-014). It returns the number of rows upserted (inserted or updated) and
+// the number skipped: printings with an unparseable oracle_id (dropped before
+// staging) plus staged printings whose oracle_id matched no cards row
+// (CARD-005).
+func copyUpsertPrints(ctx context.Context, pool *pgxpool.Pool, r io.Reader) (upserted, skipped int, err error) {
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, printImportDDL); err != nil {
+		return 0, 0, fmt.Errorf("create staging table: %w", err)
+	}
+
+	stream := newJSONObjectStream(r)
+	var malformed int // printings with no usable oracle_id: skipped before staging
+	src := pgx.CopyFromFunc(func() ([]any, error) {
+		for {
+			raw, nerr := stream.next()
+			if errors.Is(nerr, io.EOF) {
+				return nil, nil
+			}
+			if nerr != nil {
+				return nil, nerr
+			}
+			var o scryfallObject
+			if uerr := json.Unmarshal(raw, &o); uerr != nil {
+				return nil, uerr
+			}
+			oracleUUID, ok := parseUUID(o.OracleID)
+			if !ok {
+				malformed++
+				continue
+			}
+			return o.printCopyRow(oracleUUID), nil
+		}
+	})
+
+	staged, err := tx.CopyFrom(ctx, pgx.Identifier{"card_prints_import"}, printImportColumns, src)
+	if err != nil {
+		return 0, 0, fmt.Errorf("stage printings: %w", err)
+	}
+
+	tag, err := tx.Exec(ctx, printMergeSQL)
+	if err != nil {
+		return 0, 0, fmt.Errorf("merge printings: %w", err)
+	}
+	upserted = int(tag.RowsAffected())
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, 0, err
+	}
+
+	// Every staged row that did not merge is an orphan printing (its oracle_id
+	// is not in cards); add the rows dropped before staging. Scryfall's exports
+	// carry no duplicate printing ids, so staged - upserted is the orphan count.
+	skipped = malformed + int(staged) - upserted
+	return upserted, skipped, nil
+}
+
+// jsonObjectStream decodes Scryfall card objects one at a time, so a
+// multi-hundred-MB export never lands in memory whole. It accepts both shapes
 // the project ingests: the bulk exports are newline-delimited JSON (a
 // json.Decoder consumes consecutive values across the separating newlines
 // natively, so no per-line length limit applies), while the dev / CI seed file
@@ -237,9 +370,15 @@ func ingestPrints(ctx context.Context, q *db.Queries, r io.Reader, updatedAt tim
 // Scryfall's card APIs return. The first non-whitespace byte picks the path: a
 // '[' means unwrap the array and stream its elements; anything else is decoded
 // as consecutive top-level values (CARD-012, CARD-040).
-func streamJSONObjects(r io.Reader, fn func(json.RawMessage) error) error {
-	br := bufio.NewReader(r)
+type jsonObjectStream struct {
+	dec     *json.Decoder
+	array   bool
+	started bool
+	done    bool
+}
 
+func newJSONObjectStream(r io.Reader) *jsonObjectStream {
+	br := bufio.NewReader(r)
 	array := false
 	if prefix, _ := br.Peek(512); len(prefix) > 0 {
 		for _, b := range prefix {
@@ -250,22 +389,45 @@ func streamJSONObjects(r io.Reader, fn func(json.RawMessage) error) error {
 			break
 		}
 	}
+	return &jsonObjectStream{dec: json.NewDecoder(br), array: array}
+}
 
-	dec := json.NewDecoder(br)
-	if array {
-		if _, err := dec.Token(); err != nil { // consume the opening '['
-			return err
+// next returns the next raw object, or io.EOF when the stream is exhausted.
+func (s *jsonObjectStream) next() (json.RawMessage, error) {
+	if s.done {
+		return nil, io.EOF
+	}
+	if s.array && !s.started {
+		s.started = true
+		if _, err := s.dec.Token(); err != nil { // consume the opening '['
+			s.done = true
+			return nil, err
 		}
 	}
+	if s.array && !s.dec.More() {
+		s.done = true
+		return nil, io.EOF
+	}
+	var raw json.RawMessage
+	if err := s.dec.Decode(&raw); err != nil {
+		s.done = true
+		if errors.Is(err, io.EOF) {
+			return nil, io.EOF
+		}
+		return nil, err
+	}
+	return raw, nil
+}
+
+// streamJSONObjects invokes fn for every object newJSONObjectStream yields.
+func streamJSONObjects(r io.Reader, fn func(json.RawMessage) error) error {
+	s := newJSONObjectStream(r)
 	for {
-		if array && !dec.More() {
+		raw, err := s.next()
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
-		var raw json.RawMessage
-		if err := dec.Decode(&raw); err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
+		if err != nil {
 			return err
 		}
 		if err := fn(raw); err != nil {
@@ -342,21 +504,84 @@ func (f *fetcher) get(ctx context.Context, url string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-// getBulk downloads a bulk export and returns a reader over its inflated
-// contents. Scryfall serves the export as application/gzip with no
-// Content-Encoding, so net/http never inflates it and the job must (CARD-012).
-// Closing the returned ReadCloser closes both the gzip reader and the body.
-func (f *fetcher) getBulk(ctx context.Context, url string) (io.ReadCloser, error) {
+// downloadToTemp streams a bulk export to a temporary file and returns its
+// path, closing the HTTP connection before the caller performs any database
+// write (CARD-013). Scryfall serves the export as application/gzip; the temp
+// file holds it still compressed. The download is bounded by an idle deadline,
+// not a whole-request timeout spanning the ingest (CARD-015). On any failure
+// the partial temp file is removed; on success the caller owns the file and
+// must remove it.
+//
+// @spec CARD-001, CARD-013, CARD-015
+func (f *fetcher) downloadToTemp(ctx context.Context, url string) (string, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	body, err := f.get(ctx, url)
+	if err != nil {
+		return "", err
+	}
+	defer body.Close()
+
+	tmp, err := os.CreateTemp(tempFileDir, "cardsync-*.jsonl.gz")
+	if err != nil {
+		return "", err
+	}
+
+	idle := newIdleReader(body, downloadIdleTimeout, cancel)
+	defer idle.stop()
+
+	if _, err := io.Copy(tmp, idle); err != nil {
+		tmp.Close()
+		os.Remove(tmp.Name())
+		return "", fmt.Errorf("scryfall bulk %s: download: %w", url, err)
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmp.Name())
+		return "", err
+	}
+	return tmp.Name(), nil
+}
+
+// idleReader invokes onIdle if the wrapped reader delivers no data within d.
+// It backs downloadToTemp's idle deadline (CARD-015): each read that returns
+// bytes rearms the timer, so a stalled connection trips it while a slow-but-
+// alive one does not.
+type idleReader struct {
+	r     io.Reader
+	d     time.Duration
+	timer *time.Timer
+}
+
+func newIdleReader(r io.Reader, d time.Duration, onIdle func()) *idleReader {
+	return &idleReader{r: r, d: d, timer: time.AfterFunc(d, onIdle)}
+}
+
+func (ir *idleReader) Read(p []byte) (int, error) {
+	n, err := ir.r.Read(p)
+	if n > 0 {
+		ir.timer.Reset(ir.d)
+	}
+	return n, err
+}
+
+func (ir *idleReader) stop() { ir.timer.Stop() }
+
+// openBulkFile opens a temp file written by downloadToTemp and returns a reader
+// over its gunzipped contents (the export is gzip on the wire and on disk;
+// CARD-012). A file that is not valid gzip is an error, not garbage read.
+// Closing the returned ReadCloser closes both the gzip reader and the file.
+func openBulkFile(path string) (io.ReadCloser, error) {
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	zr, err := gzip.NewReader(body)
+	zr, err := gzip.NewReader(file)
 	if err != nil {
-		body.Close()
-		return nil, fmt.Errorf("scryfall bulk %s: gunzip: %w", url, err)
+		file.Close()
+		return nil, fmt.Errorf("cardsync bulk file %s: gunzip: %w", path, err)
 	}
-	return gzipBody{Reader: zr, body: body}, nil
+	return gzipBody{Reader: zr, body: file}, nil
 }
 
 // gzipBody couples a gzip.Reader to the HTTP body it inflates so a single Close
