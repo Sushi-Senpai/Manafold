@@ -101,23 +101,38 @@ func (o scryfallObject) toUpsertCardParams() (db.UpsertCardParams, error) {
 	}, nil
 }
 
-func (o scryfallObject) toUpsertCardPrintParams(cardID pgtype.UUID) db.UpsertCardPrintParams {
+// printCopyRow is one row for the card_prints_import COPY, in printImportColumns
+// order. The field expressions match the retired per-row UpsertCardPrint path
+// exactly (dateFrom, orEmpty, nil-for-absent jsonb), so the merged card_prints
+// rows are byte-for-byte what the per-row upsert produced (CARD-014). card_id
+// is resolved by the merge's JOIN, so the row carries oracle_id instead.
+func (o scryfallObject) printCopyRow(oracleID pgtype.UUID) []any {
 	scryfallUUID, _ := parseUUID(o.ID)
-	return db.UpsertCardPrintParams{
-		ScryfallID:      scryfallUUID,
-		CardID:          cardID,
-		SetCode:         o.Set,
-		SetName:         o.SetName,
-		CollectorNumber: o.CollectorNumber,
-		Rarity:          o.Rarity,
-		ReleasedAt:      dateFrom(o.ReleasedAt),
-		Finishes:        orEmpty(o.Finishes),
-		ImageUris:       []byte(o.ImageURIs),
-		Prices:          []byte(o.Prices),
-		IsPromo:         o.Promo,
-		IsReprint:       o.Reprint,
-		IsDigital:       o.Digital,
+	return []any{
+		scryfallUUID,
+		oracleID,
+		o.Set,
+		o.SetName,
+		o.CollectorNumber,
+		o.Rarity,
+		dateFrom(o.ReleasedAt),
+		orEmpty(o.Finishes),
+		jsonbOrNil(o.ImageURIs),
+		jsonbOrNil(o.Prices),
+		o.Promo,
+		o.Reprint,
+		o.Digital,
 	}
+}
+
+// jsonbOrNil maps an absent Scryfall object (nil/empty raw JSON) to a SQL NULL
+// and a present one to its bytes, matching how the per-row path passed
+// []byte(nil) for a missing image_uris / prices.
+func jsonbOrNil(m json.RawMessage) any {
+	if len(m) == 0 {
+		return nil
+	}
+	return []byte(m)
 }
 
 type parseError struct {

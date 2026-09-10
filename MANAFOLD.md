@@ -24,9 +24,13 @@ default auth path (the stub stays available for local/CI). **M4** added AI assis
 — a "suggest cards" panel and single-card fit blurbs backed by Anthropic Claude
 (`internal/ai`), gated by `AI_ENABLED` (stub + `503` when off), with the
 anti-hallucination gate reusing `internal/deckrules`, per-user daily call caps,
-and a global monthly spend ceiling; a follow-on fix repaired `internal/cardsync`
-against Scryfall's current bulk API (`jsonl_download_uri` + gzipped JSONL). All
-milestones land on one branch as a single growing PR.
+and a global monthly spend ceiling. Two follow-on fixes to `internal/cardsync`:
+one repaired it against Scryfall's current bulk API (`jsonl_download_uri` +
+gzipped JSONL); the next (2026-09-09) made the sync actually complete — it
+downloads each export to a temp file before any DB write and bulk-upserts
+`card_prints` via `COPY` + a set-based merge, instead of a per-row round trip
+that held the HTTP connection open until the CDN reset it. All milestones land on
+one branch as a single growing PR.
 
 ## Vision
 
@@ -443,3 +447,32 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
      entries); the dev seed gained a planeswalker (Chandra, Torch of Defiance)
      and a battle (Invasion of Zendikar // Awakened Skyclave) so the type
      sections have something to show.
+
+- **2026-09-09** — Card-sync completion fix (same branch, same growing PR).
+  `go run ./cmd/cardsync` against the real Scryfall bulk API was dying partway
+  through the Default Cards pass with a mid-stream `PROTOCOL_ERROR`, leaving
+  ~6,000 of ~118,000 `card_prints` rows — so ~87% of cards had no `image_uris`
+  or `prices`. Root cause: `ingestPrints` read one JSON object off the still-open
+  HTTP body, then did a synchronous per-row `SELECT card_id` + `UpsertCardPrint`
+  before reading the next, ~118,000 times; the body read was gated on Postgres
+  write latency, so the connection stayed open for the whole ingest and was torn
+  down mid-read (the CDN resetting a slow long-lived stream, and our own
+  15-minute whole-request `http.Client` timeout spanning the ingest). Fix
+  (`CARD-013` / `CARD-014` / `CARD-015`): (a) each bulk export is streamed to a
+  temp file first and the connection closed before any DB write; the temp file is
+  removed on both the success and the failure path. (b) `card_prints` is
+  bulk-upserted — every printing `COPY`d into a session `TEMP` table, then one
+  `INSERT … SELECT … JOIN cards ON scryfall_oracle_id … ON CONFLICT (scryfall_id)
+  DO UPDATE` — instead of a round trip per printing; `card_id` resolves in the
+  `JOIN` and the orphan-skip count (`CARD-005`) falls out of it. (c) the default
+  `http.Client` whole-request timeout is gone; each download is bounded by an
+  idle/read deadline that fails a stalled connection fast without touching the
+  ingest. Oracle Cards still upserts one row at a time — it survives because the
+  spooled download no longer gates the connection and ~40k single-table upserts
+  finish inside the cron wall-clock. The dev/CI seed path
+  (`CARDSYNC_SEED_PATH` → the JSON-array / NDJSON fixture) is unchanged: it skips
+  the download and temp file and feeds the same two passes. No new dependency
+  (`COPY` is `pgx`). Regression proof runs without Postgres
+  (`internal/cardsync/download_test.go`): it reproduces the slow-consumer
+  connection reset and shows the temp-file spool makes the ingest complete
+  regardless of downstream write pace.

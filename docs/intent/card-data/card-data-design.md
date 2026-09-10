@@ -116,25 +116,39 @@ without a live Scryfall fetch (`CARD-040`).
    `jsonl_download_uri` and `updated_at` for `oracle_cards` and `default_cards`
    (and `rulings` when `opts.IncludeRulings`). A manifest entry missing
    `jsonl_download_uri` fails the run.
-2. For each, insert a `sync_runs` row with `status = 'running'`, `GET` the
+2. **Download, then ingest — never both at once.** For each export, `GET` the
    `jsonl_download_uri` (a `.jsonl.gz` on `data.scryfall.io`, served as
-   `application/gzip` with no `Content-Encoding`, so the job inflates the body
-   itself with `compress/gzip`), decode the inflated stream as newline-delimited
-   JSON — one card object per line — and upsert. A local fixture supplied through
-   `opts.OracleCardsPath` / `opts.DefaultCardsPath` is uninflated (the gzip layer
-   is transport-only) and may be either newline-delimited JSON or a single
-   top-level JSON array of card objects — the decoder detects the leading `[` and
-   unwraps it. `backend/seed/cards.json` is the array form, the shape Scryfall's
-   card APIs return. The decoder consumes consecutive JSON values across
-   newlines, so no per-line length limit applies and a multi-hundred-MB export
-   never lands in memory whole.
-3. **Oracle Cards → `cards`**: upsert by `scryfall_oracle_id`. Derive
-   `singleton_limit`, `can_be_commander`, `commander_color_identity` (see below).
-   `color_identity` is copied straight from the object's `color_identity` array.
-4. **Default Cards → `card_prints`**: upsert by `scryfall_id`, linking `card_id`
-   by looking up `cards.scryfall_oracle_id = object.oracle_id`. A printing whose
-   `oracle_id` is not in `cards` is skipped and counted (the Oracle file is the
-   source of truth for which cards exist).
+   `application/gzip` with no `Content-Encoding`) and stream the response body
+   straight to a temporary file, then close the HTTP connection. Only then is a
+   `sync_runs` row inserted with `status = 'running'` and the ingest begun,
+   reading the export back from local disk: `compress/gzip` inflates the file and
+   the inflated stream is decoded as newline-delimited JSON, one card object per
+   line. The download is not gated on database-write latency, so a
+   ~78 MB Default Cards export leaves the connection in seconds rather than
+   trickling for the length of the ingest; the temp file (compressed, ~25 MB
+   Oracle + ~78 MB Default at peak) is removed on both the success and the
+   failure path. A local fixture supplied through `opts.OracleCardsPath` /
+   `opts.DefaultCardsPath` is read directly — no download, no temp file — and is
+   uninflated (the gzip layer is transport-only); it may be either
+   newline-delimited JSON or a single top-level JSON array of card objects — the
+   decoder detects the leading `[` and unwraps it. `backend/seed/cards.json` is
+   the array form, the shape Scryfall's card APIs return. The decoder consumes
+   consecutive JSON values across newlines, so no per-line length limit applies
+   and a multi-hundred-MB export is never buffered in memory whole.
+3. **Oracle Cards → `cards`**: upsert by `scryfall_oracle_id`, one row per
+   object. Derive `singleton_limit`, `can_be_commander`,
+   `commander_color_identity` (see below). `color_identity` is copied straight
+   from the object's `color_identity` array.
+4. **Default Cards → `card_prints`**: bulk upsert, not one round-trip per
+   printing. Every decoded object is `COPY`d into a session `TEMP` staging table
+   (`ON COMMIT DROP`), then a single `INSERT INTO card_prints SELECT … FROM
+   staging JOIN cards ON cards.scryfall_oracle_id = staging.oracle_id ON CONFLICT
+   (scryfall_id) DO UPDATE …` merges the batch. The `JOIN` resolves `card_id` and
+   silently drops any printing whose `oracle_id` is not in `cards` (the Oracle
+   file is the source of truth for which cards exist); those orphans, plus any
+   object with an unparseable `oracle_id` (dropped before staging), are counted
+   as skipped. A duplicate `scryfall_id` inside one export collapses via
+   `DISTINCT ON` rather than failing the merge.
 5. On success, update the `sync_runs` row: `status = 'succeeded'`,
    `rows_upserted`, `finished_at`. On any error, `status = 'failed'`, `error`,
    `finished_at`, and return the error.
@@ -144,10 +158,19 @@ without a live Scryfall fetch (`CARD-040`).
 Every request sends `User-Agent: Manafold/1.0
 (github.com/Sushi-Senpai/Manafold)` and `Accept:
 application/json;q=0.9,*/*;q=0.8`. Sustained traffic stays under 10 req/s with
-50–100 ms between calls; the bulk downloads are two large streamed GETs, not a
-crawl. An HTTP `429` triggers a 30 s back-off then one retry. The
-`/cards/collection` batch endpoint (used only by the M2 single-printing
-fallback) is held under ~2 req/s.
+50–100 ms between calls; the bulk downloads are two large streamed GETs spooled
+to a temp file, not a crawl. An HTTP `429` triggers a 30 s back-off then one
+retry. The non-body phases are each bounded so a stalled connection cannot hang
+a `context.Background()` run: the manifest fetch **and its JSON decode** run
+under a short `context.WithTimeout` (a few-KB document fetched once), and each
+bulk GET's wait for response headers is bounded by a **response-header
+timeout**. Each bulk download is bounded by an **idle deadline** — the run
+fails if the connection delivers no bytes for a bounded interval — and by a
+**generous total deadline** (~30 min) over the whole file download, a backstop
+that fails a CDN trickling just enough bytes to keep the idle timer alive. None
+of these is a single whole-request timeout, which would span the subsequent
+ingest and abort a healthy run. The `/cards/collection` batch endpoint (used only by
+the M2 single-printing fallback) is held under ~2 req/s.
 
 ### Derived fields
 
@@ -209,6 +232,9 @@ plausible-but-wrong query silently returns the wrong cards.
 | Query parsing | Hand-written tokenizer in `internal/cardsearch`, unit-tested, separate from the handler | Inline `if strings.Contains` in the handler; a full Scryfall-syntax library | The subset is small and grows predictably; keeping it isolated and tested is where a wrong-cards regression gets caught. A full library does not exist for Go and the full grammar is out of v1 scope. |
 | Sync invocation | `cmd/cardsync` binary as a Render cron | In-process goroutine ticker in `cmd/api` | A separate process has no HTTP surface and does not couple sync to API uptime or duplicate work across API instances. |
 | Bulk transport decode | Follow the manifest's `jsonl_download_uri`; inflate the `.jsonl.gz` body with `compress/gzip`; decode newline-delimited JSON one object at a time | Rely on `net/http` transparent decompression; buffer the whole file then `json.Unmarshal` an array | Scryfall serves the export as `application/gzip` with no `Content-Encoding`, so the transport never inflates it; the payload is JSONL, not a JSON array. Streaming the inflated stream keeps a multi-hundred-MB export off the heap. |
+| Download vs. ingest coupling | Spool each export to a temp file first (closing the connection), then ingest from local disk; remove the temp file on every exit path | Ingest straight off the live HTTP body, one object read interleaved with its DB write | Interleaving made every body read wait on Postgres write latency, so the connection stayed open for the whole ingest and was torn down mid-stream (a `PROTOCOL_ERROR` surfaced from the CDN or an `http.Client` deadline), leaving ~87% of cards with no printing row. A spooled download is bounded and quick; the disk cost is the compressed export size, released immediately after. |
+| Printing upsert shape | `COPY` all printings into a session `TEMP` table, then one `INSERT … SELECT … JOIN cards … ON CONFLICT DO UPDATE` | One `SELECT` for `card_id` plus one `INSERT … ON CONFLICT` per printing (~118 k × 2 round-trips) | The per-row path is the reason a real sync cannot finish inside the cron wall-clock and why the connection is held open so long. `COPY` + a set-based merge is two statements for the whole export, resolves `card_id` in SQL, and yields the orphan-skip count from a `LEFT JOIN`. The `TEMP` table is session-scoped so concurrent syncs never collide. |
+| Bulk download deadline | A short `context.WithTimeout` around the manifest fetch+decode, `Transport.ResponseHeaderTimeout` for each bulk GET's response-header wait, and — for each bulk body — a per-download idle/read deadline (fail if no bytes arrive for a bounded interval) plus a generous total `context.WithTimeout` (~30 min) over the whole file download | A single `http.Client{Timeout}` covering the whole request | A whole-request timeout has to be set long enough for the full ingest, so it cannot also catch a genuinely stalled download promptly; once download and ingest are decoupled it would only ever fire spuriously on a healthy long ingest. The manifest timeout and `ResponseHeaderTimeout` fail a connection that completes TLS but never answers (or stalls mid-manifest) — otherwise unbounded under `cmd/cardsync`'s `context.Background()` — while the idle deadline fails a dead connection mid-body and the total deadline backstops a CDN trickling just enough bytes to keep the idle timer alive; none touches the ingest. |
 | Full-text index | Postgres `tsvector` column (`oracle_search`) + GIN | `pg_trgm` only; an external search engine | `tsvector` handles the Oracle-text predicates natively at sub-10 ms; `pg_trgm` additionally backs the name prefix/`ILIKE` paths. No external dependency. |
 
 ## Open Questions & Future Decisions
@@ -226,12 +252,13 @@ plausible-but-wrong query silently returns the wrong cards.
    single-instance stopgap; revisit before any multi-instance deploy.
 4. **`All Cards` (every language)** — v1 mirrors English-only Default Cards.
    Non-English printing support is a later, larger ingestion.
-5. **Batch the printing ingest** — `ingestPrints` currently issues one
-   oracle-id lookup plus one upsert per printing in the Default Cards export
-   (hundreds of thousands of round trips). Acceptable for the fixture-based
-   test, but the real daily cron could approach the Render cron wall-clock
-   limit. Before the production sync is relied on, batch the oracle-id lookups
-   and bulk-upsert (multi-row `INSERT` or `COPY`) the printings.
+5. **Batch the Oracle Cards ingest too** — `ingestOracle` still upserts one
+   `cards` row per object (~40 k round trips). It survives because the download
+   is now spooled first, so nothing gates the HTTP connection, and 40 k
+   single-table upserts finish well inside the cron wall-clock. If the Oracle
+   export grows or the derived-field logic gets heavier, give it the same
+   `COPY` + set-based merge treatment `card_prints` uses. (The `card_prints`
+   batching that this item originally called for has landed.)
 
 ### Gaps
 6. **Prices go stale between daily syncs** — acceptable; prices are advisory and
