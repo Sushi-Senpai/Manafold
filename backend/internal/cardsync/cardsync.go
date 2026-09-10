@@ -8,8 +8,9 @@
 // not be gated on Postgres write latency, or the connection is held open for
 // the whole ingest and torn down mid-stream. The non-body phases — the manifest
 // fetch and decode, and each bulk GET's response-header wait — are bounded by
-// short timeouts; each bulk body download is bounded by an idle deadline; none
-// is a whole-request cap over the ingest (CARD-015). The spooled export is
+// short timeouts; each bulk body download is bounded by an idle deadline and a
+// generous total deadline (~30 min); none is a whole-request cap over the
+// ingest (CARD-015). The spooled export is
 // then read back from disk, gzip-inflated, and decoded object by object
 // (CARD-012). Oracle Cards upserts one row at a time; Default Cards is
 // bulk-upserted with COPY into a session TEMP table plus one set-based merge
@@ -66,6 +67,13 @@ var responseHeaderTimeout = 2 * time.Minute
 // shorten it.
 var manifestTimeout = 2 * time.Minute
 
+// downloadTotalTimeout is a generous cap on ONE bulk file's whole download
+// (response-header wait + body), a backstop to downloadIdleTimeout so a CDN
+// that trickles a byte just often enough to keep the idle timer alive still
+// fails instead of hanging a context.Background() run forever (CARD-015). It
+// bounds only the file download, never the ingest. A var so tests can shorten it.
+var downloadTotalTimeout = 30 * time.Minute
+
 // tempFileDir is the directory downloadToTemp writes its spool files to; ""
 // means the OS default (os.TempDir). A var so tests can point it at a scratch
 // directory and assert the spool file is cleaned up (CARD-013).
@@ -103,8 +111,9 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 		// No whole-request timeout: it would span the multi-minute ingest and
 		// abort a healthy run. Each bulk GET's response-header wait is bounded
 		// by responseHeaderTimeout; the manifest fetch by manifestTimeout; each
-		// body download by downloadToTemp's idle deadline; none is a
-		// whole-request cap over the ingest (CARD-015).
+		// body download by downloadToTemp's idle deadline and a generous total
+		// deadline (downloadTotalTimeout); none is a whole-request cap over the
+		// ingest (CARD-015).
 		transport := http.DefaultTransport.(*http.Transport).Clone()
 		transport.ResponseHeaderTimeout = responseHeaderTimeout
 		client = &http.Client{Transport: transport}
@@ -529,14 +538,14 @@ func (f *fetcher) get(ctx context.Context, url string) (io.ReadCloser, error) {
 // downloadToTemp streams a bulk export to a temporary file and returns its
 // path, closing the HTTP connection before the caller performs any database
 // write (CARD-013). Scryfall serves the export as application/gzip; the temp
-// file holds it still compressed. The download is bounded by an idle deadline,
-// not a whole-request timeout spanning the ingest (CARD-015). On any failure
-// the partial temp file is removed; on success the caller owns the file and
-// must remove it.
+// file holds it still compressed. The download is bounded by an idle deadline
+// and a generous total deadline, neither a whole-request timeout spanning the
+// ingest (CARD-015). On any failure the partial temp file is removed; on
+// success the caller owns the file and must remove it.
 //
 // @spec CARD-001, CARD-013, CARD-015
 func (f *fetcher) downloadToTemp(ctx context.Context, url string) (string, error) {
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithTimeout(ctx, downloadTotalTimeout)
 	defer cancel()
 
 	body, err := f.get(ctx, url)

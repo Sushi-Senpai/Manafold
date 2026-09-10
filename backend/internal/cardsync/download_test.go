@@ -117,6 +117,55 @@ func TestDownloadToTemp_IdleConnectionFailsAndCleansUp(t *testing.T) {
 	}
 }
 
+// TestDownloadToTemp_TotalDeadlineFailsSlowTrickleAndCleansUp covers the
+// backstop to the idle deadline: a server that dribbles a byte often enough to
+// keep the idle timer alive would otherwise hang a context.Background() run
+// forever. The generous total deadline trips instead, the run fails, and the
+// partial spool file is removed.
+//
+// @spec CARD-013, CARD-015
+func TestDownloadToTemp_TotalDeadlineFailsSlowTrickleAndCleansUp(t *testing.T) {
+	dir := t.TempDir()
+	restoreDir, restoreIdle, restoreTotal := tempFileDir, downloadIdleTimeout, downloadTotalTimeout
+	tempFileDir = dir
+	downloadIdleTimeout = time.Second
+	downloadTotalTimeout = 250 * time.Millisecond
+	t.Cleanup(func() {
+		tempFileDir, downloadIdleTimeout, downloadTotalTimeout = restoreDir, restoreIdle, restoreTotal
+	})
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/gzip")
+		w.WriteHeader(http.StatusOK)
+		flusher := w.(http.Flusher)
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			case <-time.After(40 * time.Millisecond):
+			}
+			if _, err := w.Write([]byte{0}); err != nil {
+				return
+			}
+			flusher.Flush()
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	f := &fetcher{client: srv.Client()}
+	if _, err := f.downloadToTemp(context.Background(), srv.URL); err == nil {
+		t.Fatal("downloadToTemp returned nil error for a slow-trickle connection")
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read spool dir: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("spool dir still holds %d file(s) after a failed download; want it cleaned", len(entries))
+	}
+}
+
 // TestDownloadToTemp_RoundTripsGzipBody is the success path with no Postgres: a
 // gzip-served body is spooled, read back through openBulkFile, and every object
 // decodes; the caller's os.Remove then clears the spool file.
