@@ -451,10 +451,10 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
 - **2026-09-09** — Card-sync completion fix (same branch, same growing PR).
   `go run ./cmd/cardsync` against the real Scryfall bulk API was dying partway
   through the Default Cards pass with a mid-stream `PROTOCOL_ERROR`, leaving
-  ~6,000 of ~430,000 `card_prints` rows — so ~87% of cards had no `image_uris`
+  ~6,000 of ~118,000 `card_prints` rows — so ~87% of cards had no `image_uris`
   or `prices`. Root cause: `ingestPrints` read one JSON object off the still-open
   HTTP body, then did a synchronous per-row `SELECT card_id` + `UpsertCardPrint`
-  before reading the next, ~430,000 times; the body read was gated on Postgres
+  before reading the next, ~118,000 times; the body read was gated on Postgres
   write latency, so the connection stayed open for the whole ingest and was torn
   down mid-read (the CDN resetting a slow long-lived stream, and our own
   15-minute whole-request `http.Client` timeout spanning the ingest). Fix

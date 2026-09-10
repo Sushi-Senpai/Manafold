@@ -94,9 +94,9 @@ name resolution rather than triggering a live fetch). 2 deferred (CARD-010/011).
    — no hand-curated banlist (CARD-030).
 4. The sync downloads each export to a temp file and closes the connection
    before touching Postgres (CARD-013); the per-printing DB round trip that held
-   the connection open for the whole ingest — and lost ~87% of `card_prints` to
-   a mid-stream `PROTOCOL_ERROR` — is now a `COPY` into a `TEMP` table plus one
-   set-based merge (CARD-014).
+   the connection open for the whole ingest — until a mid-stream `PROTOCOL_ERROR`
+   left ~87% of cards with no printing row — is now a `COPY` into a `TEMP` table
+   plus one set-based merge (CARD-014).
 
 ## Work Required
 
