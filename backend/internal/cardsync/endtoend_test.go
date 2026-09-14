@@ -71,12 +71,24 @@ func TestRun_EndToEnd_ScryfallShapedGzipManifest(t *testing.T) {
 	t.Cleanup(srv.Close)
 	base = srv.URL
 
+	// Point the download spool at a scratch dir so this test can prove Run
+	// leaves no temp file behind on the success path (CARD-013).
+	spoolDir := t.TempDir()
+	restoreSpool := *cardsync.TempFileDir
+	*cardsync.TempFileDir = spoolDir
+	t.Cleanup(func() { *cardsync.TempFileDir = restoreSpool })
+
 	res, err := cardsync.Run(ctx, pool, cardsync.Options{
 		BaseURL:    srv.URL,
 		HTTPClient: srv.Client(),
 	})
 	if err != nil {
 		t.Fatalf("cardsync.Run against Scryfall-shaped gzip manifest: %v", err)
+	}
+	if entries, err := os.ReadDir(spoolDir); err != nil {
+		t.Fatalf("read spool dir: %v", err)
+	} else if len(entries) != 0 {
+		t.Fatalf("Run left %d temp file(s) in the spool dir after a successful sync (CARD-013)", len(entries))
 	}
 	if res.OracleUpserted != 4 || res.PrintsUpserted != 2 || res.PrintsSkipped != 1 {
 		t.Fatalf("Run result = %+v, want {OracleUpserted:4 PrintsUpserted:2 PrintsSkipped:1}", res)

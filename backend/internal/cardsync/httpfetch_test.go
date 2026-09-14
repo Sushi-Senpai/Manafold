@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -145,34 +147,40 @@ func TestManifest_ResolvesJSONLDownloadURI(t *testing.T) {
 	}
 }
 
-// TestGetBulk_InflatesGzippedJSONL exercises the real download path: Scryfall
-// serves the export as application/gzip with no Content-Encoding, so getBulk
-// must inflate it itself, and the inflated body is newline-delimited JSON —
-// one object per line — that streamJSONObjects walks without buffering the
-// whole file (CARD-001, CARD-012).
+// TestOpenBulkFile_InflatesGzippedJSONL exercises the ingest-side read: a bulk
+// export is spooled to disk still gzip-compressed (Scryfall serves it as
+// application/gzip with no Content-Encoding), so openBulkFile must inflate the
+// file itself, and the inflated stream is newline-delimited JSON — one object
+// per line — that streamJSONObjects walks without buffering the whole file
+// (CARD-001, CARD-012).
 //
 // @spec CARD-001, CARD-012
-func TestGetBulk_InflatesGzippedJSONL(t *testing.T) {
+func TestOpenBulkFile_InflatesGzippedJSONL(t *testing.T) {
 	lines := []string{
 		`{"oracle_id":"11111111-1111-1111-1111-111111111111","name":"Alpha"}`,
 		`{"oracle_id":"22222222-2222-2222-2222-222222222222","name":"Beta"}`,
 		`{"oracle_id":"33333333-3333-3333-3333-333333333333","name":"Gamma"}`,
 	}
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/gzip")
-		zw := gzip.NewWriter(w)
-		for _, ln := range lines {
-			_, _ = io.WriteString(zw, ln+"\n")
-		}
-		_ = zw.Close()
-	}))
-	t.Cleanup(srv.Close)
-
-	f := &fetcher{client: srv.Client()}
-	body, err := f.getBulk(context.Background(), srv.URL)
+	path := filepath.Join(t.TempDir(), "bulk.jsonl.gz")
+	file, err := os.Create(path)
 	if err != nil {
-		t.Fatalf("getBulk: %v", err)
+		t.Fatalf("create temp bulk file: %v", err)
+	}
+	zw := gzip.NewWriter(file)
+	for _, ln := range lines {
+		_, _ = io.WriteString(zw, ln+"\n")
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("gzip close: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("file close: %v", err)
+	}
+
+	body, err := openBulkFile(path)
+	if err != nil {
+		t.Fatalf("openBulkFile: %v", err)
 	}
 	t.Cleanup(func() { _ = body.Close() })
 
@@ -189,26 +197,25 @@ func TestGetBulk_InflatesGzippedJSONL(t *testing.T) {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("streamJSONObjects over inflated body: %v", err)
+		t.Fatalf("streamJSONObjects over inflated file: %v", err)
 	}
 	if strings.Join(names, ",") != "Alpha,Beta,Gamma" {
 		t.Errorf("decoded names = %v, want [Alpha Beta Gamma]", names)
 	}
 }
 
-// TestGetBulk_NonGzipBodyIsAnError confirms a body that is not valid gzip is
-// surfaced as an error (so CARD-007 fails the run) rather than read as garbage.
+// TestOpenBulkFile_NonGzipIsAnError confirms a spooled file that is not valid
+// gzip is surfaced as an error (so CARD-007 fails the run) rather than read as
+// garbage.
 //
 // @spec CARD-007, CARD-012
-func TestGetBulk_NonGzipBodyIsAnError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, `{"not":"gzip"}`)
-	}))
-	t.Cleanup(srv.Close)
-
-	f := &fetcher{client: srv.Client()}
-	if _, err := f.getBulk(context.Background(), srv.URL); err == nil {
-		t.Fatal("getBulk on a non-gzip body returned nil error, want a gunzip failure")
+func TestOpenBulkFile_NonGzipIsAnError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "not-gzip.jsonl.gz")
+	if err := os.WriteFile(path, []byte(`{"not":"gzip"}`), 0o644); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+	if _, err := openBulkFile(path); err == nil {
+		t.Fatal("openBulkFile on a non-gzip file returned nil error, want a gunzip failure")
 	}
 }
 

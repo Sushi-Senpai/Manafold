@@ -99,6 +99,49 @@ func TestRun_IngestsFixture_DerivesFields(t *testing.T) {
 		t.Error("planeswalker with \"can be your commander\" text can_be_commander = false, want true")
 	}
 
+	// The batched COPY + merge path must land the same card_prints rows the
+	// retired per-row upsert did: derived/verbatim fields intact, and the
+	// orphan printing (oracle_id with no cards row) skipped, not inserted
+	// (CARD-005, CARD-014).
+	var (
+		setCode, imgNormal, priceUSD string
+		finishes                     []string
+	)
+	err = pool.QueryRow(ctx, `
+		SELECT p.set_code, p.finishes,
+		       p.image_uris->>'normal', p.prices->>'usd'
+		FROM card_prints p
+		JOIN cards c ON c.id = p.card_id
+		WHERE c.scryfall_oracle_id = $1`,
+		mustUUID(t, "11111111-1111-1111-1111-111111111111"),
+	).Scan(&setCode, &finishes, &imgNormal, &priceUSD)
+	if err != nil {
+		t.Fatalf("load goblin boss printing: %v", err)
+	}
+	if setCode != "tst" {
+		t.Errorf("printing set_code = %q, want \"tst\"", setCode)
+	}
+	if len(finishes) != 2 || finishes[0] != "nonfoil" || finishes[1] != "foil" {
+		t.Errorf("printing finishes = %v, want [nonfoil foil]", finishes)
+	}
+	if imgNormal != "https://cards.scryfall.io/normal/test1.jpg" {
+		t.Errorf("printing image_uris->>'normal' = %q, want the fixture CDN URL", imgNormal)
+	}
+	if priceUSD != "1.23" {
+		t.Errorf("printing prices->>'usd' = %q, want \"1.23\"", priceUSD)
+	}
+
+	var orphanPrints int
+	if err := pool.QueryRow(ctx,
+		`SELECT count(*) FROM card_prints WHERE scryfall_id = $1`,
+		mustUUID(t, "c0000000-0000-0000-0000-0000000000a3"),
+	).Scan(&orphanPrints); err != nil {
+		t.Fatalf("count orphan printing: %v", err)
+	}
+	if orphanPrints != 0 {
+		t.Errorf("orphan printing has %d card_prints row(s), want 0 (CARD-005)", orphanPrints)
+	}
+
 	oracleRun, err := q.LatestSyncRun(ctx, "oracle_cards")
 	if err != nil {
 		t.Fatalf("latest oracle_cards sync run: %v", err)

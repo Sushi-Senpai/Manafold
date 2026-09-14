@@ -1,5 +1,5 @@
 schema_version: 2
-last_updated: 2026-09-08
+last_updated: 2026-09-09
 # M1: LID bootstrap + Waystone-mirrored skeleton + Commander deck vertical slice.
 # M2: import/export (deckio + parse-then-apply endpoints) + deterministic deck
 #     stats + the Slate & Signet palette wire-in.
@@ -53,7 +53,7 @@ arrows:
     blocks: [deck-building, import-export, ai-assist]
     blockedBy: [platform-shell]
     detail: card-data.md
-    next: "M1 landed: cards / card_prints / card_rulings / sync_runs / banlist_overrides schema; internal/cardsync ingests the Oracle + Default bulk exports with derived singleton_limit / can_be_commander and color_identity verbatim; GET /api/cards/search + /autocomplete over the mirror. M2: CARD-006 etiquette-header + 429-backoff test closed; ResolveCardByName (exact / DFC face) added for import. M4 PR: bulk download follows the manifest's jsonl_download_uri and gzip-inflates the .jsonl.gz stream, decoding it object-by-object (CARD-001 refined, CARD-012 added); fixtures moved to .jsonl. 2026-09-06: CARD-040 dev/CI card seed — cmd/cardsync seedOptions reads backend/seed/cards.json (real Scryfall cards) when CARDSYNC_SEED_PATH is set. Deferred: single-printing fallback (CARD-009, with printing-selection UI), oracle_tags ingestion (CARD-010)."
+    next: "M1 landed: cards / card_prints / card_rulings / sync_runs / banlist_overrides schema; internal/cardsync ingests the Oracle + Default bulk exports with derived singleton_limit / can_be_commander and color_identity verbatim; GET /api/cards/search + /autocomplete over the mirror. M2: CARD-006 etiquette-header + 429-backoff test closed; ResolveCardByName (exact / DFC face) added for import. M4 PR: bulk download follows the manifest's jsonl_download_uri and gzip-inflates the .jsonl.gz stream, decoding it object-by-object (CARD-001 refined, CARD-012 added); fixtures moved to .jsonl. 2026-09-06: CARD-040 dev/CI card seed — cmd/cardsync seedOptions reads backend/seed/cards.json (real Scryfall cards) when CARDSYNC_SEED_PATH is set. 2026-09-09: sync hardened so the full Default Cards export lands — each export is spooled to a temp file before any DB write and removed on every exit (CARD-013), the download is bounded by an idle deadline rather than a whole-request timeout (CARD-015), and card_prints is bulk-upserted via COPY into a TEMP table + one set-based INSERT ... ON CONFLICT instead of a round trip per printing (CARD-014). Deferred: single-printing fallback (CARD-009, with printing-selection UI), oracle_tags ingestion (CARD-010)."
     drift: null
 
   deck-building:
