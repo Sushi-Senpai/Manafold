@@ -127,7 +127,7 @@ is community-moderated, so downstream apps should be able to switch a tag off.
 | `description` | text null | |
 | `parent_ids` | uuid[] not null default `'{}'` | as provided; the closure is built from it |
 | `aliases` | text[] not null default `'{}'` | |
-| `disabled` | bool not null default false | **Manafold-owned**: the sync never writes it; a disabled tag is ignored by every tag read, and a tag-or-descendant read also drops every tag below it |
+| `disabled` | bool not null default false | **Manafold-owned**: the sync never writes it; a disabled tag is ignored by every tag read, and a tag-or-descendant read never walks through it |
 | `created_at`, `updated_at` | timestamptz | |
 
 #### `card_oracle_tags`
@@ -136,16 +136,26 @@ is community-moderated, so downstream apps should be able to switch a tag off.
 delete cascade, `weight` text not null (`median` / `strong` / `very_strong`
 today; stored as text so a new Scryfall weight never fails a sync),
 `annotation` text null. Primary key `(card_id, tag_id)`; btree on `tag_id`.
-Direct taggings only — inheritance goes through the closure.
+Direct taggings only — inheritance goes through `oracle_tag_reach`.
 
 #### `oracle_tag_closure`
 
 `ancestor_id`, `descendant_id`, both uuid fk → oracle_tags on delete cascade;
 primary key `(ancestor_id, descendant_id)`; btree on `descendant_id`. One row
 per tag paired with itself and with every tag reachable from it through child
-links (the inverse of `parent_ids`). "Cards with tag *T*, including its
-descendants" is `closure.ancestor_id = T` joined to `card_oracle_tags` on
-`descendant_id`. The full Scryfall graph is ~4.6 k tags and ~12 k closure rows.
+links (the inverse of `parent_ids`), ignoring `disabled`. Tag-or-descendant
+reads go through `oracle_tag_reach` instead, because the kill switch is
+path-based and applies without a sync. The full Scryfall graph is ~4.6 k tags and ~12 k closure rows.
+
+#### `oracle_tag_reach(slug)` (SQL function)
+
+The one definition of "the tag or any descendant" every tag-or-descendant read
+uses. A `WITH RECURSIVE` walk over the child links (the inverse of
+`parent_ids`) that starts from the enabled tag(s) with that slug and never
+enters a disabled tag, returning the reachable tag ids; `UNION` lets a cycle
+reach a fixed point. It reads `disabled` live, so a maintainer's toggle takes
+effect without a sync: a descendant reachable only through a disabled tag drops
+out, while one still reachable through an enabled parent stays (`CARD-063`).
 
 #### Query surface (`queries/oracle_tags.sql`)
 
@@ -159,7 +169,7 @@ descendants" is `closure.ancestor_id = T` joined to `card_oracle_tags` on
   carrying the tag or any enabled descendant. This is the role-counting shape
   ("how many of this deck's cards are ramp").
 
-`GET /api/cards/search` exposes the same closure lookup as Scryfall's own
+`GET /api/cards/search` exposes the same `oracle_tag_reach` lookup as Scryfall's own
 `otag:` syntax (see HTTP API), so the tags are reachable from the existing
 search surface without a new endpoint.
 
@@ -314,8 +324,7 @@ mirror. M1 supports:
 - `is:commander` → `can_be_commander = true`.
 - `otag:<slug>` / `oracletag:<slug>` → the card carries the oracle tag with that
   slug (case-insensitive) or any of its descendants, through
-  `oracle_tag_closure`; disabled tags never match, nor does any tag below a
-  disabled tag that sits at or under the queried one.
+  `oracle_tag_reach`, which never walks through a disabled tag.
 
 Results are `unique = cards` (Oracle rows). Each `CardSummary` carries the
 card's Oracle fields plus its newest printing's `image_uris` and `prices`
@@ -342,11 +351,11 @@ plausible-but-wrong query silently returns the wrong cards.
 | Printing upsert shape | `COPY` all printings into a session `TEMP` table, then one `INSERT … SELECT … JOIN cards … ON CONFLICT DO UPDATE` | One `SELECT` for `card_id` plus one `INSERT … ON CONFLICT` per printing (~118 k × 2 round-trips) | The per-row path is the reason a real sync cannot finish inside the cron wall-clock and why the connection is held open so long. `COPY` + a set-based merge is two statements for the whole export, resolves `card_id` in SQL, and yields the orphan-skip count from a `LEFT JOIN`. The `TEMP` table is session-scoped so concurrent syncs never collide. |
 | Bulk download deadline | A short `context.WithTimeout` around the manifest fetch+decode, `Transport.ResponseHeaderTimeout` for each bulk GET's response-header wait, and — for each bulk body — a per-download idle/read deadline (fail if no bytes arrive for a bounded interval) plus a generous total `context.WithTimeout` (~30 min) over the whole file download | A single `http.Client{Timeout}` covering the whole request | A whole-request timeout has to be set long enough for the full ingest, so it cannot also catch a genuinely stalled download promptly; once download and ingest are decoupled it would only ever fire spuriously on a healthy long ingest. The manifest timeout and `ResponseHeaderTimeout` fail a connection that completes TLS but never answers (or stalls mid-manifest) — otherwise unbounded under `cmd/cardsync`'s `context.Background()` — while the idle deadline fails a dead connection mid-body and the total deadline backstops a CDN trickling just enough bytes to keep the idle timer alive; none touches the ingest. |
 | Oracle-tag identity | Key `oracle_tags` on Scryfall's tag `id`; slug indexed but not unique | Key on `slug` | Scryfall documents the `id` as the stable identifier and slugs/labels as renameable; keying on slug would orphan taggings on every rename, and a unique slug index could fail a snapshot in which two tags trade slugs. |
-| Tag hierarchy reads | Materialise `oracle_tag_closure` at sync | A recursive CTE on every read; store only direct taggings and let callers walk `parent_ids` | Parent tags (`ramp`, `removal`, `tutor`) carry few or no direct taggings, so every useful read needs the descendants. The closure is ~12 k rows, rebuilt in one statement per sync, and turns every "tag or any descendant" read into a plain indexed join. |
+| Tag hierarchy reads | A read-time recursive walk over enabled tags (`oracle_tag_reach`), shared by the sqlc queries and `otag:` search | A plain join through the sync-time `oracle_tag_closure`; let callers walk `parent_ids` | Parent tags (`ramp`, `removal`, `tutor`) carry few or no direct taggings, so every useful read needs the descendants. The kill switch is path-based and toggled without a sync, which the sync-time closure cannot express (it would keep or drop a multi-parent tag regardless of its other, enabled parents); the graph is ~4.6 k tags, so the walk is cheap, and one SQL function keeps a single definition. |
 | Tag-pass failure | Fetch and ingest the tags after both card passes commit; a failure is a recorded `oracle_tags` `sync_runs` failure reported in `Result.TagsErr`, not a run failure | Fetch all three exports up front and fail the run on any error | The tags are additive community data; an outage in the Tagger export must not stop the core card mirror from refreshing. |
 | Tag snapshot shape | Full replace in one transaction (upsert tags, delete missing tags, delete-and-reinsert taggings, rebuild closure) | Upsert-only taggings | Tagger removes taggings as the community corrects them; upsert-only would keep stale roles forever. The export is a complete daily snapshot (~237 k taggings), so a set-based replace is cheap and is idempotent by construction. |
 | Tag staging | One `COPY` of tag rows with their cleaned taggings as a `jsonb` column, exploded in SQL with `jsonb_to_recordset` | Two staging tables (tags, taggings) | A single streaming pass over the export can feed only one `COPY`; holding all taggings in Go to feed a second would buffer the export. Validating each `oracle_id` in Go first means the SQL cast to `uuid` can never fail the merge. |
-| Tag kill switch | A Manafold-owned `oracle_tags.disabled` column the sync never writes, honoured by every tag read; a tag-or-descendant read drops the (queried `a`, applied `d`) pair when some disabled `x` has closure rows (`a`, `x`) and (`x`, `d`) | Delete the tag locally; rebuild the closure without disabled tags | Scryfall asks downstream apps to be able to switch off a community tag; a local delete would be undone by the next sync. A maintainer flips `disabled` without running a sync, so the closure still holds paths through the disabled tag; enforcing the cut at read time takes effect immediately, and the disabled set is tiny so the extra anti-join is cheap. |
+| Tag kill switch | A Manafold-owned `oracle_tags.disabled` column the sync never writes, honoured by every tag read; a tag-or-descendant read matches only through a path of enabled tags | Delete the tag locally; drop every descendant of a disabled tag | Scryfall asks downstream apps to be able to switch off a community tag; a local delete would be undone by the next sync. Dropping every descendant would hide a tag still reachable through another, enabled parent — a disabled tag should be ignored, not take its siblings' children with it. |
 | Tag keying on cards | `card_oracle_tags.card_id` → `cards.id`, resolved by joining on `scryfall_oracle_id` at sync | Key on the raw Scryfall `oracle_id` | Every reader already joins from `cards`; an FK with cascade keeps the table clean and mirrors `card_prints`. Taggings on objects the Oracle export omits are counted as skipped, like orphan printings. |
 | Full-text index | Postgres `tsvector` column (`oracle_search`) + GIN | `pg_trgm` only; an external search engine | `tsvector` handles the Oracle-text predicates natively at sub-10 ms; `pg_trgm` additionally backs the name prefix/`ILIKE` paths. No external dependency. |
 

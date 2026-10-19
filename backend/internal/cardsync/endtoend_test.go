@@ -100,8 +100,8 @@ func TestRun_EndToEnd_ScryfallShapedGzipManifest(t *testing.T) {
 	if res.OracleUpserted != 4 || res.PrintsUpserted != 2 || res.PrintsSkipped != 1 {
 		t.Fatalf("Run result = %+v, want {OracleUpserted:4 PrintsUpserted:2 PrintsSkipped:1}", res)
 	}
-	if res.TagsErr != nil || res.TagsUpserted != 7 || res.TaggingsUpserted != 5 || res.TaggingsSkipped != 2 {
-		t.Fatalf("Run result = %+v, want {TagsUpserted:7 TaggingsUpserted:5 TaggingsSkipped:2} and no TagsErr", res)
+	if res.TagsErr != nil || res.TagsUpserted != 9 || res.TaggingsUpserted != 6 || res.TaggingsSkipped != 2 {
+		t.Fatalf("Run result = %+v, want {TagsUpserted:9 TaggingsUpserted:6 TaggingsSkipped:2} and no TagsErr", res)
 	}
 
 	q := db.New(pool)

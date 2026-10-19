@@ -34,10 +34,10 @@ materialised hierarchy closure, tag queries, `otag:` search, and a seed tag file
 - backend/internal/cardsync/httpfetch_test.go (`TestFetcher_SendsEtiquetteHeadersAndRetriesOn429`, `TestFetcher_NonRetryableStatusIsAnError`) — CARD-006 (descriptive User-Agent + explicit Accept on every request; exactly one retry after the back-off on HTTP 429), CARD-007
 - backend/internal/cardsync/httpfetch_test.go (`TestManifest_ResolvesJSONLDownloadURI`, `TestOpenBulkFile_InflatesGzippedJSONL`, `TestOpenBulkFile_NonGzipIsAnError`, `TestStreamJSONObjects_DecodesNewlineDelimited`) — CARD-001 (manifest → `jsonl_download_uri`, missing field fails), CARD-012 (gunzip the spooled `application/gzip` file, decode newline-delimited JSON incrementally, non-gzip file is an error), CARD-007
 - backend/internal/cardsync/download_test.go (`TestBulkDownload_SpoolDecouplesIngestFromTheConnection`, `TestDownloadToTemp_IdleConnectionFailsAndCleansUp`, `TestDownloadToTemp_RoundTripsGzipBody`) — CARD-013 (spool to a temp file, connection closed before any DB write, temp file removed on success and on error), CARD-015 (a slow downstream consumer no longer resets the download; a stalled connection fails on the idle deadline). Runs without Postgres — reproduces the slow-consumer failure mode and proves the spool fixes it.
-- backend/internal/cardsync/oracletags_test.go (`TestRun_IngestsOracleTags`, `TestRun_OracleTagsReplaceSnapshotAndKeepDisabled`, `TestRun_FixtureCardsWithoutTagFileSkipsTagPass`, `TestRun_OracleTagsBrokenExportFailsAndKeepsSnapshot`) — CARD-010, CARD-060..063 (a disabled mid-level tag cuts off its subtree), CARD-064, CARD-065, CARD-007 / CARD-067 (an export with no oracle tags fails the tag pass, keeps the prior snapshot, and leaves Run successful)
+- backend/internal/cardsync/oracletags_test.go (`TestRun_IngestsOracleTags`, `TestRun_OracleTagsReplaceSnapshotAndKeepDisabled`, `TestRun_FixtureCardsWithoutTagFileSkipsTagPass`, `TestRun_OracleTagsBrokenExportFailsAndKeepsSnapshot`) — CARD-010, CARD-060..063 (a tag reachable only through a disabled tag drops out; one with another enabled parent stays), CARD-064, CARD-065, CARD-007 / CARD-067 (an export with no oracle tags fails the tag pass, keeps the prior snapshot, and leaves Run successful)
 - backend/internal/cardsync/endtoend_test.go also drives the `oracle_tags` manifest entry through the spool path (CARD-010), and `TestRun_EndToEnd_TagFetchFailureKeepsCardSync` shows a manifest with no `oracle_tags` entry still lands both card passes (CARD-067); seed_test.go loads backend/seed/oracle_tags.json (CARD-066)
 - backend/cmd/cardsync/main_test.go (`TestSeedOptions_TagFile`) — CARD-066
-- backend/internal/db/migrate_test.go — the oracle-tag tables exist after Migrate
+- backend/internal/db/migrate_test.go — the oracle-tag tables and `oracle_tag_reach` exist after Migrate
 - backend/internal/cardsearch/cardsearch_test.go — CARD-022, CARD-023, CARD-064
 - backend/internal/api/cards_test.go — CARD-020, CARD-021, CARD-023
 - CARD-008 / CARD-024 (no Scryfall call on a client request path) are a negative
@@ -52,6 +52,7 @@ materialised hierarchy closure, tag queries, `otag:` search, and a seed tag file
 - backend/cmd/cardsync/main.go (`seedOptions` — CARDSYNC_SEED_PATH / CARDSYNC_ORACLE_PATH / CARDSYNC_DEFAULT_PATH / CARDSYNC_TAGS_PATH, CARD-040, CARD-066)
 - backend/seed/cards.json (checked-in dev / CI card seed — CARD-040); backend/seed/oracle_tags.json (its oracle tags — CARD-066)
 - backend/internal/db/migrations/000006_create_oracle_tags.up.sql / .down.sql
+- backend/internal/db/migrations/000007_create_oracle_tag_reach.up.sql / .down.sql (`oracle_tag_reach`, the enabled-tag walk behind every tag-or-descendant read — CARD-062, CARD-063)
 - backend/internal/db/queries/oracle_tags.sql (CARD-065)
 - backend/internal/db/migrations/000001_create_card_data.up.sql / .down.sql
 - backend/internal/db/queries/cards.sql

@@ -51,8 +51,8 @@ type Querier interface {
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
 	FailSyncRun(ctx context.Context, arg FailSyncRunParams) error
-	// The subset of card_ids carrying the tag with this slug or any of its
-	// descendants — role counting over a deck's cards.
+	// The subset of card_ids carrying the tag with this slug or any descendant
+	// reachable through enabled tags — role counting over a deck's cards.
 	// @spec CARD-065, CARD-062, CARD-063
 	FilterCardIDsByOracleTag(ctx context.Context, arg FilterCardIDsByOracleTagParams) ([]pgtype.UUID, error)
 	FinishSyncRun(ctx context.Context, arg FinishSyncRunParams) error
@@ -81,20 +81,17 @@ type Querier interface {
 	LatestSyncRun(ctx context.Context, bulkType string) (SyncRun, error)
 	// @spec CARD-030
 	ListBanlistOverrides(ctx context.Context) ([]ListBanlistOverridesRow, error)
-	// Cards carrying the tag with this slug or any of its descendants, optionally
-	// within a colour identity (an empty identity array means no filter), best
-	// (lowest edhrec_rank) first.
+	// Cards carrying the tag with this slug or any descendant reachable through
+	// enabled tags, optionally within a colour identity (an empty identity array
+	// means no filter), best (lowest edhrec_rank) first.
 	// @spec CARD-065, CARD-062, CARD-063
 	ListCardsByOracleTag(ctx context.Context, arg ListCardsByOracleTagParams) ([]Card, error)
 	// @spec DECK-007
 	ListDeckCardEntries(ctx context.Context, deckID pgtype.UUID) ([]ListDeckCardEntriesRow, error)
 	ListDecksForOwner(ctx context.Context, arg ListDecksForOwnerParams) ([]Deck, error)
 	// Oracle-tag reads over the mirror (CARD-065). Every read ignores a disabled
-	// tag (CARD-063), and "tag or any descendant" goes through oracle_tag_closure
-	// (CARD-062). The disabled flag is toggled without a sync, so the closure still
-	// holds pairs that pass through a disabled tag: a tag-or-descendant read drops
-	// the (queried, applied) pair when a disabled tag x lies on it — closure(a, x)
-	// and closure(x, d) — which covers a and d themselves through their self rows.
+	// tag (CARD-063); "tag or any descendant" is oracle_tag_reach, the walk over
+	// enabled tags (CARD-062, CARD-063).
 	// A card's directly applied, enabled oracle tags.
 	// @spec CARD-065, CARD-063
 	ListOracleTagsForCard(ctx context.Context, cardID pgtype.UUID) ([]ListOracleTagsForCardRow, error)
