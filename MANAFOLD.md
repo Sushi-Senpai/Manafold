@@ -63,6 +63,20 @@ our own log-ins."
 | D5 | Hosting & pipeline | Vercel (frontend) + Render Docker free tier (Go backend) + Neon serverless Postgres, mirroring Waystone. `.github/workflows/ci.yml` (Postgres service container) and `.no-mistakes.yaml` wired from day one. Card-sync job as a Render cron. GitHub remote `github.com/Sushi-Senpai/Manafold` (public) already exists and is registered. | Matches Waystone's proven topology; retrofitting the arrow/tests discipline later is the expensive path. |
 | D6 | Mobile support | Responsive web only for v1. No mobile-tuned builder, no native app. | The builder is a desktop-first workflow. |
 
+## Deck-wizard groundwork decisions (captain, 2026-10-19)
+
+The captain wants an interactive LLM deck-building wizard. The user names a
+commander, a bracket, and any restrictions, and the model works through the
+build with them: land comfort and the mana base first, including utility
+lands, then synergy picks the user chooses from, staying inside the bracket's
+Game Changer and combo limits. A data-source investigation found EDHREC has no
+open API. Its §7 laid out three options for commander-specific synergy data,
+and the captain chose option 1.
+
+| # | Decision | Choice | Rationale |
+|---|---|---|---|
+| D7 | Commander-synergy data source | **Compute synergy from public Archidekt decklists ("option 1"), low and slow.** It is a server-side batch job (`cmd/synergysync`) over a configured list of popular commanders. It makes at most one request every 6 s, backs off on `429`, and sends an honest User-Agent. It stores only aggregates (inclusion rates, a colour-identity baseline, synergy, sample sizes, fetched-at), never decklists or user data. Every display carries "Synergy data from public Archidekt decks" with a link. Design: `docs/intent/synergy/`. | Captain: *"I don't plan to launch this to make money, it's just to help me and some friends build decks quickly so I think option 1 is fine."* **Accepted risk:** Archidekt's Terms of Use (effective 2018-09-07) limit use to "personal, noncommercial use" and forbid "automated searches, requests, or queries" and accessing the site "to build a similar or competitive website". The only permission on the other side is a 2019 forum post by Archidekt's developer: the read API is "open and public", with a request for a link back and a warning that they may lock the API down if traffic becomes a burden. Expect an IP block or API lockdown without notice, and endpoint churn. The `synergy` segment is isolated so that losing the source removes only it. The rejected alternatives were option 2 (ask Archidekt for written permission first) and option 3 (open data only: `edhrec_rank` + Scryfall oracle tags + Spellbook, with no commander-specific co-occurrence). Option 2 stays the path to remove the ToS conflict if Manafold ever goes public. |
+
 ### Smaller calls adopted as-is (research report §7)
 
 - Show Scryfall USD/EUR prices from the mirror; **no affiliate links** in v1.
@@ -72,12 +86,12 @@ our own log-ins."
   Card Draw, Board Wipe, Land, …) are first-class in the category model and,
   later, the builder UI (captain bonus feature #4).
 - Recommendation engine (later): LLM + functional tags + `edhrec_rank` for v1,
-  extended with **EDHREC high-synergy data** (captain bonus feature #2 — EDHREC
-  has no official public API; the `ai-assist` LLD records the data-access and
-  ToS question as open), and an own public-decklist co-occurrence corpus built
-  over time.
+  extended with **high-synergy data** (captain bonus feature #2). EDHREC has no
+  open API, so per D7 this comes from Manafold's own public-Archidekt-decklist
+  co-occurrence aggregates (`synergy` segment).
 - Third-party data: Scryfall (required) + Commander Spellbook's open combo
-  database for later combo detection; nothing else.
+  database for later combo detection + public Archidekt decklists for synergy
+  aggregates (D7); nothing else.
 - Brand/design: a plain text wordmark is fine for M1 (Waystone shipped that
   way); a real vector logo is a later pass.
 
@@ -89,8 +103,9 @@ the HLD roadmap so the architecture does not preclude them. **Not M1 scope.**
 1. **Deck-bootstrapping wizard** — commander → auto mana base from the colour
    identity → a wizard adding the most powerful/common cards for those colours.
    (`deck-building` + `ai-assist`; related to research milestone M8.)
-2. **EDHREC high-synergy cards** as a recommendation input, not just
-   `edhrec_rank`. (`ai-assist`; data-access + ToS is an open question.)
+2. **High-synergy cards** as a recommendation input, not just
+   `edhrec_rank`. (`ai-assist` + `synergy`. The data source is settled by D7:
+   Archidekt-derived aggregates, not EDHREC.)
 3. **Constrained deck generation beyond brackets** — budget cap, "no infinite
    combos", "no tutors", tribe/theme lock, house rules. (`ai-assist`.)
 4. **Functional-subtype grouping** first-class in the category model and builder
@@ -547,3 +562,21 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   bracket explanation stays deferred (`AI-025`). A small real-record seed
   (`backend/seed/spellbook-*.json`, plus seven cards added to `seed/cards.json`)
   covers local runs and CI.
+
+- **2026-10-19** — Commander synergy data (wizard groundwork, D7). A new
+  `synergy` segment (`SYN`). `cmd/synergysync` samples recent public Commander
+  decks from Archidekt for a configured commander list (embedded default
+  `internal/synergy/commanders.txt`, or `SYNERGY_COMMANDERS_FILE`). Pacing is
+  one request per 6 s, with an escalating back-off on `429` and an honest
+  User-Agent. Each commander's per-card inclusion is compared against a
+  colour-identity baseline drawn from the mirror's top-ranked *other*
+  commanders in that identity. Maybeboards, the commander, deleted entries,
+  and basic lands are excluded, and identical decklists are deduplicated. Only
+  aggregates land in `synergy_*` tables, each target replaced in one
+  transaction. Runs are bounded by a request budget and resumable by target
+  staleness, with a `synergy_runs` audit row. `GET
+  /api/synergy/commanders/{cardId}` serves the top cards (mirror rows only,
+  commander-legal) with sample sizes and attribution. A minimal Synergy panel
+  sits in the builder's right column. Tests replay recorded Archidekt-shaped
+  fixtures and never hit the network. No deployed cron yet: scheduling
+  `/app/synergysync` is an operations call.

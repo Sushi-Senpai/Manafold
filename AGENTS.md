@@ -33,7 +33,7 @@ Stop after each phase for user review. **Docs carry current intent, written to b
 ### Terminology
 
 - **HLD**: High-Level Design — single project-level doc at `docs/high-level-design.md`.
-- **LLD**: Low-Level Design — detailed component design doc in `docs/intent/`. The design layer is a recursive tree: the root is the HLD, leaf LLDs own EARS, and a component deep enough to outgrow one doc becomes a sub-HLD (HLD-shaped, owns no EARS) with children beneath it. "HLD" and "LLD" are roles by position; depth-2 (one HLD over flat leaf LLDs) is the default — the case for this project's six segments.
+- **LLD**: Low-Level Design — detailed component design doc in `docs/intent/`. The design layer is a recursive tree: the root is the HLD, leaf LLDs own EARS, and a component deep enough to outgrow one doc becomes a sub-HLD (HLD-shaped, owns no EARS) with children beneath it. "HLD" and "LLD" are roles by position; depth-2 (one HLD over flat leaf LLDs) is the default — the case for this project's seven segments.
 - **EARS**: Easy Approach to Requirements Syntax — structured one-line requirements beside each design doc as `{node}-specs.md` in the node's folder under `docs/intent/`. IDs are path-concatenated — the root-to-leaf path of the owning segment plus a number — so a prefix grep gathers a subtree. Markers: `[x]` implemented, `[ ]` active gap, `[D]` deferred.
 - **Arrow**: the unidirectional chain from vision to code (HLD → LLDs → EARS → Tests → Code). Strictly a DAG of intent.
 - **Arrow segment**: the territory owned by one leaf LLD — the LLD itself plus the specs, tests, and code that cite its EARS IDs. The boundary is the leaf prefix. Within-segment cascade is free; across-segment cascade pauses.
@@ -49,6 +49,7 @@ Stop after each phase for user review. **Docs carry current intent, written to b
 | `deck-building` | `DECK` | `decks` + `deck_cards` (qty / board / category), commander & partner assignment, `internal/deckrules` (color identity, singleton, count, banlist, commander shape), `internal/deckstats` (deterministic mana curve, colour-pip demand vs sources, functional-category roll-up), `internal/decktemplates` + `internal/deckroles` (archetype target ranges + role classifier), `internal/bracket` (deterministic bracket estimate + findings over the combo mirror), deck CRUD + read-only public share |
 | `ai-assist` | `AI` | Anthropic Claude client wrapper, `search_cards` tool over the mirror, suggest-&-explain, deck-health prose, model prose over the bracket report (the estimate itself is `deck-building`'s), the validate-every-returned-card gate |
 | `import-export` | `PORT` | parse/emit plain-text, MTGA, Moxfield, Archidekt decklists; `imports` audit table; unresolved-name reporting |
+| `synergy` | `SYN` | `cmd/synergysync` rate-limited batch job over public Archidekt decklists, per-commander inclusion vs colour-identity baseline aggregates (`synergy_*` tables), `GET /api/synergy/commanders/{cardId}`, the builder synergy panel + Archidekt attribution |
 
 `collections` and `social` are deferred; each has a one-paragraph stub LLD only.
 

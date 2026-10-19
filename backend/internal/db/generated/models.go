@@ -186,6 +186,50 @@ type SyncRun struct {
 	Error             pgtype.Text        `json:"error"`
 }
 
+type SynergyBaseline struct {
+	ColorIdentity      string             `json:"color_identity"`
+	BaselineCommanders []string           `json:"baseline_commanders"`
+	DeckCount          int32              `json:"deck_count"`
+	DuplicatesSkipped  int32              `json:"duplicates_skipped"`
+	FetchedAt          pgtype.Timestamptz `json:"fetched_at"`
+}
+
+type SynergyBaselineCard struct {
+	ColorIdentity string      `json:"color_identity"`
+	CardOracleID  pgtype.UUID `json:"card_oracle_id"`
+	DeckCount     int32       `json:"deck_count"`
+	InclusionRate float64     `json:"inclusion_rate"`
+}
+
+type SynergyCommander struct {
+	CommanderOracleID pgtype.UUID        `json:"commander_oracle_id"`
+	CommanderName     string             `json:"commander_name"`
+	ColorIdentity     string             `json:"color_identity"`
+	DeckCount         int32              `json:"deck_count"`
+	DuplicatesSkipped int32              `json:"duplicates_skipped"`
+	FetchedAt         pgtype.Timestamptz `json:"fetched_at"`
+}
+
+type SynergyCommanderCard struct {
+	CommanderOracleID pgtype.UUID   `json:"commander_oracle_id"`
+	CardOracleID      pgtype.UUID   `json:"card_oracle_id"`
+	DeckCount         int32         `json:"deck_count"`
+	InclusionRate     float64       `json:"inclusion_rate"`
+	BaselineRate      pgtype.Float8 `json:"baseline_rate"`
+	Synergy           pgtype.Float8 `json:"synergy"`
+}
+
+type SynergyRun struct {
+	ID               pgtype.UUID        `json:"id"`
+	Status           string             `json:"status"`
+	RequestsMade     int32              `json:"requests_made"`
+	TargetsRefreshed int32              `json:"targets_refreshed"`
+	TargetsPending   int32              `json:"targets_pending"`
+	StartedAt        pgtype.Timestamptz `json:"started_at"`
+	FinishedAt       pgtype.Timestamptz `json:"finished_at"`
+	Error            pgtype.Text        `json:"error"`
+}
+
 type User struct {
 	ID              pgtype.UUID        `json:"id"`
 	Email           string             `json:"email"`

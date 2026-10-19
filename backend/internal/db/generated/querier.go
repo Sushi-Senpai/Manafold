@@ -44,6 +44,8 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	// @spec CARD-001, CARD-007
 	CreateSyncRun(ctx context.Context, arg CreateSyncRunParams) (SyncRun, error)
+	// @spec SYN-032
+	CreateSynergyRun(ctx context.Context) (pgtype.UUID, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// @spec CARD-053
 	DeleteAllSpellbookCardFlags(ctx context.Context) error
@@ -54,6 +56,8 @@ type Querier interface {
 	DeleteDeckCard(ctx context.Context, arg DeleteDeckCardParams) (int64, error)
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
+	DeleteSynergyBaselineCards(ctx context.Context, colorIdentity string) error
+	DeleteSynergyCommanderCards(ctx context.Context, commanderOracleID pgtype.UUID) error
 	FailSyncRun(ctx context.Context, arg FailSyncRunParams) error
 	// The subset of card_ids carrying the tag with this slug or any descendant
 	// reachable through enabled tags — role counting over a deck's cards.
@@ -64,6 +68,7 @@ type Querier interface {
 	// deck bracket check makes over it (deck-building, DECK-122, DECK-124, DECK-126).
 	// @spec CARD-050
 	FinishSyncRunWithSource(ctx context.Context, arg FinishSyncRunWithSourceParams) error
+	FinishSynergyRun(ctx context.Context, arg FinishSynergyRunParams) error
 	GetCardByID(ctx context.Context, id pgtype.UUID) (Card, error)
 	GetCardByScryfallOracleID(ctx context.Context, scryfallOracleID pgtype.UUID) (Card, error)
 	GetCardsByIDs(ctx context.Context, ids []pgtype.UUID) ([]Card, error)
@@ -84,15 +89,27 @@ type Querier interface {
 	// GetSession filters expires_at > now(), so "no rows" covers a missing session
 	// and an expired one in one check.
 	GetSession(ctx context.Context, id pgtype.UUID) (Session, error)
+	// The sample behind one commander's synergy, looked up by the commander's
+	// Manafold card id, with its colour identity's baseline if there is one
+	// (SYN-040, SYN-042).
+	// @spec SYN-040, SYN-042
+	GetSynergySample(ctx context.Context, id pgtype.UUID) (GetSynergySampleRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	// @spec CARD-053
 	InsertSpellbookCardFlag(ctx context.Context, arg InsertSpellbookCardFlagParams) error
+	InsertSynergyBaselineCards(ctx context.Context, arg []InsertSynergyBaselineCardsParams) (int64, error)
+	InsertSynergyCommanderCards(ctx context.Context, arg []InsertSynergyCommanderCardsParams) (int64, error)
 	// @spec CARD-054
 	LatestSucceededSyncRun(ctx context.Context, bulkType string) (SyncRun, error)
 	LatestSyncRun(ctx context.Context, bulkType string) (SyncRun, error)
 	// @spec CARD-030
 	ListBanlistOverrides(ctx context.Context) ([]ListBanlistOverridesRow, error)
+	// The baseline commanders for one colour identity: the highest-ranked
+	// commander-legal cards that can be a commander with exactly that commander
+	// colour identity, excluding every configured commander (SYN-011).
+	// @spec SYN-011
+	ListBaselineCommanders(ctx context.Context, arg ListBaselineCommandersParams) ([]ListBaselineCommandersRow, error)
 	// Cards carrying the tag with this slug or any descendant reachable through
 	// enabled tags, optionally within a colour identity (an empty identity array
 	// means no filter), best (lowest edhrec_rank) first.
@@ -124,6 +141,17 @@ type Querier interface {
 	// The language model curates this pool; it never enumerates cards itself.
 	// @spec AI-011
 	ListSuggestionCandidates(ctx context.Context, arg ListSuggestionCandidatesParams) ([]Card, error)
+	ListSynergyBaselineFetchedAt(ctx context.Context) ([]ListSynergyBaselineFetchedAtRow, error)
+	// Last sample time of every stored commander / baseline, for the staleness
+	// plan (SYN-031).
+	// @spec SYN-031
+	ListSynergyCommanderFetchedAt(ctx context.Context) ([]ListSynergyCommanderFetchedAtRow, error)
+	// One commander's top synergy cards, each joined to its mirror row and newest
+	// printing. Only commander-legal cards are returned, with a banlist_overrides
+	// row taking precedence exactly as in deck validation; a card the mirror does
+	// not know drops out of the join (SYN-040, SYN-041).
+	// @spec SYN-040, SYN-041
+	ListTopSynergyCards(ctx context.Context, arg ListTopSynergyCardsParams) ([]ListTopSynergyCardsRow, error)
 	// The guard is atomic: the UPDATE claims the row only while applied_at is still
 	// null, so two concurrent applies serialize on the row lock and exactly one sees
 	// a row affected. Zero rows affected means the import was already applied and the
@@ -137,6 +165,12 @@ type Querier interface {
 	// which the handler maps to 404 (DECK-009).
 	// @spec DECK-009, DECK-013
 	MoveDeckCard(ctx context.Context, arg MoveDeckCardParams) (int64, error)
+	// Recompute baseline_rate and synergy for every commander in one colour
+	// identity: synergy = inclusion − baseline inclusion, a card missing from a
+	// non-empty baseline counting as 0, both NULL while the identity has no
+	// baseline sample (SYN-021). Run after either side of the pair is written.
+	// @spec SYN-021
+	RecomputeSynergyForIdentity(ctx context.Context, colorIdentity string) error
 	// @spec AI-030, AI-034
 	RecordAIUsage(ctx context.Context, arg RecordAIUsageParams) error
 	// Resolve a decklist line's card name to one cards row: an exact
@@ -145,6 +179,11 @@ type Querier interface {
 	// whole-name match (PORT-005).
 	// @spec PORT-005
 	ResolveCardByName(ctx context.Context, name string) (Card, error)
+	// Resolve a configured commander name to its cards row: an exact
+	// case-insensitive match on the whole name, or on the front face of a
+	// multi-face card, and only a card that can be a commander (SYN-001).
+	// @spec SYN-001
+	ResolveSynergyCommander(ctx context.Context, name string) (ResolveSynergyCommanderRow, error)
 	// Sets an existing entry's quantity in place, ownership-scoped through decks
 	// exactly like the other deck_cards mutations. The handler routes a requested
 	// quantity of 0 to DeleteDeckCard, so this query is only ever called with a
@@ -166,6 +205,10 @@ type Querier interface {
 	UpsertCardPrint(ctx context.Context, arg UpsertCardPrintParams) (CardPrint, error)
 	// Upsert used by the DevAuth stub: get-or-create one fixed local-dev user.
 	UpsertDevUser(ctx context.Context, arg UpsertDevUserParams) (User, error)
+	// @spec SYN-020, SYN-022
+	UpsertSynergyBaseline(ctx context.Context, arg UpsertSynergyBaselineParams) error
+	// @spec SYN-020, SYN-022
+	UpsertSynergyCommander(ctx context.Context, arg UpsertSynergyCommanderParams) error
 }
 
 var _ Querier = (*Queries)(nil)
