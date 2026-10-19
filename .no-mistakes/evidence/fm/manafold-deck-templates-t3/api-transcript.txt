@@ -1,0 +1,64 @@
+## GET /api/deck-templates
+version 1 templates 10
+Go-wide / Tribal           lands=36-38 creatures=28-35 instants_sorceries=10-14 artifacts=8-11 enchantments=4-8 ramp=10-12 card_draw=10-12 targeted_removal=8-10 board_wipe=2-4 | lands relaxed_at_bracket=4 relaxed_floor=32
+Voltron                    lands=35-38 creatures=18-24 instants_sorceries=10-14 artifacts=14-20 enchantments=6-12 ramp=10-12 card_draw=10-12 targeted_removal=8-10 board_wipe=2-4 | lands relaxed_at_bracket=4 relaxed_floor=32
+Spellslinger               lands=34-38 creatures=10-16 instants_sorceries=28-36 artifacts=8-12 enchantments=2-6 ramp=10-12 card_draw=10-12 targeted_removal=8-10 board_wipe=2-4 | lands relaxed_at_bracket=4 relaxed_floor=32
+Midrange / Value           lands=36-38 creatures=25-32 instants_sorceries=14-20 artifacts=8-12 enchantments=4-8 ramp=10-12 card_draw=10-12 targeted_removal=8-10 board_wipe=2-4 | lands relaxed_at_bracket=4 relaxed_floor=32
+Control                    lands=36-38 creatures=12-18 instants_sorceries=25-32 artifacts=8-12 enchantments=4-8 ramp=10-12 card_draw=10-12 targeted_removal=8-10 board_wipe=4-6 | lands relaxed_at_bracket=4 relaxed_floor=32
+Ramp / Big creatures       lands=38-40 creatures=22-28 instants_sorceries=12-18 artifacts=10-14 enchantments=3-7 ramp=10-12 card_draw=10-12 targeted_removal=8-10 board_wipe=2-4 | lands relaxed_at_bracket=4 relaxed_floor=32
+Artifacts                  lands=34-38 creatures=12-20 instants_sorceries=8-14 artifacts=28-36 enchantments=0-4 ramp=10-12 card_draw=10-12 targeted_removal=8-10 board_wipe=2-4 | lands relaxed_at_bracket=4 relaxed_floor=32
+Enchantress                lands=36-38 creatures=12-18 instants_sorceries=10-14 artifacts=6-10 enchantments=24-32 ramp=10-12 card_draw=10-12 targeted_removal=8-10 board_wipe=2-4 | lands relaxed_at_bracket=4 relaxed_floor=32
+Aristocrats (sacrifice)    lands=36-38 creatures=30-38 instants_sorceries=10-14 artifacts=8-12 enchantments=4-8 ramp=10-12 card_draw=10-12 targeted_removal=8-10 board_wipe=2-4 | lands relaxed_at_bracket=4 relaxed_floor=32
+Lands-matter               lands=40-44 creatures=18-24 instants_sorceries=14-18 artifacts=6-10 enchantments=4-8 ramp=10-12 card_draw=10-12 targeted_removal=8-10 board_wipe=2-4 | lands relaxed_at_bracket=4 relaxed_floor=32
+deck=f0ac0fd3-8ce5-454e-8042-8d5aed7844ba
+## set unknown archetype
+{"error":"unknown archetype"}
+ HTTP 400
+## fit with no archetype
+{"archetype":null,"template_version":1,"bracket":null,"rows":[]}
+
+archetype= midrange_value bracket= 3
+## Midrange, bracket 3, 37 Forests: full fit
+archetype midrange_value bracket 3
+   Lands                   37  target 36-38 -> ok
+   Creatures                2  target 25-32 -> under
+   Instants & sorceries     3  target 14-20 -> under
+   Artifacts                2  target 8-12 -> under
+   Enchantments             1  target 4-8 -> under
+   Ramp                     4  target 10-12 -> under
+   Card draw                1  target 10-12 -> under
+   Targeted removal         1  target 8-10 -> under
+   Board wipes              1  target 2-4 -> under
+## Land relaxation matrix (Midrange lands 36-38)
+archetype=midrange_value bracket=3 lands=31 target 36-38 -> under
+archetype=midrange_value bracket=3 lands=32 target 36-38 -> under
+archetype=midrange_value bracket=3 lands=34 target 36-38 -> under
+archetype=midrange_value bracket=3 lands=35 target 36-38 -> under
+archetype=midrange_value bracket=3 lands=36 target 36-38 -> ok
+archetype=midrange_value bracket=3 lands=38 target 36-38 -> ok
+archetype=midrange_value bracket=3 lands=39 target 36-38 -> over
+archetype=midrange_value bracket=4 lands=31 target 36-38 -> under
+archetype=midrange_value bracket=4 lands=32 target 36-38 -> relaxed
+archetype=midrange_value bracket=4 lands=34 target 36-38 -> relaxed
+archetype=midrange_value bracket=4 lands=35 target 36-38 -> relaxed
+archetype=midrange_value bracket=4 lands=36 target 36-38 -> ok
+archetype=midrange_value bracket=4 lands=38 target 36-38 -> ok
+archetype=midrange_value bracket=4 lands=39 target 36-38 -> over
+archetype=midrange_value bracket=5 lands=31 target 36-38 -> under
+archetype=midrange_value bracket=5 lands=32 target 36-38 -> under
+archetype=midrange_value bracket=5 lands=34 target 36-38 -> under
+archetype=midrange_value bracket=5 lands=35 target 36-38 -> under
+archetype=midrange_value bracket=5 lands=36 target 36-38 -> ok
+archetype=midrange_value bracket=5 lands=38 target 36-38 -> ok
+archetype=midrange_value bracket=5 lands=39 target 36-38 -> over
+## Spellslinger (lands 34-38) at bracket 4: 33 and 32 and 31
+archetype=spellslinger bracket=4 lands=34 target 34-38 -> ok
+archetype=spellslinger bracket=4 lands=33 target 34-38 -> relaxed
+archetype=spellslinger bracket=4 lands=32 target 34-38 -> relaxed
+archetype=spellslinger bracket=4 lands=31 target 34-38 -> under
+## Control board wipes target
+[('board_wipe', 4, 6, 1, 'under')]
+## clear archetype
+archetype= None
+{"archetype":null,"template_version":1,"bracket":4,"rows":[]}
+
