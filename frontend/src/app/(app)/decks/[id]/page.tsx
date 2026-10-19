@@ -18,6 +18,7 @@ import { HoverCardName } from "@/components/builder/HoverCardName";
 import { CommanderPicker } from "@/components/builder/CommanderPicker";
 import { CardSearch } from "@/components/builder/CardSearch";
 import { Decklist } from "@/components/builder/Decklist";
+import { SynergyPanel } from "@/components/builder/SynergyPanel";
 import { ToolsMenu } from "@/components/builder/ToolsMenu";
 import { TemplateFitPanel } from "@/components/builder/TemplateFitPanel";
 import { BracketPanel } from "@/components/builder/BracketPanel";
@@ -26,7 +27,7 @@ import { BracketPanel } from "@/components/builder/BracketPanel";
 // three-column workspace (DECK-096): a sticky left column with the card-image
 // panel (DECK-070), the "deck vs. target" panel (DECK-109), and collapsible
 // stats and bracket sections; a center column for the type-grouped decklist;
-// and a right column with AI suggestions above card search. A slim legality
+// and a right column with AI suggestions and the commander's synergy panel (SYN-043) above card search. A slim legality
 // summary is pinned under the deck header so it stays visible while building.
 // Import/export lives behind the header Tools menu (DECK-095). It collapses to
 // one column below the `xl` breakpoint.
@@ -99,6 +100,7 @@ export default function BuilderPage() {
 
           <div className="order-1 flex flex-col gap-4 xl:order-3 xl:w-[380px] xl:shrink-0">
             <SuggestionsPanel deckId={id} detail={detail} onChange={reload} />
+            <SynergyPanel deckId={id} detail={detail} onChange={reload} />
             <CardSearch deckId={id} detail={detail} onAdded={reload} />
           </div>
         </div>

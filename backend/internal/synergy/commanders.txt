@@ -1,0 +1,14 @@
+# Default commander list for cmd/synergysync: one exact card name per line.
+# A modest set of popular commanders spread across colour identities; each
+# distinct identity also gets a baseline sample. Override with
+# SYNERGY_COMMANDERS_FILE. See docs/intent/synergy/.
+Krenko, Mob Boss
+Atraxa, Praetors' Voice
+Edgar Markov
+The Ur-Dragon
+Yuriko, the Tiger's Shadow
+Meren of Clan Nel Toth
+Miirym, Sentinel Wyrm
+Giada, Font of Hope
+Teysa Karlov
+Niv-Mizzet, Parun

@@ -86,6 +86,7 @@ func New(d Deps) http.Handler {
 		h.RegisterDeckRoutes(r)
 		h.RegisterImportRoutes(r)
 		h.RegisterAIRoutes(r)
+		h.RegisterSynergyRoutes(r)
 	})
 
 	return r
