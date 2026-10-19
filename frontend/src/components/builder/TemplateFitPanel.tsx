@@ -161,16 +161,18 @@ function FitList({ title, rows }: { title: string; rows: TemplateFit["rows"] }) 
             <li
               key={r.key}
               data-status={r.status}
-              className={`flex items-baseline justify-between gap-2 rounded px-2 py-1 ${
+              className={`rounded px-2 py-1 ${
                 green ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
               }`}
               title={note ?? undefined}
             >
-              <span className="min-w-0 text-foreground/80">{r.label}</span>
-              <span className="shrink-0 text-right font-mono">
-                {value}
-                {note && <span className="ml-2 font-sans text-[10px] opacity-80">{note}</span>}
-              </span>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="min-w-0 truncate text-foreground/80">{r.label}</span>
+                <span className="shrink-0 font-mono">{value}</span>
+              </div>
+              {/* The note sits on its own line and wraps, so a long one never
+                  overlaps the label or overflows the narrow column. */}
+              {note && <p className="mt-0.5 break-words text-[10px] opacity-80">{note}</p>}
             </li>
           );
         })}
