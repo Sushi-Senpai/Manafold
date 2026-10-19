@@ -14,11 +14,12 @@
 // then read back from disk, gzip-inflated, and decoded object by object
 // (CARD-012). Oracle Cards upserts one row at a time; Default Cards is
 // bulk-upserted with COPY into a session TEMP table plus one set-based merge
-// (CARD-014). Oracle Tags replaces the mirrored tag snapshot — tags, direct
-// taggings, and the hierarchy closure — in one transaction (CARD-010,
-// CARD-060; see oracletags.go).
+// (CARD-014). Oracle Tags, fetched and ingested only after both card passes
+// commit, replaces the mirrored tag snapshot — tags, direct taggings, and the
+// hierarchy closure — in one transaction; its failure is recorded but never
+// fails the run (CARD-010, CARD-060, CARD-067; see oracletags.go).
 //
-// @spec CARD-001, CARD-002, CARD-005, CARD-006, CARD-007, CARD-012, CARD-013, CARD-014, CARD-015
+// @spec CARD-001, CARD-002, CARD-005, CARD-006, CARD-007, CARD-012, CARD-013, CARD-014, CARD-015, CARD-067
 package cardsync
 
 import (
@@ -104,14 +105,18 @@ type Result struct {
 	TagsUpserted     int
 	TaggingsUpserted int
 	TaggingsSkipped  int
+	// TagsErr is the oracle-tags pass failure, if any. It does not fail the
+	// run: the card passes have already committed (CARD-067).
+	TagsErr error
 }
 
 // Run ingests Oracle Cards into cards, Default Cards into card_prints, and
 // Oracle Tags into oracle_tags / card_oracle_tags / oracle_tag_closure,
 // recording a sync_runs row per bulk type. A printing whose oracle_id has no
 // cards row is skipped and counted, not treated as an error (CARD-005). Any
-// other failure marks the sync_runs row failed with the error text and returns
-// the error (CARD-007).
+// other card-pass failure marks the sync_runs row failed with the error text
+// and returns the error (CARD-007). A tag-pass failure is recorded the same way
+// but reported in Result.TagsErr, not returned (CARD-067).
 func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) {
 	q := db.New(pool)
 	var res Result
@@ -134,8 +139,9 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 	}
 	f := &fetcher{client: client}
 
-	var oracleUpdatedAt, defaultUpdatedAt, tagsUpdatedAt time.Time
-	var oracleRC, defaultRC, tagsRC io.ReadCloser
+	var oracleUpdatedAt, defaultUpdatedAt time.Time
+	var oracleRC, defaultRC io.ReadCloser
+	var man *bulkManifest
 
 	if opts.OracleCardsPath != "" {
 		file, err := os.Open(opts.OracleCardsPath)
@@ -151,75 +157,32 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 		}
 		defaultRC = file
 	}
-	if opts.OracleTagsPath != "" {
-		file, err := os.Open(opts.OracleTagsPath)
-		if err != nil {
-			return res, err
-		}
-		tagsRC = file
-	}
-	if tagsRC != nil {
-		defer tagsRC.Close()
-	}
 
 	if oracleRC == nil || defaultRC == nil {
 		manifestCtx, cancel := context.WithTimeout(ctx, manifestTimeout)
-		man, err := f.manifest(manifestCtx, baseURL)
+		m, err := f.manifest(manifestCtx, baseURL)
 		cancel()
 		if err != nil {
 			return res, err
 		}
+		man = &m
 		if oracleRC == nil {
-			uri, updated, err := man.find("oracle_cards")
+			rc, updated, cleanup, err := f.fetchBulk(ctx, m, "oracle_cards")
 			if err != nil {
 				return res, err
 			}
+			defer cleanup()
 			oracleUpdatedAt = updated
-			path, err := f.downloadToTemp(ctx, uri)
-			if err != nil {
-				return res, err
-			}
-			defer os.Remove(path)
-			rc, err := openBulkFile(path)
-			if err != nil {
-				return res, err
-			}
 			oracleRC = rc
 		}
 		if defaultRC == nil {
-			uri, updated, err := man.find("default_cards")
+			rc, updated, cleanup, err := f.fetchBulk(ctx, m, "default_cards")
 			if err != nil {
 				return res, err
 			}
+			defer cleanup()
 			defaultUpdatedAt = updated
-			path, err := f.downloadToTemp(ctx, uri)
-			if err != nil {
-				return res, err
-			}
-			defer os.Remove(path)
-			rc, err := openBulkFile(path)
-			if err != nil {
-				return res, err
-			}
 			defaultRC = rc
-		}
-		if tagsRC == nil {
-			uri, updated, err := man.find("oracle_tags")
-			if err != nil {
-				return res, err
-			}
-			tagsUpdatedAt = updated
-			path, err := f.downloadToTemp(ctx, uri)
-			if err != nil {
-				return res, err
-			}
-			defer os.Remove(path)
-			rc, err := openBulkFile(path)
-			if err != nil {
-				return res, err
-			}
-			defer rc.Close()
-			tagsRC = rc
 		}
 	}
 	defer oracleRC.Close()
@@ -238,18 +201,41 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 	res.PrintsUpserted = prints
 	res.PrintsSkipped = skipped
 
-	// Taggings resolve against cards, so the tag pass runs after Oracle Cards.
-	if tagsRC != nil {
-		tags, taggings, tagSkipped, err := ingestOracleTags(ctx, pool, q, tagsRC, tagsUpdatedAt)
+	// The tag pass runs only after both card passes have committed: taggings
+	// resolve against cards, and a tag-pass failure must never cost the run its
+	// card data (CARD-067).
+	if opts.OracleTagsPath != "" || man != nil {
+		tags, taggings, tagSkipped, err := syncOracleTags(ctx, pool, q, f, man, opts.OracleTagsPath)
 		if err != nil {
-			return res, err
+			res.TagsErr = err
+		} else {
+			res.TagsUpserted = tags
+			res.TaggingsUpserted = taggings
+			res.TaggingsSkipped = tagSkipped
 		}
-		res.TagsUpserted = tags
-		res.TaggingsUpserted = taggings
-		res.TaggingsSkipped = tagSkipped
 	}
 
 	return res, nil
+}
+
+// fetchBulk downloads the manifest's bulkType export to a temp file and opens
+// it gzip-inflated. The caller closes the reader and then calls cleanup to
+// remove the temp file.
+func (f *fetcher) fetchBulk(ctx context.Context, man bulkManifest, bulkType string) (rc io.ReadCloser, updatedAt time.Time, cleanup func(), err error) {
+	uri, updatedAt, err := man.find(bulkType)
+	if err != nil {
+		return nil, time.Time{}, nil, err
+	}
+	path, err := f.downloadToTemp(ctx, uri)
+	if err != nil {
+		return nil, updatedAt, nil, err
+	}
+	rc, err = openBulkFile(path)
+	if err != nil {
+		os.Remove(path)
+		return nil, updatedAt, nil, err
+	}
+	return rc, updatedAt, func() { os.Remove(path) }, nil
 }
 
 func ingestOracle(ctx context.Context, q *db.Queries, r io.Reader, updatedAt time.Time) (int, error) {

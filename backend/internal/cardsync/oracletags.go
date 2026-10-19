@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -40,6 +41,36 @@ type stagedTagging struct {
 	OracleID   string  `json:"oracle_id"`
 	Weight     string  `json:"weight"`
 	Annotation *string `json:"annotation,omitempty"`
+}
+
+// syncOracleTags runs the tag pass over the local file at path, or — with no
+// path — over the manifest's oracle_tags export. A failure to open or fetch the
+// export records a failed oracle_tags sync_runs row like an ingest failure
+// does, so the caller can report it without failing the run (CARD-067).
+//
+// @spec CARD-010, CARD-067
+func syncOracleTags(ctx context.Context, pool *pgxpool.Pool, q *db.Queries, f *fetcher, man *bulkManifest, path string) (tags, taggings, skipped int, err error) {
+	var rc io.ReadCloser
+	var updatedAt time.Time
+	if path != "" {
+		rc, err = os.Open(path)
+	} else {
+		var cleanup func()
+		rc, updatedAt, cleanup, err = f.fetchBulk(ctx, *man, "oracle_tags")
+		if err == nil {
+			defer cleanup()
+		}
+	}
+	if err != nil {
+		if run, cerr := q.CreateSyncRun(ctx, db.CreateSyncRunParams{
+			BulkType: "oracle_tags", ScryfallUpdatedAt: tstz(updatedAt),
+		}); cerr == nil {
+			_ = q.FailSyncRun(ctx, db.FailSyncRunParams{ID: run.ID, Error: text(err.Error())})
+		}
+		return 0, 0, 0, fmt.Errorf("oracle_tags fetch: %w", err)
+	}
+	defer rc.Close()
+	return ingestOracleTags(ctx, pool, q, rc, updatedAt)
 }
 
 // ingestOracleTags ingests the oracle_tags export, recording a sync_runs row

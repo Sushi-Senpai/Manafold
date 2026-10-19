@@ -257,13 +257,18 @@ func (q Query) WhereSQL(startParam int) (expr string, args []any, next int) {
 		clauses = append(clauses, "c.can_be_commander = true")
 	}
 	// The tag or any descendant, through the materialised closure; a disabled
-	// tag matches nothing, at either end (CARD-062, CARD-063).
+	// tag matches nothing and cuts off every tag below it — the pair is dropped
+	// when a disabled tag x lies on it (closure(a, x) and closure(x, d))
+	// (CARD-062, CARD-063).
 	for _, slug := range q.OracleTags {
 		add(`EXISTS (SELECT 1 FROM oracle_tags a
 			JOIN oracle_tag_closure cl ON cl.ancestor_id = a.id
-			JOIN oracle_tags d ON d.id = cl.descendant_id
-			JOIN card_oracle_tags ct ON ct.tag_id = d.id
-			WHERE a.slug = $%d AND NOT a.disabled AND NOT d.disabled AND ct.card_id = c.id)`, slug)
+			JOIN card_oracle_tags ct ON ct.tag_id = cl.descendant_id
+			WHERE a.slug = $%d AND ct.card_id = c.id
+			AND NOT EXISTS (SELECT 1 FROM oracle_tag_closure up
+				JOIN oracle_tags x ON x.id = up.descendant_id AND x.disabled
+				JOIN oracle_tag_closure down ON down.ancestor_id = x.id
+				WHERE up.ancestor_id = a.id AND down.descendant_id = cl.descendant_id))`, slug)
 	}
 
 	if len(clauses) == 0 {

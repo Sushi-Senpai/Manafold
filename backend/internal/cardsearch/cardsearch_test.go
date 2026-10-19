@@ -161,7 +161,7 @@ func TestWhereSQL_OracleTagWalksClosureAndSkipsDisabled(t *testing.T) {
 	if next != 5 || len(args) != 2 {
 		t.Fatalf("expected 2 args and next placeholder 5, got %d args, next %d (expr=%q)", len(args), next, expr)
 	}
-	for _, frag := range []string{"oracle_tag_closure", "card_oracle_tags", "NOT a.disabled", "NOT d.disabled", "a.slug = $"} {
+	for _, frag := range []string{"oracle_tag_closure", "card_oracle_tags", "x.disabled", "a.slug = $"} {
 		if !strings.Contains(expr, frag) {
 			t.Fatalf("expr %q missing fragment %q", expr, frag)
 		}

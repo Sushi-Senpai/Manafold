@@ -127,7 +127,7 @@ is community-moderated, so downstream apps should be able to switch a tag off.
 | `description` | text null | |
 | `parent_ids` | uuid[] not null default `'{}'` | as provided; the closure is built from it |
 | `aliases` | text[] not null default `'{}'` | |
-| `disabled` | bool not null default false | **Manafold-owned**: the sync never writes it; a disabled tag is ignored by every tag read |
+| `disabled` | bool not null default false | **Manafold-owned**: the sync never writes it; a disabled tag is ignored by every tag read, and a tag-or-descendant read also drops every tag below it |
 | `created_at`, `updated_at` | timestamptz | |
 
 #### `card_oracle_tags`
@@ -225,8 +225,14 @@ cards — a JSON array in the bulk export's object shape (`CARD-066`).
    as skipped. A duplicate `scryfall_id` inside one export collapses via
    `DISTINCT ON` rather than failing the merge.
 5. **Oracle Tags → `oracle_tags` / `card_oracle_tags` / `oracle_tag_closure`**:
-   runs after the Oracle Cards pass, because taggings resolve against `cards`.
-   One transaction replaces the whole snapshot. Each decoded tag is validated in
+   the manifest lookup, download, and ingest all run only after both card
+   passes have committed — taggings resolve against `cards`, and the tag data is
+   additive, so it must never stand between the run and a refreshed card
+   mirror. Any tag-pass failure (no `oracle_tags` manifest entry, a download
+   error or timeout, an unreadable file, malformed JSON, an export with no
+   oracle tags) records a failed `oracle_tags` `sync_runs` row, keeps the prior
+   tag snapshot, and is reported in `Result.TagsErr` rather than returned, so
+   `cmd/cardsync` logs it and exits successfully (`CARD-067`). One transaction replaces the whole snapshot. Each decoded tag is validated in
    Go — a non-`oracle` `type` or an unparseable `id` skips the tag, and a
    tagging with an unparseable `oracle_id` is dropped and counted — then `COPY`d
    into a session `TEMP` staging table, its cleaned taggings carried as one
@@ -245,7 +251,8 @@ cards — a JSON array in the bulk export's object shape (`CARD-066`).
    `sync_runs.rows_upserted` count is the taggings written.
 6. On success, update the `sync_runs` row: `status = 'succeeded'`,
    `rows_upserted`, `finished_at`. On any error, `status = 'failed'`, `error`,
-   `finished_at`, and return the error.
+   `finished_at`, and — for a card pass — return the error; a tag-pass error is
+   reported in `Result.TagsErr` instead (`CARD-067`).
 
 ### HTTP etiquette (non-negotiable)
 
@@ -307,7 +314,8 @@ mirror. M1 supports:
 - `is:commander` → `can_be_commander = true`.
 - `otag:<slug>` / `oracletag:<slug>` → the card carries the oracle tag with that
   slug (case-insensitive) or any of its descendants, through
-  `oracle_tag_closure`; disabled tags never match.
+  `oracle_tag_closure`; disabled tags never match, nor does any tag below a
+  disabled tag that sits at or under the queried one.
 
 Results are `unique = cards` (Oracle rows). Each `CardSummary` carries the
 card's Oracle fields plus its newest printing's `image_uris` and `prices`
@@ -335,9 +343,10 @@ plausible-but-wrong query silently returns the wrong cards.
 | Bulk download deadline | A short `context.WithTimeout` around the manifest fetch+decode, `Transport.ResponseHeaderTimeout` for each bulk GET's response-header wait, and — for each bulk body — a per-download idle/read deadline (fail if no bytes arrive for a bounded interval) plus a generous total `context.WithTimeout` (~30 min) over the whole file download | A single `http.Client{Timeout}` covering the whole request | A whole-request timeout has to be set long enough for the full ingest, so it cannot also catch a genuinely stalled download promptly; once download and ingest are decoupled it would only ever fire spuriously on a healthy long ingest. The manifest timeout and `ResponseHeaderTimeout` fail a connection that completes TLS but never answers (or stalls mid-manifest) — otherwise unbounded under `cmd/cardsync`'s `context.Background()` — while the idle deadline fails a dead connection mid-body and the total deadline backstops a CDN trickling just enough bytes to keep the idle timer alive; none touches the ingest. |
 | Oracle-tag identity | Key `oracle_tags` on Scryfall's tag `id`; slug indexed but not unique | Key on `slug` | Scryfall documents the `id` as the stable identifier and slugs/labels as renameable; keying on slug would orphan taggings on every rename, and a unique slug index could fail a snapshot in which two tags trade slugs. |
 | Tag hierarchy reads | Materialise `oracle_tag_closure` at sync | A recursive CTE on every read; store only direct taggings and let callers walk `parent_ids` | Parent tags (`ramp`, `removal`, `tutor`) carry few or no direct taggings, so every useful read needs the descendants. The closure is ~12 k rows, rebuilt in one statement per sync, and turns every "tag or any descendant" read into a plain indexed join. |
+| Tag-pass failure | Fetch and ingest the tags after both card passes commit; a failure is a recorded `oracle_tags` `sync_runs` failure reported in `Result.TagsErr`, not a run failure | Fetch all three exports up front and fail the run on any error | The tags are additive community data; an outage in the Tagger export must not stop the core card mirror from refreshing. |
 | Tag snapshot shape | Full replace in one transaction (upsert tags, delete missing tags, delete-and-reinsert taggings, rebuild closure) | Upsert-only taggings | Tagger removes taggings as the community corrects them; upsert-only would keep stale roles forever. The export is a complete daily snapshot (~237 k taggings), so a set-based replace is cheap and is idempotent by construction. |
 | Tag staging | One `COPY` of tag rows with their cleaned taggings as a `jsonb` column, exploded in SQL with `jsonb_to_recordset` | Two staging tables (tags, taggings) | A single streaming pass over the export can feed only one `COPY`; holding all taggings in Go to feed a second would buffer the export. Validating each `oracle_id` in Go first means the SQL cast to `uuid` can never fail the merge. |
-| Tag kill switch | A Manafold-owned `oracle_tags.disabled` column the sync never writes, honoured by every tag read | Delete the tag locally | Scryfall asks downstream apps to be able to switch off a community tag; a local delete would be undone by the next sync. |
+| Tag kill switch | A Manafold-owned `oracle_tags.disabled` column the sync never writes, honoured by every tag read; a tag-or-descendant read drops the (queried `a`, applied `d`) pair when some disabled `x` has closure rows (`a`, `x`) and (`x`, `d`) | Delete the tag locally; rebuild the closure without disabled tags | Scryfall asks downstream apps to be able to switch off a community tag; a local delete would be undone by the next sync. A maintainer flips `disabled` without running a sync, so the closure still holds paths through the disabled tag; enforcing the cut at read time takes effect immediately, and the disabled set is tiny so the extra anti-join is cheap. |
 | Tag keying on cards | `card_oracle_tags.card_id` → `cards.id`, resolved by joining on `scryfall_oracle_id` at sync | Key on the raw Scryfall `oracle_id` | Every reader already joins from `cards`; an FK with cascade keeps the table clean and mirrors `card_prints`. Taggings on objects the Oracle export omits are counted as skipped, like orphan printings. |
 | Full-text index | Postgres `tsvector` column (`oracle_search`) + GIN | `pg_trgm` only; an external search engine | `tsvector` handles the Oracle-text predicates natively at sub-10 ms; `pg_trgm` additionally backs the name prefix/`ILIKE` paths. No external dependency. |
 

@@ -18,7 +18,7 @@ import (
 const (
 	goblinOracle = "11111111-1111-1111-1111-111111111111" // mana-rock (identity R)
 	ratOracle    = "22222222-2222-2222-2222-222222222222" // mana-dork (identity B)
-	septetOracle = "33333333-3333-3333-3333-333333333333" // cycle-b
+	septetOracle = "33333333-3333-3333-3333-333333333333" // cycle-b, signet (a child of mana-rock)
 	walkerOracle = "44444444-4444-4444-4444-444444444444" // extra-turn
 	manaRockTag  = "a0000000-0000-0000-0000-000000000002"
 	staleTag     = "a0000000-0000-0000-0000-0000000000ff"
@@ -47,11 +47,14 @@ func TestRun_IngestsOracleTags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cardsync.Run: %v", err)
 	}
-	if res.TagsUpserted != 6 {
-		t.Errorf("TagsUpserted = %d, want 6 (the illustration tag is skipped)", res.TagsUpserted)
+	if res.TagsErr != nil {
+		t.Fatalf("TagsErr = %v, want nil", res.TagsErr)
 	}
-	if res.TaggingsUpserted != 4 {
-		t.Errorf("TaggingsUpserted = %d, want 4", res.TaggingsUpserted)
+	if res.TagsUpserted != 7 {
+		t.Errorf("TagsUpserted = %d, want 7 (the illustration tag is skipped)", res.TagsUpserted)
+	}
+	if res.TaggingsUpserted != 5 {
+		t.Errorf("TaggingsUpserted = %d, want 5", res.TaggingsUpserted)
 	}
 	if res.TaggingsSkipped != 2 {
 		t.Errorf("TaggingsSkipped = %d, want 2 (one orphan oracle_id, one unparseable)", res.TaggingsSkipped)
@@ -92,9 +95,10 @@ func TestRun_IngestsOracleTags(t *testing.T) {
 		t.Errorf("annotation = %q, want \"taps for B\"", annotation)
 	}
 
-	// "ramp" has no direct taggings; its cards come through the closure.
-	if got := cardsByTag(t, ctx, q, "ramp", nil); !equalStrings(got, []string{"Manafold Test Goblin Boss", "Manafold Test Rat Swarm"}) {
-		t.Errorf("cards by ramp = %v, want goblin + rat via descendants (CARD-062)", got)
+	// "ramp" has no direct taggings; its cards come through the closure,
+	// including the septet two levels down (ramp -> mana-rock -> signet).
+	if got := cardsByTag(t, ctx, q, "ramp", nil); !equalStrings(got, []string{"Manafold Test Goblin Boss", "Manafold Test Rat Swarm", "Manafold Test Septet"}) {
+		t.Errorf("cards by ramp = %v, want goblin + rat + septet via descendants (CARD-062)", got)
 	}
 	if got := cardsByTag(t, ctx, q, "RAMP", []string{"R"}); !equalStrings(got, []string{"Manafold Test Goblin Boss"}) {
 		t.Errorf("cards by ramp within {R} = %v, want just the goblin", got)
@@ -113,16 +117,16 @@ func TestRun_IngestsOracleTags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FilterCardIDsByOracleTag: %v", err)
 	}
-	if len(ids) != 1 || ids[0] != goblin {
-		t.Errorf("ramp among {goblin, septet, walker} = %v, want [goblin]", ids)
+	if len(ids) != 2 || !containsUUID(ids, goblin) || !containsUUID(ids, septet) {
+		t.Errorf("ramp among {goblin, septet, walker} = %v, want [goblin, septet]", ids)
 	}
 
 	run, err := q.LatestSyncRun(ctx, "oracle_tags")
 	if err != nil {
 		t.Fatalf("latest oracle_tags sync run: %v", err)
 	}
-	if run.Status != "succeeded" || run.RowsUpserted != 4 {
-		t.Errorf("oracle_tags sync run = {status %q, rows %d}, want {succeeded, 4}", run.Status, run.RowsUpserted)
+	if run.Status != "succeeded" || run.RowsUpserted != 5 {
+		t.Errorf("oracle_tags sync run = {status %q, rows %d}, want {succeeded, 5}", run.Status, run.RowsUpserted)
 	}
 }
 
@@ -130,7 +134,8 @@ func TestRun_IngestsOracleTags(t *testing.T) {
 // mirror that holds a tag and tagging the export no longer lists and a tag a
 // maintainer has disabled: the stale rows leave, the counts are unchanged
 // (idempotent), the disabled flag survives the sync, and every tag read —
-// including otag: search — ignores the disabled tag.
+// including otag: search — ignores the disabled tag and cuts off the signet
+// tag below it, while signet itself stays queryable.
 //
 // @spec CARD-060, CARD-063, CARD-064
 func TestRun_OracleTagsReplaceSnapshotAndKeepDisabled(t *testing.T) {
@@ -191,16 +196,20 @@ func TestRun_OracleTagsReplaceSnapshotAndKeepDisabled(t *testing.T) {
 	if tags, err := q.ListOracleTagsForCard(ctx, goblin); err != nil || len(tags) != 0 {
 		t.Errorf("goblin tags with mana-rock disabled = %+v (err %v), want none", tags, err)
 	}
+	septet := cardIDByOracle(t, ctx, q, septetOracle)
 	if got := cardsByTag(t, ctx, q, "ramp", nil); !equalStrings(got, []string{"Manafold Test Rat Swarm"}) {
-		t.Errorf("cards by ramp with mana-rock disabled = %v, want just the rat", got)
+		t.Errorf("cards by ramp with mana-rock disabled = %v, want just the rat (signet cut off)", got)
 	}
 	if got := cardsByTag(t, ctx, q, "mana-rock", nil); len(got) != 0 {
 		t.Errorf("cards by disabled mana-rock = %v, want none", got)
 	}
+	if got := cardsByTag(t, ctx, q, "signet", nil); !equalStrings(got, []string{"Manafold Test Septet"}) {
+		t.Errorf("cards by signet with its parent disabled = %v, want the septet", got)
+	}
 	if ids, err := q.FilterCardIDsByOracleTag(ctx, db.FilterCardIDsByOracleTagParams{
-		Slug: "ramp", CardIds: []pgtype.UUID{goblin},
+		Slug: "ramp", CardIds: []pgtype.UUID{goblin, septet},
 	}); err != nil || len(ids) != 0 {
-		t.Errorf("goblin counted as ramp with mana-rock disabled: %v (err %v)", ids, err)
+		t.Errorf("goblin / septet counted as ramp with mana-rock disabled: %v (err %v)", ids, err)
 	}
 
 	// otag: search runs the same closure lookup over the mirror.
@@ -235,9 +244,10 @@ func TestRun_FixtureCardsWithoutTagFileSkipsTagPass(t *testing.T) {
 
 // TestRun_OracleTagsBrokenExportFailsAndKeepsSnapshot: an export that decodes
 // to no oracle tags is a broken file, not an instruction to wipe the mirror —
-// the run fails, the sync_runs row records it, and the prior snapshot stays.
+// the tag pass fails, the sync_runs row records it, and the prior snapshot
+// stays, yet Run still succeeds with the card passes written.
 //
-// @spec CARD-007, CARD-060
+// @spec CARD-007, CARD-060, CARD-067
 func TestRun_OracleTagsBrokenExportFailsAndKeepsSnapshot(t *testing.T) {
 	ctx, pool := tagTestPool(t)
 	q := db.New(pool)
@@ -253,8 +263,15 @@ func TestRun_OracleTagsBrokenExportFailsAndKeepsSnapshot(t *testing.T) {
 	}
 	opts := tagFixtureOptions()
 	opts.OracleTagsPath = empty
-	if _, err := cardsync.Run(ctx, pool, opts); err == nil {
-		t.Fatalf("cardsync.Run over an export with no oracle tags succeeded, want an error")
+	res, err := cardsync.Run(ctx, pool, opts)
+	if err != nil {
+		t.Fatalf("cardsync.Run over an export with no oracle tags: %v, want the card passes to succeed", err)
+	}
+	if res.TagsErr == nil {
+		t.Fatalf("Result.TagsErr = nil over an export with no oracle tags, want the tag-pass error")
+	}
+	if res.OracleUpserted != 4 || res.PrintsUpserted != 2 {
+		t.Errorf("card passes = %+v, want 4 cards and 2 prints written despite the tag failure", res)
 	}
 	if after := tagTableCounts(t, ctx, pool); after != before {
 		t.Errorf("tag tables after a failed run = %v, want the prior snapshot %v", after, before)
@@ -345,6 +362,15 @@ func tagTableCounts(t *testing.T, ctx context.Context, pool *pgxpool.Pool) tagCo
 		t.Fatalf("count tag tables: %v", err)
 	}
 	return c
+}
+
+func containsUUID(ids []pgtype.UUID, id pgtype.UUID) bool {
+	for _, x := range ids {
+		if x == id {
+			return true
+		}
+	}
+	return false
 }
 
 func equalStrings(got, want []string) bool {

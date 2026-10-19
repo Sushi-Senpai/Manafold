@@ -3,7 +3,8 @@
 // surface (PLATFORM-006). It downloads the Oracle Cards, Default Cards, and
 // Oracle Tags bulk exports, upserts them into cards / card_prints and the
 // oracle-tag tables, and records a sync_runs row per export (CARD-001,
-// CARD-007, CARD-010). For a dev / CI seed it instead reads a local card
+// CARD-007, CARD-010). A failed oracle-tags pass is logged but does not fail
+// the job (CARD-067). For a dev / CI seed it instead reads a local card
 // fixture named by CARDSYNC_SEED_PATH (or the per-pass CARDSYNC_ORACLE_PATH /
 // CARDSYNC_DEFAULT_PATH) and its tag fixture (CARDSYNC_TAGS_PATH, or the
 // oracle_tags.json beside the seed) — see seedOptions, backend/seed/cards.json,
@@ -72,6 +73,9 @@ func main() {
 	res, err := cardsync.Run(ctx, pool, seedOptions())
 	if err != nil {
 		log.Fatalf("card sync: %v", err)
+	}
+	if res.TagsErr != nil {
+		log.Printf("card sync: oracle tags pass failed, prior tag snapshot kept: %v", res.TagsErr)
 	}
 	log.Printf("card sync complete: %d cards, %d prints upserted, %d prints skipped; %d oracle tags, %d taggings upserted, %d taggings skipped",
 		res.OracleUpserted, res.PrintsUpserted, res.PrintsSkipped, res.TagsUpserted, res.TaggingsUpserted, res.TaggingsSkipped)

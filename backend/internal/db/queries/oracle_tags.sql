@@ -1,6 +1,9 @@
 -- Oracle-tag reads over the mirror (CARD-065). Every read ignores a disabled
 -- tag (CARD-063), and "tag or any descendant" goes through oracle_tag_closure
--- (CARD-062).
+-- (CARD-062). The disabled flag is toggled without a sync, so the closure still
+-- holds pairs that pass through a disabled tag: a tag-or-descendant read drops
+-- the (queried, applied) pair when a disabled tag x lies on it — closure(a, x)
+-- and closure(x, d) — which covers a and d themselves through their self rows.
 
 -- A card's directly applied, enabled oracle tags.
 -- @spec CARD-065, CARD-063
@@ -25,8 +28,13 @@ WHERE EXISTS (
     JOIN oracle_tags d ON d.id = cl.descendant_id
     JOIN card_oracle_tags ct ON ct.tag_id = d.id
     WHERE a.slug = lower(sqlc.arg(slug)::text)
-      AND NOT a.disabled
-      AND NOT d.disabled
+      AND NOT EXISTS (
+          SELECT 1
+          FROM oracle_tag_closure up
+          JOIN oracle_tags x ON x.id = up.descendant_id AND x.disabled
+          JOIN oracle_tag_closure down ON down.ancestor_id = x.id
+          WHERE up.ancestor_id = a.id AND down.descendant_id = d.id
+      )
       AND ct.card_id = c.id
 )
   AND (cardinality(sqlc.arg(identity)::text[]) = 0
@@ -44,6 +52,11 @@ JOIN oracle_tag_closure cl ON cl.ancestor_id = a.id
 JOIN oracle_tags d ON d.id = cl.descendant_id
 JOIN card_oracle_tags ct ON ct.tag_id = d.id
 WHERE a.slug = lower(sqlc.arg(slug)::text)
-  AND NOT a.disabled
-  AND NOT d.disabled
+  AND NOT EXISTS (
+      SELECT 1
+      FROM oracle_tag_closure up
+      JOIN oracle_tags x ON x.id = up.descendant_id AND x.disabled
+      JOIN oracle_tag_closure down ON down.ancestor_id = x.id
+      WHERE up.ancestor_id = a.id AND down.descendant_id = d.id
+  )
   AND ct.card_id = ANY(sqlc.arg(card_ids)::uuid[]);

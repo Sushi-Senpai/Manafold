@@ -91,7 +91,10 @@ type Querier interface {
 	ListDecksForOwner(ctx context.Context, arg ListDecksForOwnerParams) ([]Deck, error)
 	// Oracle-tag reads over the mirror (CARD-065). Every read ignores a disabled
 	// tag (CARD-063), and "tag or any descendant" goes through oracle_tag_closure
-	// (CARD-062).
+	// (CARD-062). The disabled flag is toggled without a sync, so the closure still
+	// holds pairs that pass through a disabled tag: a tag-or-descendant read drops
+	// the (queried, applied) pair when a disabled tag x lies on it — closure(a, x)
+	// and closure(x, d) — which covers a and d themselves through their self rows.
 	// A card's directly applied, enabled oracle tags.
 	// @spec CARD-065, CARD-063
 	ListOracleTagsForCard(ctx context.Context, cardID pgtype.UUID) ([]ListOracleTagsForCardRow, error)
