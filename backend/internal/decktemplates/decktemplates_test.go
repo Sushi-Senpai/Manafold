@@ -58,8 +58,8 @@ func TestTemplates_LandRule(t *testing.T) {
 		if r.Max < 38 || r.Min < 34 {
 			t.Errorf("%s lands %d–%d breaks the land rule (min ≥ 34, max ≥ 38)", tpl.Key, r.Min, r.Max)
 		}
-		if r.RelaxedFromBracket != 4 {
-			t.Errorf("%s lands relaxed_from_bracket = %d, want 4", tpl.Key, r.RelaxedFromBracket)
+		if r.RelaxedAtBracket != 4 || r.RelaxedFloor != 32 {
+			t.Errorf("%s lands relaxation = bracket %d floor %d, want bracket 4 floor 32", tpl.Key, r.RelaxedAtBracket, r.RelaxedFloor)
 		}
 	}
 }
@@ -78,7 +78,7 @@ func TestTemplates_RoleTargets(t *testing.T) {
 			if r.Kind != KindRole || r.Min != want[0] || r.Max != want[1] {
 				t.Errorf("%s %s = %s %d–%d, want role %d–%d", tpl.Key, key, r.Kind, r.Min, r.Max, want[0], want[1])
 			}
-			if r.RelaxedFromBracket != 0 {
+			if r.RelaxedAtBracket != 0 || r.RelaxedFloor != 0 {
 				t.Errorf("%s %s carries a bracket relaxation", tpl.Key, key)
 			}
 		}
@@ -150,14 +150,22 @@ func TestEvaluate_StatusAndBracketRelaxation(t *testing.T) {
 		}
 	}
 
-	low := map[string]int{RowLands: 30, RowCreatures: 10}
+	// Only Bracket 4 relaxes, and only down to the 32-land floor.
 	for _, tc := range []struct {
-		bracket int
-		lands   Status
-	}{{0, StatusUnder}, {3, StatusUnder}, {4, StatusRelaxed}, {5, StatusRelaxed}} {
-		fits := Evaluate(tpl, low, tc.bracket)
-		if n, got := statusOf(fits, RowLands); got != tc.lands || n != 30 {
-			t.Errorf("bracket %d: lands = %d %s, want 30 %s", tc.bracket, n, got, tc.lands)
+		bracket, lands int
+		want           Status
+	}{
+		{0, 33, StatusUnder},
+		{3, 33, StatusUnder},
+		{4, 35, StatusRelaxed},
+		{4, 32, StatusRelaxed}, // inclusive floor
+		{4, 31, StatusUnder},
+		{4, 0, StatusUnder},
+		{5, 33, StatusUnder}, // Bracket 5 reads against the normal range
+	} {
+		fits := Evaluate(tpl, map[string]int{RowLands: tc.lands, RowCreatures: 10}, tc.bracket)
+		if n, got := statusOf(fits, RowLands); got != tc.want || n != tc.lands {
+			t.Errorf("bracket %d, %d lands = %d %s, want %s", tc.bracket, tc.lands, n, got, tc.want)
 		}
 		if _, got := statusOf(fits, RowCreatures); got != StatusUnder {
 			t.Errorf("bracket %d: creatures relaxed too (%s)", tc.bracket, got)

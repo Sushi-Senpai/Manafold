@@ -162,16 +162,28 @@ func TestTemplateFit_EndToEnd(t *testing.T) {
 		}
 	}
 
-	// Bracket 4 relaxes the land floor only.
-	if rec := serveIO(t, a, owner, http.MethodPatch, "/decks/"+deckID, `{"bracket":4}`); rec.Code != http.StatusOK {
-		t.Fatalf("set bracket: %d %s", rec.Code, rec.Body.String())
+	// Bracket 4 relaxes the land row only, and only down to the 32-land floor;
+	// Bracket 5 reads against the normal range.
+	setBracket := func(b string) templateFitJSON {
+		t.Helper()
+		if rec := serveIO(t, a, owner, http.MethodPatch, "/decks/"+deckID, `{"bracket":`+b+`}`); rec.Code != http.StatusOK {
+			t.Fatalf("set bracket: %d %s", rec.Code, rec.Body.String())
+		}
+		return decode[templateFitJSON](t, serveIO(t, a, owner, http.MethodGet, "/decks/"+deckID+"/template-fit", ""))
 	}
-	fit = decode[templateFitJSON](t, serveIO(t, a, owner, http.MethodGet, "/decks/"+deckID+"/template-fit", ""))
-	if r := fitRow(t, fit, decktemplates.RowLands); r.Status != decktemplates.StatusRelaxed {
-		t.Errorf("bracket 4 lands = %s, want relaxed", r.Status)
+	if r := fitRow(t, setBracket("4"), decktemplates.RowLands); r.Count != 31 || r.Status != decktemplates.StatusUnder {
+		t.Errorf("bracket 4, 31 lands = %d %s, want 31 under (below the 32 floor)", r.Count, r.Status)
+	}
+	add(forest, "main", 1)
+	fit = setBracket("4")
+	if r := fitRow(t, fit, decktemplates.RowLands); r.Count != 32 || r.Status != decktemplates.StatusRelaxed {
+		t.Errorf("bracket 4, 32 lands = %d %s, want 32 relaxed", r.Count, r.Status)
 	}
 	if r := fitRow(t, fit, decktemplates.RowCreatures); r.Status != decktemplates.StatusUnder {
 		t.Errorf("bracket 4 creatures = %s, want under", r.Status)
+	}
+	if r := fitRow(t, setBracket("5"), decktemplates.RowLands); r.Status != decktemplates.StatusUnder {
+		t.Errorf("bracket 5, 32 lands = %s, want under (no relaxation)", r.Status)
 	}
 
 	// "" clears the archetype.

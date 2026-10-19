@@ -116,7 +116,7 @@ and the builder's "deck vs. target" panel (`DECK-100..109`).
    templates: type + role ranges out of the 99, served at
    `GET /api/deck-templates`) evaluated by `GET /decks/{id}/template-fit` over
    `deckstats` type counts and `internal/deckroles` role counts behind a
-   swappable `Classifier`; Bracket 4+ relaxes the land floor; the builder's
+   swappable `Classifier`; Bracket 4 relaxes the land minimum down to 32; the builder's
    "deck vs. target" panel reads both endpoints.
 
 ## Spec Coverage

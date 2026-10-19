@@ -108,7 +108,7 @@ foundation the later deck-building wizard (bonus #1 above) will read.
 | # | Decision | Choice | Rationale |
 |---|---|---|---|
 | T1 | Land ranges | 36–38 for almost every archetype; the top of a land range is never below 38; the bottom drops to 34 only where well supported (Spellslinger, Artifacts) or 35 (Voltron); Ramp 38–40, Lands-matter 40–44. | The captain's rule: "36-38 is correct for almost all decks … the top end … should never be smaller than 38", with the floor going "as low as 34 for specific deck types". |
-| T2 | Bracket 4 relaxation | A Bracket 4+ deck may sit under its land range ("heavy fast mana"). Keyed on the deck's self-assigned `bracket` until M6 can count fast mana. | Captain: "can be even less if it's Bracket 4 with a lot of fast mana". |
+| T2 | Bracket 4 relaxation | A Bracket 4 deck (Bracket 4 only; Bracket 5 is not relaxed) may sit under its land range down to a floor of 32 lands; below 32 still reads amber. Keyed on the deck's self-assigned `bracket`; checking that the deck actually runs heavy fast mana is deferred pending Scryfall role tags. | Captain: "can be even less if it's Bracket 4 with a lot of fast mana", and on review: "Yeah I like your recommendation and I think 32 is fine for the floor of Bracket 4". |
 | T3 | The ten archetypes and their ranges | Go-wide / Tribal, Voltron, Spellslinger, Midrange / Value, Control, Ramp / Big creatures, Artifacts, Enchantress, Aristocrats, Lands-matter — the table in `docs/intent/deck-building/deck-building-design.md` § Deck templates; counts are out of the 99 non-commander cards, planeswalkers come out of the noncreature slots. | Captain-approved table. |
 | T4 | Role targets | Every archetype: ramp 10–12, card draw 10–12, targeted removal 8–10, board wipes 2–4 (Control 4–6). | Captain-approved. Roles are counted by a conservative Oracle-text classifier behind a swappable interface until Scryfall role tags are ingested. |
 | T5 | Where it shows | A "your deck vs. target" panel in the builder: the player picks an archetype for the deck and each row (card types and roles) shows green in range, amber outside it. | Captain-approved. The templates are one versioned definition in the backend, served to the frontend, so the wizard reads the same source. |
@@ -498,10 +498,10 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   (migration `000006`, nullable, PATCH-settable, unknown key `400`) records the
   player's pick; `GET /api/decks/{id}/template-fit` reads the `main` board —
   type rows from `deckstats`' primary-type counts, role rows from
-  `internal/deckroles` — and a self-assigned Bracket 4+ turns an under-floor land
-  count into `relaxed`. The role classifier is a conservative Oracle-text rule
+  `internal/deckroles` — and a self-assigned Bracket 4 turns a land count
+  between 32 and the archetype's minimum into `relaxed`. The role classifier is a conservative Oracle-text rule
   set behind a `Classifier` interface, tested on the real seed cards; its known
   limits are in the deck-building LLD. The builder's left column gained the
   "Deck vs. target" panel with archetype and bracket pickers. Deferred:
-  fast-mana-aware relaxation (M6), a Scryfall-tag classifier (`CARD-010`), the
+  fast-mana-aware relaxation (pending role tags), a Scryfall-tag classifier (`CARD-010`), the
   wizard.

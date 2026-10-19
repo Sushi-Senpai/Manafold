@@ -8,8 +8,8 @@ import type { FitStatus, TemplateRowFit } from "./api.ts";
 
 export type FitTone = "green" | "amber";
 
-// fitTone: in range (or under the land floor a Bracket 4+ deck may go below)
-// reads green; anything outside the range reads amber.
+// fitTone: in range (or a Bracket 4 deck's land count between the relaxed
+// floor and the minimum) reads green; anything outside the range reads amber.
 export function fitTone(status: FitStatus): FitTone {
   return status === "ok" || status === "relaxed" ? "green" : "amber";
 }
@@ -20,7 +20,7 @@ export function formatFitRow(row: TemplateRowFit): { value: string; note: string
   const value = `${row.count} / ${row.min}–${row.max}`;
   let note: string | null = null;
   if (row.status === "relaxed") {
-    note = `Bracket ${row.relaxed_from_bracket ?? 4}+: fewer lands OK with heavy fast mana`;
+    note = `Bracket ${row.relaxed_at_bracket ?? 4}: fewer lands OK with heavy fast mana (floor ${row.relaxed_floor ?? 32})`;
   } else if (row.status === "under") {
     note = `${row.min - row.count} under`;
   } else if (row.status === "over") {

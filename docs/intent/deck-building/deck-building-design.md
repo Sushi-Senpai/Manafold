@@ -220,12 +220,16 @@ targeted removal 8–10, board wipes 2–4** — except Control, whose board-wip
 target is **4–6**.
 
 **Bracket 4 relaxation.** A deck in Bracket 4 running heavy fast mana may sit
-below its land range. The land row carries `relaxed_from_bracket: 4`; when the
-deck's self-assigned `bracket` is at or above that value, a land count below the
-minimum evaluates to `relaxed` instead of `under` (a count above the maximum is
-still `over`). Manafold cannot yet tell whether a deck actually runs heavy fast
-mana — counting fast mana / Game Changers is roadmap M6 — so the relaxation
-keys on the player's own bracket claim alone. Any other row has no relaxation.
+below its land range, but not below 32 lands. The land row carries
+`relaxed_at_bracket: 4` and `relaxed_floor: 32`; when the deck's self-assigned
+`bracket` is exactly 4, a land count below the minimum but at or above 32
+evaluates to `relaxed` instead of `under`. Below 32 is still `under`, and a
+count above the maximum is still `over`. Bracket 5 gets no relaxation and reads
+against the normal range, as does any bracket other than 4 or an unset one.
+Manafold cannot yet tell whether a deck actually runs heavy fast mana, so the
+relaxation keys on the player's own bracket claim alone; requiring the fast
+mana is deferred until role tags can count it (Deferred #14). Any other row has
+no relaxation.
 
 ### Counting
 
@@ -408,7 +412,8 @@ outside colour identity — it does not silently reject or silently accept
     one; with one it lists every row of `/template-fit` — lands, creatures,
     instants & sorceries, artifacts, enchantments, then ramp, card draw,
     targeted removal, board wipes — as "count / min–max", green when `ok` or
-    `relaxed` (with a "Bracket 4+" note on a relaxed land row), amber when
+    `relaxed` (with a "Bracket 4" note naming the 32 floor on a relaxed land
+    row), amber when
     `under` or `over`. Refetched when the deck's cards, commander, archetype,
     or bracket change.
   - **Deck stats** — a collapsible left-column section reading `/stats`: land /
@@ -475,7 +480,7 @@ outside colour identity — it does not silently reject or silently accept
 | Template type counting | Reuse `deckstats.Analyze`'s primary-type counts over the `main` board | A dedicated "counts as artifact *and* creature" multi-type count | One precedence everywhere (decklist sections, stats, templates) means the numbers a player sees always agree; an artifact creature fills a creature slot in practice. |
 | Template role counting | A `deckroles.Classifier` interface with a conservative, deterministic Oracle-text default | Count the free-text `category` field; ingest Scryfall `oracle_tags` now; ask the LLM | `category` is empty for most entries, so it would read "under" everywhere. Tag ingestion is `CARD-010` and its own piece of work; the interface lets it drop in later. An LLM call per panel refresh is slow, costly, and nondeterministic. Conservative rules mean a deck reads slightly "under" rather than falsely "ok". |
 | Archetype storage | Nullable `decks.archetype` text holding a template key, validated in the handler | A Postgres enum or CHECK listing the keys; a separate `deck_templates` FK | Templates live in code; a DB-side key list would be a second copy needing a migration per new template. |
-| Bracket 4 land relaxation | A `relaxed_from_bracket` marker on the land row in the template data, keyed on the deck's self-assigned `bracket` | Detect fast mana from the decklist; widen every land range | Fast-mana / Game Changer counting is M6. The player's bracket claim is already stored, so the relaxation is expressible today and tightens automatically once M6 can check it. |
+| Bracket 4 land relaxation | `relaxed_at_bracket: 4` + `relaxed_floor: 32` on the land row in the template data, keyed on the deck's self-assigned `bracket`, Bracket 4 only | Relax at Bracket 4 and above; no floor; detect fast mana from the decklist now; widen every land range | The captain's call: the relaxation is for a Bracket 4 deck with heavy fast mana, with 32 as the floor. Bracket 5 decks are not assumed to run lean. Without a floor a 0-land deck would read green. Fast-mana counting needs role tags (`CARD-010`) or the M6 Game Changer work, so the bracket claim stands in until then; the data shape stays the same when the check is added. |
 | Import/export placement | Behind a "Tools" menu on the deck header, opening a dismissible dialog | Keep it as an always-on inline panel | It is used once or twice per session; an always-on panel was pure vertical bloat on a page the captain already found too long. |
 
 ## Open Questions & Future Decisions
@@ -531,8 +536,9 @@ outside colour identity — it does not silently reject or silently accept
     the features behind them exist (printing selection, tags, collections).
 
 14. **Fast-mana-aware land relaxation** — the Bracket 4 land relaxation
-    trusts the self-assigned bracket. Once M6 counts fast mana and Game
-    Changers, the relaxation can require the deck to actually run them.
+    trusts the self-assigned bracket. Requiring the deck to actually run heavy
+    fast mana waits on Scryfall role tags (`CARD-010`) or M6's fast-mana /
+    Game Changer counting.
 15. **Tag-backed role classifier** — a `deckroles.Classifier` over Scryfall
     `oracle_tags` (`CARD-010`) to replace the Oracle-text rules and lift their
     known limits.

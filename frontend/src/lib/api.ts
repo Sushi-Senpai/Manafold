@@ -281,7 +281,10 @@ export type TemplateRow = {
   kind: "type" | "role";
   min: number;
   max: number;
-  relaxed_from_bracket?: number;
+  // The one bracket at which a count below min, down to relaxed_floor, is
+  // acceptable (the land row only: Bracket 4, 32).
+  relaxed_at_bracket?: number;
+  relaxed_floor?: number;
 };
 
 export type DeckTemplate = {

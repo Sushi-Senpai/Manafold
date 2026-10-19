@@ -61,7 +61,9 @@ export function TemplateFitPanel({
     api
       .getTemplateFit(deckId)
       .then((f) => {
-        if (!cancelled) setFit(f);
+        if (cancelled) return;
+        setFit(f);
+        setError(null);
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof ApiError ? e.message : "Failed to load target fit");
@@ -84,8 +86,11 @@ export function TemplateFitPanel({
     }
   }
 
-  const typeRows = fit?.rows.filter((r) => r.kind === "type") ?? [];
-  const roleRows = fit?.rows.filter((r) => r.kind === "role") ?? [];
+  // A fit fetched for a different archetype (an archetype change whose refetch
+  // failed or is still in flight) is never shown under the new label.
+  const current = fit && fit.archetype === detail.archetype ? fit : null;
+  const typeRows = current?.rows.filter((r) => r.kind === "type") ?? [];
+  const roleRows = current?.rows.filter((r) => r.kind === "role") ?? [];
 
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
@@ -134,7 +139,7 @@ export function TemplateFitPanel({
         </p>
       )}
 
-      {detail.archetype && fit && fit.rows.length > 0 && (
+      {detail.archetype && current && current.rows.length > 0 && (
         <>
           <FitList title="Card types (of 99)" rows={typeRows} />
           <FitList title="Roles" rows={roleRows} />

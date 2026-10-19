@@ -38,9 +38,14 @@ const (
 	RowBoardWipes        = string(deckroles.BoardWipe)
 )
 
-// LandRelaxedFromBracket is the self-assigned bracket at and above which a deck
-// may run fewer lands than its template's land minimum (heavy fast mana).
-const LandRelaxedFromBracket = 4
+// A Bracket 4 deck (heavy fast mana) may run fewer lands than its template's
+// land minimum, down to LandRelaxedFloor. Only Bracket 4 relaxes: Bracket 5 and
+// below 4 read against the normal range. Whether the deck actually runs fast
+// mana is not checked yet (deferred until role tags can count it).
+const (
+	LandRelaxedAtBracket = 4
+	LandRelaxedFloor     = 32
+)
 
 // Range is an inclusive count range.
 type Range struct {
@@ -48,15 +53,17 @@ type Range struct {
 	Max int `json:"max"`
 }
 
-// Row is one target of a template. RelaxedFromBracket, when non-zero, is the
-// deck bracket at and above which a count below Min is acceptable.
+// Row is one target of a template. RelaxedAtBracket, when non-zero, is the one
+// deck bracket at which a count below Min but at or above RelaxedFloor is
+// acceptable.
 type Row struct {
-	Key                string `json:"key"`
-	Label              string `json:"label"`
-	Kind               Kind   `json:"kind"`
-	Min                int    `json:"min"`
-	Max                int    `json:"max"`
-	RelaxedFromBracket int    `json:"relaxed_from_bracket,omitempty"`
+	Key              string `json:"key"`
+	Label            string `json:"label"`
+	Kind             Kind   `json:"kind"`
+	Min              int    `json:"min"`
+	Max              int    `json:"max"`
+	RelaxedAtBracket int    `json:"relaxed_at_bracket,omitempty"`
+	RelaxedFloor     int    `json:"relaxed_floor,omitempty"`
 }
 
 // Template is one archetype's set of targets, rows in display order.
@@ -90,7 +97,7 @@ var templates = []Template{
 
 func build(key, name string, lands, creatures, spells, artifacts, enchantments, wipes Range) Template {
 	return Template{Key: key, Name: name, Rows: []Row{
-		{Key: RowLands, Label: "Lands", Kind: KindType, Min: lands.Min, Max: lands.Max, RelaxedFromBracket: LandRelaxedFromBracket},
+		{Key: RowLands, Label: "Lands", Kind: KindType, Min: lands.Min, Max: lands.Max, RelaxedAtBracket: LandRelaxedAtBracket, RelaxedFloor: LandRelaxedFloor},
 		{Key: RowCreatures, Label: "Creatures", Kind: KindType, Min: creatures.Min, Max: creatures.Max},
 		{Key: RowInstantsSorceries, Label: "Instants & sorceries", Kind: KindType, Min: spells.Min, Max: spells.Max},
 		{Key: RowArtifacts, Label: "Artifacts", Kind: KindType, Min: artifacts.Min, Max: artifacts.Max},
@@ -155,7 +162,8 @@ const (
 	StatusOK    Status = "ok"
 	StatusUnder Status = "under"
 	StatusOver  Status = "over"
-	// StatusRelaxed is a count below Min that the deck's bracket permits.
+	// StatusRelaxed is a count below Min, at or above RelaxedFloor, that the
+	// deck's bracket permits.
 	StatusRelaxed Status = "relaxed"
 )
 
@@ -178,7 +186,7 @@ func Evaluate(t Template, counts map[string]int, bracket int) []RowFit {
 		switch {
 		case n > r.Max:
 			status = StatusOver
-		case n < r.Min && r.RelaxedFromBracket > 0 && bracket >= r.RelaxedFromBracket:
+		case n < r.Min && r.RelaxedAtBracket > 0 && bracket == r.RelaxedAtBracket && n >= r.RelaxedFloor:
 			status = StatusRelaxed
 		case n < r.Min:
 			status = StatusUnder

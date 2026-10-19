@@ -10,7 +10,8 @@ const lands: TemplateRowFit = {
   kind: "type",
   min: 36,
   max: 38,
-  relaxed_from_bracket: 4,
+  relaxed_at_bracket: 4,
+  relaxed_floor: 32,
   count: 37,
   status: "ok",
 };
@@ -34,7 +35,7 @@ test("formatFitRow shows count against the range with a status note", () => {
     note: "2 over",
   });
   assert.equal(
-    formatFitRow({ ...lands, count: 31, status: "relaxed" }).note,
-    "Bracket 4+: fewer lands OK with heavy fast mana",
+    formatFitRow({ ...lands, count: 33, status: "relaxed" }).note,
+    "Bracket 4: fewer lands OK with heavy fast mana (floor 32)",
   );
 });
