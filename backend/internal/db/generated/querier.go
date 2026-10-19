@@ -51,6 +51,10 @@ type Querier interface {
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
 	FailSyncRun(ctx context.Context, arg FailSyncRunParams) error
+	// The subset of card_ids carrying the tag with this slug or any of its
+	// descendants — role counting over a deck's cards.
+	// @spec CARD-026, CARD-018, CARD-019
+	FilterCardIDsByOracleTag(ctx context.Context, arg FilterCardIDsByOracleTagParams) ([]pgtype.UUID, error)
 	FinishSyncRun(ctx context.Context, arg FinishSyncRunParams) error
 	GetCardByID(ctx context.Context, id pgtype.UUID) (Card, error)
 	GetCardByScryfallOracleID(ctx context.Context, scryfallOracleID pgtype.UUID) (Card, error)
@@ -77,9 +81,20 @@ type Querier interface {
 	LatestSyncRun(ctx context.Context, bulkType string) (SyncRun, error)
 	// @spec CARD-030
 	ListBanlistOverrides(ctx context.Context) ([]ListBanlistOverridesRow, error)
+	// Cards carrying the tag with this slug or any of its descendants, optionally
+	// within a colour identity (an empty identity array means no filter), best
+	// (lowest edhrec_rank) first.
+	// @spec CARD-026, CARD-018, CARD-019
+	ListCardsByOracleTag(ctx context.Context, arg ListCardsByOracleTagParams) ([]Card, error)
 	// @spec DECK-007
 	ListDeckCardEntries(ctx context.Context, deckID pgtype.UUID) ([]ListDeckCardEntriesRow, error)
 	ListDecksForOwner(ctx context.Context, arg ListDecksForOwnerParams) ([]Deck, error)
+	// Oracle-tag reads over the mirror (CARD-026). Every read ignores a disabled
+	// tag (CARD-019), and "tag or any descendant" goes through oracle_tag_closure
+	// (CARD-018).
+	// A card's directly applied, enabled oracle tags.
+	// @spec CARD-026, CARD-019
+	ListOracleTagsForCard(ctx context.Context, cardID pgtype.UUID) ([]ListOracleTagsForCardRow, error)
 	// The AI "suggest & explain" candidate pool: real cards ranked by edhrec_rank,
 	// inside the deck's colour identity, not banned in Commander, and not already in
 	// the deck (exclude_ids carries the deck's card ids plus its commander/partner).

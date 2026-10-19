@@ -56,6 +56,13 @@ type Card struct {
 	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
 }
 
+type CardOracleTag struct {
+	CardID     pgtype.UUID `json:"card_id"`
+	TagID      pgtype.UUID `json:"tag_id"`
+	Weight     string      `json:"weight"`
+	Annotation pgtype.Text `json:"annotation"`
+}
+
 type CardPrint struct {
 	ID              pgtype.UUID        `json:"id"`
 	ScryfallID      pgtype.UUID        `json:"scryfall_id"`
@@ -121,6 +128,23 @@ type Import struct {
 	Unresolved   json.RawMessage    `json:"unresolved"`
 	AppliedAt    pgtype.Timestamptz `json:"applied_at"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
+type OracleTag struct {
+	ID          pgtype.UUID        `json:"id"`
+	Slug        string             `json:"slug"`
+	Label       string             `json:"label"`
+	Description pgtype.Text        `json:"description"`
+	ParentIds   []pgtype.UUID      `json:"parent_ids"`
+	Aliases     []string           `json:"aliases"`
+	Disabled    bool               `json:"disabled"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type OracleTagClosure struct {
+	AncestorID   pgtype.UUID `json:"ancestor_id"`
+	DescendantID pgtype.UUID `json:"descendant_id"`
 }
 
 type Session struct {

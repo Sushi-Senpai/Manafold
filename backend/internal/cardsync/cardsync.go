@@ -1,7 +1,7 @@
 // Package cardsync ingests Scryfall's bulk-data exports into Manafold's own
 // Postgres. cmd/cardsync calls Run; tests call it directly with local fixture
-// files. Scryfall's card endpoints are never touched here beyond the two large
-// bulk GETs and the manifest (CARD-008).
+// files. Scryfall's card endpoints are never touched here beyond the bulk GETs
+// (Oracle Cards, Default Cards, Oracle Tags) and the manifest (CARD-008).
 //
 // A run downloads each export to a temporary file and closes the HTTP
 // connection before it does any database write (CARD-013): the download must
@@ -14,7 +14,9 @@
 // then read back from disk, gzip-inflated, and decoded object by object
 // (CARD-012). Oracle Cards upserts one row at a time; Default Cards is
 // bulk-upserted with COPY into a session TEMP table plus one set-based merge
-// (CARD-014).
+// (CARD-014). Oracle Tags replaces the mirrored tag snapshot — tags, direct
+// taggings, and the hierarchy closure — in one transaction (CARD-010,
+// CARD-016; see oracletags.go).
 //
 // @spec CARD-001, CARD-002, CARD-005, CARD-006, CARD-007, CARD-012, CARD-013, CARD-014, CARD-015
 package cardsync
@@ -79,25 +81,33 @@ var downloadTotalTimeout = 30 * time.Minute
 // directory and assert the spool file is cleaned up (CARD-013).
 var tempFileDir = ""
 
-// Options configures a run. With OracleCardsPath / DefaultCardsPath set the run
-// reads those local files — plain, uninflated JSONL or a JSON array — instead of
-// downloading; otherwise it fetches the Scryfall bulk manifest, spools each
-// gzip export to a temp file, and ingests it from disk.
+// Options configures a run. With OracleCardsPath / DefaultCardsPath /
+// OracleTagsPath set the run reads those local files — plain, uninflated JSONL
+// or a JSON array — instead of downloading; otherwise it fetches the Scryfall
+// bulk manifest, spools each gzip export to a temp file, and ingests it from
+// disk. The tag pass downloads only when the run fetches the manifest anyway: a
+// run whose two card passes both read local files and that names no tag file
+// skips the tag pass, so a fixture run never touches the network (CARD-010).
 type Options struct {
 	BaseURL          string
 	HTTPClient       *http.Client
 	OracleCardsPath  string
 	DefaultCardsPath string
+	OracleTagsPath   string
 }
 
 // Result reports what a run did.
 type Result struct {
-	OracleUpserted int
-	PrintsUpserted int
-	PrintsSkipped  int
+	OracleUpserted   int
+	PrintsUpserted   int
+	PrintsSkipped    int
+	TagsUpserted     int
+	TaggingsUpserted int
+	TaggingsSkipped  int
 }
 
-// Run ingests Oracle Cards into cards and Default Cards into card_prints,
+// Run ingests Oracle Cards into cards, Default Cards into card_prints, and
+// Oracle Tags into oracle_tags / card_oracle_tags / oracle_tag_closure,
 // recording a sync_runs row per bulk type. A printing whose oracle_id has no
 // cards row is skipped and counted, not treated as an error (CARD-005). Any
 // other failure marks the sync_runs row failed with the error text and returns
@@ -124,8 +134,8 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 	}
 	f := &fetcher{client: client}
 
-	var oracleUpdatedAt, defaultUpdatedAt time.Time
-	var oracleRC, defaultRC io.ReadCloser
+	var oracleUpdatedAt, defaultUpdatedAt, tagsUpdatedAt time.Time
+	var oracleRC, defaultRC, tagsRC io.ReadCloser
 
 	if opts.OracleCardsPath != "" {
 		file, err := os.Open(opts.OracleCardsPath)
@@ -140,6 +150,16 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 			return res, err
 		}
 		defaultRC = file
+	}
+	if opts.OracleTagsPath != "" {
+		file, err := os.Open(opts.OracleTagsPath)
+		if err != nil {
+			return res, err
+		}
+		tagsRC = file
+	}
+	if tagsRC != nil {
+		defer tagsRC.Close()
 	}
 
 	if oracleRC == nil || defaultRC == nil {
@@ -183,6 +203,24 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 			}
 			defaultRC = rc
 		}
+		if tagsRC == nil {
+			uri, updated, err := man.find("oracle_tags")
+			if err != nil {
+				return res, err
+			}
+			tagsUpdatedAt = updated
+			path, err := f.downloadToTemp(ctx, uri)
+			if err != nil {
+				return res, err
+			}
+			defer os.Remove(path)
+			rc, err := openBulkFile(path)
+			if err != nil {
+				return res, err
+			}
+			defer rc.Close()
+			tagsRC = rc
+		}
 	}
 	defer oracleRC.Close()
 	defer defaultRC.Close()
@@ -199,6 +237,17 @@ func Run(ctx context.Context, pool *pgxpool.Pool, opts Options) (Result, error) 
 	}
 	res.PrintsUpserted = prints
 	res.PrintsSkipped = skipped
+
+	// Taggings resolve against cards, so the tag pass runs after Oracle Cards.
+	if tagsRC != nil {
+		tags, taggings, tagSkipped, err := ingestOracleTags(ctx, pool, q, tagsRC, tagsUpdatedAt)
+		if err != nil {
+			return res, err
+		}
+		res.TagsUpserted = tags
+		res.TaggingsUpserted = taggings
+		res.TaggingsSkipped = tagSkipped
+	}
 
 	return res, nil
 }

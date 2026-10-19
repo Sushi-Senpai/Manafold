@@ -135,6 +135,39 @@ func TestWhereSQL_RendersPlaceholdersAndArgs(t *testing.T) {
 	}
 }
 
+// @spec CARD-025
+func TestParse_OracleTag(t *testing.T) {
+	for _, raw := range []string{"otag:Ramp", "oracletag:ramp", `otag:"ramp"`} {
+		got, err := Parse(raw)
+		if err != nil {
+			t.Fatalf("Parse(%q) unexpected error: %v", raw, err)
+		}
+		if want := (Query{OracleTags: []string{"ramp"}}); !reflect.DeepEqual(got, want) {
+			t.Fatalf("Parse(%q)\n got: %#v\nwant: %#v", raw, got, want)
+		}
+	}
+	if _, err := Parse("otag:"); err == nil {
+		t.Fatalf(`Parse("otag:") expected a parse error for the empty slug`)
+	}
+}
+
+// @spec CARD-025, CARD-018, CARD-019
+func TestWhereSQL_OracleTagWalksClosureAndSkipsDisabled(t *testing.T) {
+	q, err := Parse("otag:ramp t:artifact")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	expr, args, next := q.WhereSQL(3)
+	if next != 5 || len(args) != 2 {
+		t.Fatalf("expected 2 args and next placeholder 5, got %d args, next %d (expr=%q)", len(args), next, expr)
+	}
+	for _, frag := range []string{"oracle_tag_closure", "card_oracle_tags", "NOT a.disabled", "NOT d.disabled", "a.slug = $"} {
+		if !strings.Contains(expr, frag) {
+			t.Fatalf("expr %q missing fragment %q", expr, frag)
+		}
+	}
+}
+
 func TestWhereSQL_EmptyQueryIsTrue(t *testing.T) {
 	q, _ := Parse("")
 	expr, args, _ := q.WhereSQL(1)

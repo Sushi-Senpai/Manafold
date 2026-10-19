@@ -1,7 +1,8 @@
 # Arrow: card-data
 
 The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
-`banlist_overrides`, the `internal/cardsync` ingestion job, the
+`banlist_overrides` plus the oracle-tag layer (`oracle_tags` /
+`card_oracle_tags` / `oracle_tag_closure`), the `internal/cardsync` ingestion job, the
 `internal/cardsearch` query parser, and `GET /api/cards/search` + `/autocomplete`.
 
 ## Status
@@ -10,7 +11,9 @@ The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
 path corrected to `jsonl_download_uri` + gzip-inflated JSONL (CARD-012, 2026-09-06);
 sync hardened to download-then-ingest with a temp-file spool and a `COPY`-based
 batched `card_prints` upsert so the full Default Cards export lands (CARD-013 /
-CARD-014 / CARD-015, 2026-09-09).
+CARD-014 / CARD-015, 2026-09-09); Scryfall oracle tags ingested with a
+materialised hierarchy closure, tag queries, `otag:` search, and a seed tag file
+(CARD-010, CARD-016..019, CARD-025, CARD-026, CARD-041, 2026-10-19).
 
 ## References
 
@@ -21,7 +24,7 @@ CARD-014 / CARD-015, 2026-09-09).
 - docs/intent/card-data/card-data-design.md
 
 ### EARS
-- docs/intent/card-data/card-data-specs.md (CARD-001..015, CARD-020..024, CARD-030, CARD-040)
+- docs/intent/card-data/card-data-specs.md (CARD-001..019, CARD-020..026, CARD-030, CARD-040, CARD-041)
 
 ### Tests
 - backend/internal/cardsync/cardsync_test.go (`TestRun_IngestsFixture_DerivesFields`) — CARD-001, CARD-002 (verbatim color_identity), CARD-003, CARD-004, CARD-005, CARD-007, CARD-014 (the `COPY`-merged `card_prints` rows carry the same `set_code` / `finishes` / `image_uris` / `prices` the per-row path wrote, and the orphan printing has no row); reads the checked-in `.jsonl` fixtures
@@ -31,7 +34,11 @@ CARD-014 / CARD-015, 2026-09-09).
 - backend/internal/cardsync/httpfetch_test.go (`TestFetcher_SendsEtiquetteHeadersAndRetriesOn429`, `TestFetcher_NonRetryableStatusIsAnError`) — CARD-006 (descriptive User-Agent + explicit Accept on every request; exactly one retry after the back-off on HTTP 429), CARD-007
 - backend/internal/cardsync/httpfetch_test.go (`TestManifest_ResolvesJSONLDownloadURI`, `TestOpenBulkFile_InflatesGzippedJSONL`, `TestOpenBulkFile_NonGzipIsAnError`, `TestStreamJSONObjects_DecodesNewlineDelimited`) — CARD-001 (manifest → `jsonl_download_uri`, missing field fails), CARD-012 (gunzip the spooled `application/gzip` file, decode newline-delimited JSON incrementally, non-gzip file is an error), CARD-007
 - backend/internal/cardsync/download_test.go (`TestBulkDownload_SpoolDecouplesIngestFromTheConnection`, `TestDownloadToTemp_IdleConnectionFailsAndCleansUp`, `TestDownloadToTemp_RoundTripsGzipBody`) — CARD-013 (spool to a temp file, connection closed before any DB write, temp file removed on success and on error), CARD-015 (a slow downstream consumer no longer resets the download; a stalled connection fails on the idle deadline). Runs without Postgres — reproduces the slow-consumer failure mode and proves the spool fixes it.
-- backend/internal/cardsearch/cardsearch_test.go — CARD-022, CARD-023
+- backend/internal/cardsync/oracletags_test.go (`TestRun_IngestsOracleTags`, `TestRun_OracleTagsReplaceSnapshotAndKeepDisabled`, `TestRun_FixtureCardsWithoutTagFileSkipsTagPass`, `TestRun_OracleTagsBrokenExportFailsAndKeepsSnapshot`) — CARD-010, CARD-016..019, CARD-025, CARD-026, CARD-007 (an export with no oracle tags fails the run and keeps the prior snapshot)
+- backend/internal/cardsync/endtoend_test.go also drives the `oracle_tags` manifest entry through the spool path (CARD-010); seed_test.go loads backend/seed/oracle_tags.json (CARD-041)
+- backend/cmd/cardsync/main_test.go (`TestSeedOptions_TagFile`) — CARD-041
+- backend/internal/db/migrate_test.go — the oracle-tag tables exist after Migrate
+- backend/internal/cardsearch/cardsearch_test.go — CARD-022, CARD-023, CARD-025
 - backend/internal/api/cards_test.go — CARD-020, CARD-021, CARD-023
 - CARD-008 / CARD-024 (no Scryfall call on a client request path) are a negative
   invariant: the `/api/cards/*` handlers depend only on the pool and the
@@ -39,11 +46,13 @@ CARD-014 / CARD-015, 2026-09-09).
   dedicated `@spec` test asserts the absence.
 
 ### Code
-- backend/internal/cardsync/ (`Run`, bulk manifest fetch → `jsonl_download_uri`, `downloadToTemp` spool + `idleReader` deadline, `openBulkFile` gzip inflation, `streamJSONObjects` / `jsonObjectStream` incremental JSONL decode, `ingestOracle` per-row upsert, `copyUpsertPrints` `COPY` + set-based merge, derived fields)
+- backend/internal/cardsync/ (`Run`, bulk manifest fetch → `jsonl_download_uri`, `downloadToTemp` spool + `idleReader` deadline, `openBulkFile` gzip inflation, `streamJSONObjects` / `jsonObjectStream` incremental JSONL decode, `ingestOracle` per-row upsert, `copyUpsertPrints` `COPY` + set-based merge, derived fields; oracletags.go `ingestOracleTags` / `copyReplaceOracleTags` snapshot replace + closure rebuild)
 - backend/internal/cardsearch/ (`Parse`, predicate → SQL via `Query.WhereSQL`)
 - backend/internal/api/cards.go (`registerCardRoutes`, search + autocomplete handlers)
-- backend/cmd/cardsync/main.go (`seedOptions` — CARDSYNC_SEED_PATH / CARDSYNC_ORACLE_PATH / CARDSYNC_DEFAULT_PATH, CARD-040)
-- backend/seed/cards.json (checked-in dev / CI card seed — CARD-040)
+- backend/cmd/cardsync/main.go (`seedOptions` — CARDSYNC_SEED_PATH / CARDSYNC_ORACLE_PATH / CARDSYNC_DEFAULT_PATH / CARDSYNC_TAGS_PATH, CARD-040, CARD-041)
+- backend/seed/cards.json (checked-in dev / CI card seed — CARD-040); backend/seed/oracle_tags.json (its oracle tags — CARD-041)
+- backend/internal/db/migrations/000006_create_oracle_tags.up.sql / .down.sql
+- backend/internal/db/queries/oracle_tags.sql (CARD-026)
 - backend/internal/db/migrations/000001_create_card_data.up.sql / .down.sql
 - backend/internal/db/queries/cards.sql
 
@@ -64,7 +73,7 @@ CARD-014 / CARD-015, 2026-09-09).
    (descriptive UA + Accept, 429 back-off), derived `singleton_limit` /
    `can_be_commander` / `commander_color_identity`.
 3. `internal/cardsearch` — hand-written tokenizer for the Scryfall-syntax subset
-   (`id:` / `t:` / `cmc` / `o:` / `is:commander` + full text).
+   (`id:` / `t:` / `cmc` / `o:` / `is:commander` / `otag:` + full text).
 4. HTTP — `/api/cards/search` (paged) + `/api/cards/autocomplete` (≤ 20, by
    `edhrec_rank`), mirror-only.
 
@@ -73,16 +82,17 @@ CARD-014 / CARD-015, 2026-09-09).
 | Category | Spec IDs | Implemented | Deferred | Gaps |
 |---|---|---|---|---|
 | Sync job | CARD-001..008, CARD-012..015 | 12 | 0 | 0 |
+| Oracle tags | CARD-010, CARD-016..019, CARD-025, CARD-026, CARD-041 | 8 | 0 | 0 |
 | Single-printing fallback | CARD-009 | 0 | 0 | 1 (M2+ — see below) |
-| oracle_tags / all_cards | CARD-010, CARD-011 | 0 | 2 | 0 |
+| all_cards | CARD-011 | 0 | 1 | 0 |
 | Search & autocomplete | CARD-020..024 | 5 | 0 | 0 |
 | Banlist overrides | CARD-030 | 1 | 0 | 0 |
 | Dev / CI seed | CARD-040 | 1 | 0 | 0 |
 
-**Summary:** 18 of 20 implemented; one gap: CARD-009, the single-printing
+**Summary:** 26 of 28 implemented; one gap: CARD-009, the single-printing
 Scryfall fallback, deferred past M2's import/export (import resolves names
 against the mirror; an unmirrored `(SET) collector#` currently falls through to
-name resolution rather than triggering a live fetch). 2 deferred (CARD-010/011).
+name resolution rather than triggering a live fetch). 1 deferred (CARD-011).
 
 ## Key Findings
 
@@ -112,4 +122,5 @@ name resolution rather than triggering a live fetch). 2 deferred (CARD-010/011).
    list can pin its exact printings.
 
 ### Nice to Have
-1. `oracle_tags` ingestion (CARD-010) to seed the functional auto-categorizer.
+1. Move `deck-building`'s functional auto-categorizer onto the oracle-tag
+   queries (CARD-026) now that the tags are mirrored.
