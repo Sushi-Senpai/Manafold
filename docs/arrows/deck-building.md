@@ -23,7 +23,12 @@ control with a single-open invariant and scroll/outside/Escape/nav close
 decklist groups by primary card type with per-group counts (`DECK-087`,
 `DECK-088`); import/export moves behind a header Tools dialog (`DECK-095`) and
 the page becomes a three-column workspace with an always-visible legality
-summary (`DECK-096`).
+summary (`DECK-096`). Deck templates (2026-10-19): ten captain-approved
+archetype templates as one versioned definition (`internal/decktemplates`,
+served at `GET /api/deck-templates`), a swappable role classifier
+(`internal/deckroles`), a persisted `decks.archetype`, the
+`GET /decks/{id}/template-fit` evaluation with the Bracket 4 land relaxation,
+and the builder's "deck vs. target" panel (`DECK-100..109`).
 
 ## References
 
@@ -34,7 +39,7 @@ summary (`DECK-096`).
 - docs/intent/deck-building/deck-building-design.md
 
 ### EARS
-- docs/intent/deck-building/deck-building-specs.md (DECK-001..013, DECK-020..021, DECK-030..031, DECK-040..041, DECK-050..052, DECK-060, DECK-070..078, DECK-080..088, DECK-090..096)
+- docs/intent/deck-building/deck-building-specs.md (DECK-001..013, DECK-020..021, DECK-030..031, DECK-040..041, DECK-050..052, DECK-060, DECK-070..078, DECK-080..088, DECK-090..096, DECK-100..109)
 
 ### Tests
 - backend/internal/deckrules/deckrules_test.go — DECK-004, DECK-006, DECK-008, DECK-020, DECK-021 (partner identity, DFC identity, singleton_limit cards, basic lands, banlist, count)
@@ -48,6 +53,10 @@ summary (`DECK-096`).
 - backend/internal/api/stats_test.go — DECK-051, DECK-052 (curve / pips / sources / category roll-up end to end; non-owner 404)
 - backend/internal/api/imports_test.go — DECK-060 (bulk write in one transaction, board + category preserved)
 - backend/internal/api/auth_test.go — DECK-040, DECK-041 (anonymous deck create/read scoped to the token; claim reassigns and nulls the token)
+- backend/internal/decktemplates/decktemplates_test.go — DECK-100, DECK-101, DECK-102 (the approved table, land rule, role targets), DECK-104, DECK-105, DECK-108 (status evaluation, type/role mapping, Bracket 4 relaxation)
+- backend/internal/deckroles/deckroles_test.go — DECK-106, DECK-107 (classifier on real seed cards + rule edge cases; quantity and multi-role counting)
+- backend/internal/api/templates_test.go — DECK-100, DECK-103, DECK-104, DECK-105, DECK-106, DECK-108 (templates served verbatim; archetype set / unknown 400 / clear; fit over main only, commander and maybe excluded, DFC front face, bracket relaxation, non-owner 404)
+- frontend/src/lib/templateFit.test.ts — DECK-109 (green / amber tone, row formatting)
 - backend/internal/deckstats/deckstats_test.go — DECK-050, DECK-051 (curve buckets, hybrid/Phyrexian pip counting, source counts), DECK-052 (vocabulary + synonym roll-up, free-text passthrough)
 
 ### Code
@@ -55,6 +64,11 @@ summary (`DECK-096`).
 - backend/internal/deckstats/ (`Analyze` — type counts, curve, pips vs sources, category roll-up, `CategoryTargets`)
 - backend/internal/api/decks.go (`RegisterDeckRoutes` + all deck handlers, ownership scoped in queries to a polymorphic owner key — `user_id` OR `anon_token`; `patchCard` — DECK-012 / DECK-013)
 - backend/internal/db/queries/decks.sql (`ClaimAnonDecks` — DECK-041; `SetDeckCardQuantity`, `MoveDeckCard` — DECK-012 / DECK-013)
+- backend/internal/decktemplates/ (`All`, `Lookup`, `Counts`, `Evaluate`, `Version`)
+- backend/internal/deckroles/ (`Classifier`, `OracleClassifier`, `Count`)
+- backend/internal/api/templates.go (`listDeckTemplates`, `getTemplateFit`)
+- backend/internal/db/migrations/000006_add_deck_archetype.up.sql / .down.sql
+- frontend/src/components/builder/TemplateFitPanel.tsx, frontend/src/lib/templateFit.ts
 - backend/internal/api/stats.go (`getDeckStats` — assembles `CardStat`s over main+command, echoes `CategoryTargets`)
 - backend/internal/db/migrations/000003_create_decks.up.sql / .down.sql
 - frontend/src/app/(app)/decks/page.tsx, frontend/src/app/(app)/decks/[id]/page.tsx (builder page: mounts the active-card provider + arranges the three-column workspace; stats collapsible + import/export dialog)
@@ -98,6 +112,12 @@ summary (`DECK-096`).
    Type-grouping / menu-placement / active-card / search-cursor /
    action-filtering logic is in pure `frontend/src/lib/` helpers with unit
    tests.
+6. Deck templates — `internal/decktemplates` (ten versioned archetype
+   templates: type + role ranges out of the 99, served at
+   `GET /api/deck-templates`) evaluated by `GET /decks/{id}/template-fit` over
+   `deckstats` type counts and `internal/deckroles` role counts behind a
+   swappable `Classifier`; Bracket 4+ relaxes the land floor; the builder's
+   "deck vs. target" panel reads both endpoints.
 
 ## Spec Coverage
 
@@ -113,8 +133,9 @@ summary (`DECK-096`).
 | Builder search & decklist UX | DECK-080..088 | 9 | 0 | 0 |
 | Builder card action menu | DECK-090..094 | 5 | 0 | 0 |
 | Builder layout | DECK-095..096 | 2 | 0 | 0 |
+| Deck templates | DECK-100..109 | 10 | 0 | 0 |
 
-**Summary:** 49 of 50 implemented; DECK-077 (double-faced preview flip) deferred
+**Summary:** 59 of 60 implemented; DECK-077 (double-faced preview flip) deferred
 on a `card-data` prerequisite; 0 gaps.
 
 ## Key Findings

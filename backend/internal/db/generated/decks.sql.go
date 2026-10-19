@@ -96,7 +96,7 @@ const createDeck = `-- name: CreateDeck :one
 
 INSERT INTO decks (user_id, anon_token, name)
 VALUES ($1, $2, $3)
-RETURNING id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at
+RETURNING id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at, archetype
 `
 
 type CreateDeckParams struct {
@@ -130,6 +130,7 @@ func (q *Queries) CreateDeck(ctx context.Context, arg CreateDeckParams) (Deck, e
 		&i.ColorIdentity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Archetype,
 	)
 	return i, err
 }
@@ -171,7 +172,7 @@ func (q *Queries) DeleteDeckCard(ctx context.Context, arg DeleteDeckCardParams) 
 }
 
 const getDeckForOwner = `-- name: GetDeckForOwner :one
-SELECT id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at FROM decks
+SELECT id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at, archetype FROM decks
 WHERE id = $1
   AND (user_id = $2 OR anon_token = $3)
 `
@@ -203,12 +204,13 @@ func (q *Queries) GetDeckForOwner(ctx context.Context, arg GetDeckForOwnerParams
 		&i.ColorIdentity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Archetype,
 	)
 	return i, err
 }
 
 const getPublicDeck = `-- name: GetPublicDeck :one
-SELECT id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at FROM decks WHERE id = $1 AND is_public = true
+SELECT id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at, archetype FROM decks WHERE id = $1 AND is_public = true
 `
 
 // @spec DECK-030, DECK-031
@@ -230,6 +232,7 @@ func (q *Queries) GetPublicDeck(ctx context.Context, id pgtype.UUID) (Deck, erro
 		&i.ColorIdentity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Archetype,
 	)
 	return i, err
 }
@@ -252,6 +255,7 @@ SELECT
     c.keywords,
     c.singleton_limit,
     c.can_be_commander,
+    c.card_faces,
     COALESCE(c.legalities ->> 'commander', '')::text AS legalities_commander,
     newest.image_uris,
     newest.prices,
@@ -290,6 +294,7 @@ type ListDeckCardEntriesRow struct {
 	Keywords            []string    `json:"keywords"`
 	SingletonLimit      pgtype.Int4 `json:"singleton_limit"`
 	CanBeCommander      bool        `json:"can_be_commander"`
+	CardFaces           []byte      `json:"card_faces"`
 	LegalitiesCommander string      `json:"legalities_commander"`
 	ImageUris           []byte      `json:"image_uris"`
 	Prices              []byte      `json:"prices"`
@@ -324,6 +329,7 @@ func (q *Queries) ListDeckCardEntries(ctx context.Context, deckID pgtype.UUID) (
 			&i.Keywords,
 			&i.SingletonLimit,
 			&i.CanBeCommander,
+			&i.CardFaces,
 			&i.LegalitiesCommander,
 			&i.ImageUris,
 			&i.Prices,
@@ -341,7 +347,7 @@ func (q *Queries) ListDeckCardEntries(ctx context.Context, deckID pgtype.UUID) (
 }
 
 const listDecksForOwner = `-- name: ListDecksForOwner :many
-SELECT id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at FROM decks
+SELECT id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at, archetype FROM decks
 WHERE (user_id = $1 OR anon_token = $2)
 ORDER BY updated_at DESC
 `
@@ -375,6 +381,7 @@ func (q *Queries) ListDecksForOwner(ctx context.Context, arg ListDecksForOwnerPa
 			&i.ColorIdentity,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Archetype,
 		); err != nil {
 			return nil, err
 		}
@@ -484,7 +491,7 @@ SET commander_card_id = $1,
     color_identity = $3
 WHERE id = $4
   AND (user_id = $5 OR anon_token = $6)
-RETURNING id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at
+RETURNING id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at, archetype
 `
 
 type SetDeckCommanderParams struct {
@@ -522,6 +529,7 @@ func (q *Queries) SetDeckCommander(ctx context.Context, arg SetDeckCommanderPara
 		&i.ColorIdentity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Archetype,
 	)
 	return i, err
 }
@@ -531,10 +539,11 @@ UPDATE decks
 SET name = $1,
     description = $2,
     is_public = $3,
-    bracket = $4
-WHERE id = $5
-  AND (user_id = $6 OR anon_token = $7)
-RETURNING id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at
+    bracket = $4,
+    archetype = $5
+WHERE id = $6
+  AND (user_id = $7 OR anon_token = $8)
+RETURNING id, user_id, anon_token, name, description, commander_card_id, partner_card_id, format, bracket, power_estimate, is_public, color_identity, created_at, updated_at, archetype
 `
 
 type UpdateDeckMetaParams struct {
@@ -542,18 +551,20 @@ type UpdateDeckMetaParams struct {
 	Description string      `json:"description"`
 	IsPublic    bool        `json:"is_public"`
 	Bracket     pgtype.Int4 `json:"bracket"`
+	Archetype   pgtype.Text `json:"archetype"`
 	ID          pgtype.UUID `json:"id"`
 	UserID      pgtype.UUID `json:"user_id"`
 	AnonToken   pgtype.Text `json:"anon_token"`
 }
 
-// @spec DECK-011
+// @spec DECK-011, DECK-103
 func (q *Queries) UpdateDeckMeta(ctx context.Context, arg UpdateDeckMetaParams) (Deck, error) {
 	row := q.db.QueryRow(ctx, updateDeckMeta,
 		arg.Name,
 		arg.Description,
 		arg.IsPublic,
 		arg.Bracket,
+		arg.Archetype,
 		arg.ID,
 		arg.UserID,
 		arg.AnonToken,
@@ -574,6 +585,7 @@ func (q *Queries) UpdateDeckMeta(ctx context.Context, arg UpdateDeckMetaParams) 
 		&i.ColorIdentity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Archetype,
 	)
 	return i, err
 }

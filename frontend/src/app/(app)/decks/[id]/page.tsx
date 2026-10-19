@@ -19,16 +19,17 @@ import { CommanderPicker } from "@/components/builder/CommanderPicker";
 import { CardSearch } from "@/components/builder/CardSearch";
 import { Decklist } from "@/components/builder/Decklist";
 import { ToolsMenu } from "@/components/builder/ToolsMenu";
+import { TemplateFitPanel } from "@/components/builder/TemplateFitPanel";
 
 // The builder page. It loads the deck + validation report and lays out the
 // three-column workspace (DECK-096): a sticky left column with the card-image
-// panel (DECK-070) and a collapsible stats section, a center column for the
-// type-grouped decklist, and a right column with AI suggestions above card
-// search. A slim legality summary is pinned under the deck header so it stays
+// panel (DECK-070), the "deck vs. target" panel (DECK-109), and a collapsible
+// stats section; a center column for the type-grouped decklist; and a right
+// column with AI suggestions above card search. A slim legality summary is pinned under the deck header so it stays
 // visible while building. Import/export lives behind the header Tools menu
 // (DECK-095). It collapses to one column below the `xl` breakpoint.
 //
-// @spec DECK-004, DECK-007, DECK-087, DECK-096
+// @spec DECK-004, DECK-007, DECK-087, DECK-096, DECK-109
 export default function BuilderPage() {
   const { id } = useParams<{ id: string }>();
   const [detail, setDetail] = useState<DeckDetail | null>(null);
@@ -85,6 +86,7 @@ export default function BuilderPage() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
           <aside className="order-3 flex flex-col gap-4 xl:order-1 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:w-[320px] xl:shrink-0 xl:overflow-y-auto">
             <CardImagePanel commander={detail.commander} />
+            <TemplateFitPanel deckId={id} detail={detail} onChange={reload} />
             <StatsPanel deckId={id} detail={detail} />
           </aside>
 

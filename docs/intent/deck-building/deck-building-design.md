@@ -14,7 +14,8 @@ singleton, the 100-card count, the banlist, and commander shape — is validated
 the system every time the deck changes and surfaced as a live report, never left
 to the user. This segment owns `decks`, `deck_cards`, the pure validator
 `internal/deckrules`, the deterministic analyser `internal/deckstats`, deck
-CRUD, and the read-only public deck view.
+CRUD, the archetype templates (`internal/decktemplates`) with their role
+classifier (`internal/deckroles`), and the read-only public deck view.
 
 Ownership is enforced **in the SQL**, not by a per-handler check: every deck
 query scopes to the caller's *owner key* — their user ID when authenticated, or
@@ -50,6 +51,7 @@ Migration `create_decks` creates `decks` and `deck_cards`.
 | `partner_card_id` | uuid null fk → cards | second commander (partner / background / friends-forever) |
 | `format` | text not null default `'commander'` | leaves room for Brawl/Oathbreaker later |
 | `bracket` | int null | self-assigned 1–5 |
+| `archetype` | text null | a `decktemplates` template key (added by migration `add_deck_archetype`); `NULL` = no archetype chosen. Validated against the template set by the handler, not a DB constraint, so a new template needs no migration |
 | `power_estimate` | numeric null | Manafold's computed estimate (later) |
 | `is_public` | bool not null default false | read-only share URL |
 | `color_identity` | text[] not null default `'{}'` | denormalised = union of commander(s); recomputed on every commander change |
@@ -172,6 +174,130 @@ separately in the land / non-land split.
 The analyser looks only at the `main` and `command` boards, matching what
 `/validation` counts.
 
+## Deck templates — target ranges per archetype
+
+A *deck template* is a set of rough count ranges a Commander deck of a given
+archetype should land in. Templates are guidance a player reads their deck
+against — never validation — and they are the shared source of truth for both
+the builder's "your deck vs. target" panel and the later deck-building wizard
+(Deferred #1), which will read the very same data.
+
+### `internal/decktemplates` — the one authoritative definition
+
+A pure Go package holding the template data as code, stamped with an integer
+`Version` that is bumped whenever any range changes, plus the evaluation
+function. It is served verbatim at `GET /api/deck-templates`; the frontend never
+carries its own copy of a range.
+
+Each `Template` has a stable `key`, a display `name`, and an ordered list of
+`rows`. A row is `{ key, label, kind, min, max }` (`kind` is `type` or `role`;
+ranges are inclusive). Counts are out of the **99 non-commander cards** — the
+`main` board only; the commander and partner are excluded, and planeswalkers
+take their slots from the noncreature budget, so they have no row of their own.
+
+Type rows (per archetype, captain-approved):
+
+| key | Archetype | Lands | Creatures | Instants & sorceries | Artifacts | Enchantments |
+|---|---|---|---|---|---|---|
+| `go_wide_tribal` | Go-wide / Tribal | 36–38 | 28–35 | 10–14 | 8–11 | 4–8 |
+| `voltron` | Voltron | 35–38 | 18–24 | 10–14 | 14–20 | 6–12 |
+| `spellslinger` | Spellslinger | 34–38 | 10–16 | 28–36 | 8–12 | 2–6 |
+| `midrange_value` | Midrange / Value | 36–38 | 25–32 | 14–20 | 8–12 | 4–8 |
+| `control` | Control | 36–38 | 12–18 | 25–32 | 8–12 | 4–8 |
+| `ramp_big_creatures` | Ramp / Big creatures | 38–40 | 22–28 | 12–18 | 10–14 | 3–7 |
+| `artifacts` | Artifacts | 34–38 | 12–20 | 8–14 | 28–36 | 0–4 |
+| `enchantress` | Enchantress | 36–38 | 12–18 | 10–14 | 6–10 | 24–32 |
+| `aristocrats` | Aristocrats (sacrifice) | 36–38 | 30–38 | 10–14 | 8–12 | 4–8 |
+| `lands_matter` | Lands-matter | 40–44 | 18–24 | 14–18 | 6–10 | 4–8 |
+
+The land rule behind that column: 36–38 suits almost every deck; the top of a
+land range is never below 38; the bottom may drop to 34 only for archetypes that
+genuinely run lean (Spellslinger, Artifacts) or to 35 (Voltron); Ramp and
+Lands-matter run above 38.
+
+Role rows are shared by every archetype: **ramp 10–12, card draw 10–12,
+targeted removal 8–10, board wipes 2–4** — except Control, whose board-wipe
+target is **4–6**.
+
+**Bracket 4 relaxation.** A deck in Bracket 4 running heavy fast mana may sit
+below its land range. The land row carries `relaxed_from_bracket: 4`; when the
+deck's self-assigned `bracket` is at or above that value, a land count below the
+minimum evaluates to `relaxed` instead of `under` (a count above the maximum is
+still `over`). Manafold cannot yet tell whether a deck actually runs heavy fast
+mana — counting fast mana / Game Changers is roadmap M6 — so the relaxation
+keys on the player's own bracket claim alone. Any other row has no relaxation.
+
+### Counting
+
+`Evaluate(template, counts, bracket)` returns one `RowFit` per template row:
+`{ key, label, kind, count, min, max, status }` with `status` one of `ok`
+(inclusive range), `under`, `over`, or `relaxed`. The handler supplies the
+counts:
+
+- **Type rows** come from `deckstats.Analyze` over the `main` board's entries —
+  its `TypeCounts`, so a card counts under exactly one primary type with the
+  same precedence (`Creature` → `Planeswalker` → `Land` → `Artifact` →
+  `Enchantment` → `Instant` → `Sorcery` → `Battle` → `Other`) the stats panel
+  uses. "Instants & sorceries" is `Instant + Sorcery`. An artifact creature
+  therefore counts as a creature, not an artifact; a Dryad Arbor as a creature,
+  not a land. There is no second type classifier.
+- **Role rows** come from `internal/deckroles` (below), multiplied by quantity.
+  A card may count toward several roles (a cantrip removal spell is both
+  removal and draw).
+
+### `internal/deckroles` — the role classifier
+
+Roles are counted by a `Classifier` interface:
+
+```go
+type Classifier interface {
+    Classify(c Card) []Role // Role ∈ ramp, card_draw, targeted_removal, board_wipe
+}
+type Card struct { TypeLine, OracleText string; Keywords []string; CardFaces []Face }
+```
+
+The handler and the template evaluation depend only on the interface, so the
+deterministic default (`OracleClassifier`) can later be replaced by one backed
+by Scryfall's community role tags (`oracle_tags`, `CARD-010`) without touching
+the panel, the endpoint, or the templates. It does **not** read the free-text
+`deck_cards.category` field.
+
+`OracleClassifier` reads the card's Oracle text and type line — the top-level
+fields, or, when the top-level Oracle text is empty (double-faced and other
+multi-face layouts store their text per face), the **front face** from
+`card_faces`. Text is matched case-insensitively with reminder text in
+parentheses removed. Lands are never classified. Its rules are deliberately
+conservative — a miss is preferred over a false positive:
+
+| Role | Counts when the text … |
+|---|---|
+| Ramp | (a) on a **permanent** (not an instant or sorcery), contains an "add {…}" / "add one mana" / "add X mana"-style mana ability; or (b) "search(es) your library for … land card(s) … onto the battlefield"; or (c) puts a land card "from your hand onto the battlefield"; or (d) lets you "play an additional land"; or (e) creates a Treasure token |
+| Card draw | contains "draw a card" / "draw N cards" (the imperative *you* draw), excluding "whenever you draw" / "when you draw" triggers |
+| Targeted removal | "destroy / exile target …" or "return target … to its owner's hand" whose object is a creature, artifact, enchantment, planeswalker, battle, or permanent (not a *card* in a graveyard or library, and not a permanent "you control"); "deals N damage to any target / target creature / target planeswalker"; "target creature gets -N/-N" |
+| Board wipe | "destroy / exile all …" or "destroy / exile each …" over creatures, artifacts, enchantments, planeswalkers, or (nonland) permanents; "return all … to their owners' hands"; "deals N damage to each creature"; "all creatures get -N/-N"; and any card with the Overload keyword that also qualifies as targeted removal |
+
+**Known limits** (each a miss, not a false positive, unless stated):
+
+- Counterspells are not removal; they belong to the separate Counterspell
+  category.
+- Edicts ("each opponent sacrifices"), fight / bite effects, tap-down and
+  "can't attack" pseudo-removal, and -1/-1 counter placement are not removal.
+- "Target player draws" and symmetrical "each player draws" draw, impulse draw
+  ("exile the top card … you may play it"), card selection without draw
+  (scry / surveil), and wheels are not card draw. A cantrip spell whose main job
+  is something else still counts as draw — a mild overcount.
+- Rituals (instants / sorceries that add mana) and cost reducers are not ramp;
+  a planeswalker or creature with any mana ability is ramp even when that is a
+  minor mode (e.g. Chandra, Torch of Defiance) — a mild overcount.
+- One-sided wipes count as wipes; damage-based wipes that hit "each creature
+  and each planeswalker" count; mass bounce of only your own permanents is not
+  excluded.
+- Only the front face of a multi-face card is read, so a modal double-faced
+  card whose back is a land counts by its front face's text; the back face of a
+  transforming card is ignored.
+- Type rows inherit `deckstats`' primary-type reading, which looks at the whole
+  type line: a modal double-faced "Instant // Land" counts as a land.
+
 ## HTTP API
 
 All under the protected `/api` group (M1: `DevAuth`). Registered via
@@ -188,7 +314,9 @@ All under the protected `/api` group (M1: `DevAuth`). Registered via
 | `/api/decks/{id}/cards/{cardId}` | DELETE | — | `204` / `404` | scoped through `decks.user_id`; `204` only when a row was deleted, `404` when none matched |
 | `/api/decks/{id}/validation` | GET | — | `ValidationReport` | |
 | `/api/decks/{id}/stats` | GET | — | `Stats` + `category_targets` | deterministic; curve / pips / sources / category roll-up over `main` + `command` (`DECK-051`, `DECK-052`) |
-| `/api/decks/{id}` | PATCH | `{ name?, description?, is_public?, bracket? }` | `Deck` | |
+| `/api/decks/{id}` | PATCH | `{ name?, description?, is_public?, bracket?, archetype? }` | `Deck` | `archetype` must be a known template key (else `400`, nothing stored); `""` clears it (`DECK-103`) |
+| `/api/deck-templates` | GET | — | `{ version, templates }` | the authoritative template data, verbatim (`DECK-100`) |
+| `/api/decks/{id}/template-fit` | GET | — | `{ archetype, template_version, bracket, rows }` | the deck's counts against its archetype's template; `archetype: null` and no rows when none is chosen (`DECK-104`) |
 | `/public/decks/{id}` | GET | — | `DeckDetail` (read-only) | mounted at the router root, outside the `/api` auth group; unauthenticated; `404` (never `401`) unless `is_public` |
 
 Adding a card **records the entry and returns it flagged** when the card is
@@ -273,6 +401,16 @@ outside colour identity — it does not silently reject or silently accept
     "singleton: 2× Sol Ring", "banned: Channel") pinned (sticky) directly under
     the deck header, visible at every breakpoint (`DECK-096`). Refetched after
     every mutation.
+  - **Deck vs. target** — a left-column panel above the stats section
+    (`DECK-109`). It carries an archetype picker (options from
+    `/api/deck-templates`) and a bracket picker (1–5), both saved through
+    `PATCH /api/decks/{id}`. With no archetype it prompts the player to pick
+    one; with one it lists every row of `/template-fit` — lands, creatures,
+    instants & sorceries, artifacts, enchantments, then ramp, card draw,
+    targeted removal, board wipes — as "count / min–max", green when `ok` or
+    `relaxed` (with a "Bracket 4+" note on a relaxed land row), amber when
+    `under` or `over`. Refetched when the deck's cards, commander, archetype,
+    or bracket change.
   - **Deck stats** — a collapsible left-column section reading `/stats`: land /
     non-land / average MV, a bar-chart mana curve, colour pips vs sources, and
     category counts against the rules-of-thumb bands. Refetched when the deck's
@@ -311,6 +449,10 @@ outside colour identity — it does not silently reject or silently accept
   image panel, `DECK-072`).
 - `frontend/src/lib/deckstats.ts` — pure view helpers over the stats payload:
   `curveRows`, `pipRows`, `categoryRows`.
+- `frontend/src/lib/templateFit.ts` — pure view helpers over the template-fit
+  payload: `fitTone` (status → green / amber) and `formatFitRow`.
+- `frontend/src/components/builder/TemplateFitPanel.tsx` — the "deck vs.
+  target" panel.
 
 ## Decisions & Alternatives
 
@@ -329,12 +471,19 @@ outside colour identity — it does not silently reject or silently accept
 | Action-menu shortcut binding | Bind Alt+1..4 to exactly one row — the row under the pointer, else the row with keyboard focus-within, pointer winning when both are set — resolved by `Decklist` (`activeShortcutRow`) so only that one row's effect listens; the effect does not depend on the menu being rendered; match on `event.code` (`Digit1`..`Digit4`); guard against a focused field | Bind on every row that is either hovered or focus-within (fires the chord twice — once per matching row — when the pointer and the keyboard focus are on different rows); bind only while the menu is open; match on `event.key`; a global shortcut layer | The chords must keep working now that the menu no longer opens on hover, so they cannot hang off the menu. Binding on hover-or-focus independently let a chord fire on two rows at once (pointer over row A, focus in row B), issuing a duplicate PATCH — resolving a single owner id in the parent, pointer first, removes that. `event.code` is the physical key, sidestepping macOS Option+digit typography, and the field guard stops the chords firing mid-search. |
 | Add-from-search interaction | A click anywhere on the result row (and Enter on the cursor row) adds to `main`; a secondary `⋯` on the row adds to `sideboard` / `maybe` | Keep the dedicated "Add" button as the primary action | The captain asked for "click the name = add". The overwhelmingly common action is "add this to my deck"; making the whole row that action removes a target the user otherwise has to aim for, and the rare other-board add stays available behind a control that a row click does not reach. |
 | Decklist grouping | Group each board's entries by primary card type derived from `type_line` (front face of a `//` line; precedence Creature → Planeswalker → Land → Artifact → Enchantment → Instant → Sorcery → Battle → Other), board split as the outer level, commander as its own section | Keep grouping by the free-text `category` field; group by type only within `main` | `category` is hand-entered and empty for most entries, so it collapsed to one "Uncategorised" list — the captain asked for the Moxfield type sections with counts. Type is always derivable. Precedence mirrors `internal/deckstats` so the decklist sections and the stats type counts agree. The free-text category grouping returns with the M5 auto-categorizer. |
+| Template definition home | One versioned Go package (`internal/decktemplates`) served verbatim at `GET /api/deck-templates`; the fit is evaluated server-side | Ranges in a frontend constant; a `deck_templates` DB table; extending `deckstats.CategoryTargets` | The later wizard must read the same templates the panel shows, so there is exactly one copy and every client fetches it. Code (not a table) keeps the ranges reviewed and versioned alongside the evaluation that reads them; a table would need an admin path nobody has. `CategoryTargets` is a single archetype-free band set over hand-tagged categories, a different thing. |
+| Template type counting | Reuse `deckstats.Analyze`'s primary-type counts over the `main` board | A dedicated "counts as artifact *and* creature" multi-type count | One precedence everywhere (decklist sections, stats, templates) means the numbers a player sees always agree; an artifact creature fills a creature slot in practice. |
+| Template role counting | A `deckroles.Classifier` interface with a conservative, deterministic Oracle-text default | Count the free-text `category` field; ingest Scryfall `oracle_tags` now; ask the LLM | `category` is empty for most entries, so it would read "under" everywhere. Tag ingestion is `CARD-010` and its own piece of work; the interface lets it drop in later. An LLM call per panel refresh is slow, costly, and nondeterministic. Conservative rules mean a deck reads slightly "under" rather than falsely "ok". |
+| Archetype storage | Nullable `decks.archetype` text holding a template key, validated in the handler | A Postgres enum or CHECK listing the keys; a separate `deck_templates` FK | Templates live in code; a DB-side key list would be a second copy needing a migration per new template. |
+| Bracket 4 land relaxation | A `relaxed_from_bracket` marker on the land row in the template data, keyed on the deck's self-assigned `bracket` | Detect fast mana from the decklist; widen every land range | Fast-mana / Game Changer counting is M6. The player's bracket claim is already stored, so the relaxation is expressible today and tightens automatically once M6 can check it. |
 | Import/export placement | Behind a "Tools" menu on the deck header, opening a dismissible dialog | Keep it as an always-on inline panel | It is used once or twice per session; an always-on panel was pure vertical bloat on a page the captain already found too long. |
 
 ## Open Questions & Future Decisions
 
 ### Deferred
-1. **Deck-bootstrapping wizard** (captain bonus #1) — given a commander,
+1. **Deck-bootstrapping wizard** (captain bonus #1) — reads its slot targets
+   from `internal/decktemplates` (the same data as the "deck vs. target"
+   panel) once the player picks an archetype. Given a commander,
    auto-populate a mana base from the colour identity, then walk a wizard adding
    the most powerful/common cards for those colours. Needs: a "generate mana
    base" endpoint (basics + staple lands by `edhrec_rank` within identity), a
@@ -381,6 +530,13 @@ outside colour identity — it does not silently reject or silently accept
     foil / tag / deck-image / collection actions. They are omitted here until
     the features behind them exist (printing selection, tags, collections).
 
+14. **Fast-mana-aware land relaxation** — the Bracket 4 land relaxation
+    trusts the self-assigned bracket. Once M6 counts fast mana and Game
+    Changers, the relaxation can require the deck to actually run them.
+15. **Tag-backed role classifier** — a `deckroles.Classifier` over Scryfall
+    `oracle_tags` (`CARD-010`) to replace the Oracle-text rules and lift their
+    known limits.
+
 ### Gaps
 8. **`maybe` and `sideboard` boards are stored but not colour-identity checked**
    — intentional (they are staging areas), but the builder should make clear
@@ -395,11 +551,17 @@ outside colour identity — it does not silently reject or silently accept
 ## References
 
 - Code: `backend/internal/deckrules/`, `backend/internal/deckstats/`,
+  `backend/internal/decktemplates/`, `backend/internal/deckroles/`,
   `backend/internal/api/decks.go`, `backend/internal/api/stats.go`,
+  `backend/internal/api/templates.go`,
+  `backend/internal/db/migrations/000006_add_deck_archetype.up.sql`,
   `backend/internal/db/migrations/000003_create_decks.up.sql`,
   `backend/internal/db/queries/decks.sql`
 - Tests: `backend/internal/deckrules/deckrules_test.go`,
   `backend/internal/deckstats/deckstats_test.go`,
+  `backend/internal/decktemplates/decktemplates_test.go`,
+  `backend/internal/deckroles/deckroles_test.go`,
+  `backend/internal/api/templates_test.go`,
   `backend/internal/api/decks_test.go`, `backend/internal/api/stats_test.go`
 - Frontend: `frontend/src/app/(app)/decks/page.tsx`,
   `frontend/src/app/(app)/decks/[id]/page.tsx`,
@@ -409,8 +571,9 @@ outside colour identity — it does not silently reject or silently accept
   menu, Tools menu + import/export dialog),
   `frontend/src/lib/cardPreview.ts`, `frontend/src/lib/menuPlacement.ts`,
   `frontend/src/lib/searchNav.ts`, `frontend/src/lib/cardActions.ts`,
-  `frontend/src/lib/deck.ts`, `frontend/src/lib/deckstats.ts`
-- Frontend tests: `frontend/src/lib/cardPreview.test.ts`,
+  `frontend/src/lib/deck.ts`, `frontend/src/lib/deckstats.ts`,
+  `frontend/src/lib/templateFit.ts`
+- Frontend tests: `frontend/src/lib/templateFit.test.ts`, `frontend/src/lib/cardPreview.test.ts`,
   `frontend/src/lib/menuPlacement.test.ts`, `frontend/src/lib/deck.test.ts`,
   `frontend/src/lib/searchNav.test.ts`, `frontend/src/lib/cardActions.test.ts`
 - Cross-segment: reads `card-data` (`cards`, `card_prints`, `banlist_overrides`);

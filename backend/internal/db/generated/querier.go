@@ -120,7 +120,7 @@ type Querier interface {
 	// Month-to-date estimated spend across every user, in micro-USD.
 	// @spec AI-032
 	SumAICostMicrosSince(ctx context.Context, since pgtype.Date) (int64, error)
-	// @spec DECK-011
+	// @spec DECK-011, DECK-103
 	UpdateDeckMeta(ctx context.Context, arg UpdateDeckMetaParams) (Deck, error)
 	// @spec CARD-001
 	UpsertCard(ctx context.Context, arg UpsertCardParams) (Card, error)

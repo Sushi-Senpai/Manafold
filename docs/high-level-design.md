@@ -145,6 +145,7 @@ flowchart TB
         decks["decks / deck_cards<br/>(qty / board / category)"]
         rules["internal/deckrules<br/>identity · singleton · count · banlist · shape"]
         stats["internal/deckstats<br/>curve · pips vs sources · category roll-up"]
+        templates["internal/decktemplates + deckroles<br/>archetype target ranges · role classifier"]
         share["read-only public deck view"]
     end
 
@@ -286,8 +287,10 @@ Milestones after M1 (the segment map does not change; these add specs and code):
 Later features the architecture must not preclude (design notes only, recorded
 in the owning LLDs' *Open Questions & Future Decisions*):
 
-1. **Deck-bootstrapping wizard** — commander → auto mana base from the colour
-   identity → a wizard adding the most powerful/common cards for those colours
+1. **Deck-bootstrapping wizard** — commander → archetype → auto mana base from
+   the colour identity → a wizard filling the archetype template's slots
+   (`internal/decktemplates`, the same ranges the builder's "deck vs. target"
+   panel shows) with the most powerful/common cards for those colours
    (`deck-building` + `ai-assist`; a lighter-weight relative of M8's "build a
    shell").
 2. **EDHREC high-synergy cards** as a recommendation input beyond `edhrec_rank`
