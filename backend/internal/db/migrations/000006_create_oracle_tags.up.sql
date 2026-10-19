@@ -1,9 +1,9 @@
 -- Scryfall oracle tags (Tagger's community functional tags: ramp, mana-rock,
 -- fetchland, utility-land, tutor, …), mirrored from the daily oracle_tags bulk
--- export by cmd/cardsync (CARD-010, CARD-016). The tag id is Scryfall's stable
+-- export by cmd/cardsync (CARD-010, CARD-060). The tag id is Scryfall's stable
 -- UUID; slugs are renameable, so slug is indexed but not unique. disabled is
 -- Manafold-owned — the sync never writes it — and every tag read ignores a
--- disabled tag (CARD-019).
+-- disabled tag (CARD-063).
 CREATE TABLE oracle_tags (
     id UUID PRIMARY KEY,
     slug TEXT NOT NULL,
@@ -37,7 +37,7 @@ CREATE INDEX idx_card_oracle_tags_tag_id ON card_oracle_tags (tag_id);
 
 -- Transitive closure of the tag hierarchy, rebuilt with every tag sync: one
 -- row per tag paired with itself and with every tag reachable from it through
--- child links (CARD-018). "Cards with tag T or any descendant" is
+-- child links (CARD-062). "Cards with tag T or any descendant" is
 -- ancestor_id = T joined to card_oracle_tags on descendant_id.
 CREATE TABLE oracle_tag_closure (
     ancestor_id UUID NOT NULL REFERENCES oracle_tags(id) ON DELETE CASCADE,

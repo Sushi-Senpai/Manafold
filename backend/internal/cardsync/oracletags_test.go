@@ -38,7 +38,7 @@ func tagFixtureOptions() cardsync.Options {
 // tags skipped, the closure walking parent links (and terminating on a cycle),
 // the query surface resolving descendants, and the sync_runs audit row.
 //
-// @spec CARD-010, CARD-016, CARD-017, CARD-018, CARD-026
+// @spec CARD-010, CARD-060, CARD-061, CARD-062, CARD-065
 func TestRun_IngestsOracleTags(t *testing.T) {
 	ctx, pool := tagTestPool(t)
 	q := db.New(pool)
@@ -62,7 +62,7 @@ func TestRun_IngestsOracleTags(t *testing.T) {
 		t.Fatalf("count art tag: %v", err)
 	}
 	if artTags != 0 {
-		t.Errorf("non-oracle tag mirrored %d time(s), want 0 (CARD-017)", artTags)
+		t.Errorf("non-oracle tag mirrored %d time(s), want 0 (CARD-061)", artTags)
 	}
 
 	var parents []pgtype.UUID
@@ -94,7 +94,7 @@ func TestRun_IngestsOracleTags(t *testing.T) {
 
 	// "ramp" has no direct taggings; its cards come through the closure.
 	if got := cardsByTag(t, ctx, q, "ramp", nil); !equalStrings(got, []string{"Manafold Test Goblin Boss", "Manafold Test Rat Swarm"}) {
-		t.Errorf("cards by ramp = %v, want goblin + rat via descendants (CARD-018)", got)
+		t.Errorf("cards by ramp = %v, want goblin + rat via descendants (CARD-062)", got)
 	}
 	if got := cardsByTag(t, ctx, q, "RAMP", []string{"R"}); !equalStrings(got, []string{"Manafold Test Goblin Boss"}) {
 		t.Errorf("cards by ramp within {R} = %v, want just the goblin", got)
@@ -132,7 +132,7 @@ func TestRun_IngestsOracleTags(t *testing.T) {
 // (idempotent), the disabled flag survives the sync, and every tag read —
 // including otag: search — ignores the disabled tag.
 //
-// @spec CARD-016, CARD-019, CARD-025
+// @spec CARD-060, CARD-063, CARD-064
 func TestRun_OracleTagsReplaceSnapshotAndKeepDisabled(t *testing.T) {
 	ctx, pool := tagTestPool(t)
 	q := db.New(pool)
@@ -185,7 +185,7 @@ func TestRun_OracleTagsReplaceSnapshotAndKeepDisabled(t *testing.T) {
 		t.Fatalf("read disabled: %v", err)
 	}
 	if !disabled {
-		t.Fatalf("the sync overwrote mana-rock's disabled flag (CARD-019)")
+		t.Fatalf("the sync overwrote mana-rock's disabled flag (CARD-063)")
 	}
 
 	if tags, err := q.ListOracleTagsForCard(ctx, goblin); err != nil || len(tags) != 0 {
@@ -237,7 +237,7 @@ func TestRun_FixtureCardsWithoutTagFileSkipsTagPass(t *testing.T) {
 // to no oracle tags is a broken file, not an instruction to wipe the mirror —
 // the run fails, the sync_runs row records it, and the prior snapshot stays.
 //
-// @spec CARD-007, CARD-016
+// @spec CARD-007, CARD-060
 func TestRun_OracleTagsBrokenExportFailsAndKeepsSnapshot(t *testing.T) {
 	ctx, pool := tagTestPool(t)
 	q := db.New(pool)

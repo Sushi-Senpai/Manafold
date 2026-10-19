@@ -7,7 +7,7 @@
 // fixture named by CARDSYNC_SEED_PATH (or the per-pass CARDSYNC_ORACLE_PATH /
 // CARDSYNC_DEFAULT_PATH) and its tag fixture (CARDSYNC_TAGS_PATH, or the
 // oracle_tags.json beside the seed) — see seedOptions, backend/seed/cards.json,
-// and backend/seed/oracle_tags.json (CARD-040, CARD-041).
+// and backend/seed/oracle_tags.json (CARD-040, CARD-066).
 package main
 
 import (
@@ -30,7 +30,7 @@ import (
 // CARDSYNC_TAGS_PATH names the oracle-tags file; without it, a seed run uses the
 // oracle_tags.json beside the seed file when one exists (see
 // backend/seed/oracle_tags.json), so the one seed variable still yields a fully
-// offline run (CARD-041). With none set the run downloads the real Scryfall
+// offline run (CARD-066). With none set the run downloads the real Scryfall
 // bulk exports (CARD-001, CARD-010).
 func seedOptions() cardsync.Options {
 	oracle := os.Getenv("CARDSYNC_ORACLE_PATH")

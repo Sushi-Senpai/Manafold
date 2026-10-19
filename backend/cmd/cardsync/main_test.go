@@ -10,7 +10,7 @@ import (
 // seed run picks up the oracle_tags.json beside the seed file, and a seed with
 // no such sibling runs with no tag file (the tag pass is then skipped).
 //
-// @spec CARD-041
+// @spec CARD-066
 func TestSeedOptions_TagFile(t *testing.T) {
 	dir := t.TempDir()
 	seed := filepath.Join(dir, "cards.json")

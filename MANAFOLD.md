@@ -517,11 +517,11 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   `tutor`, `mass-land-denial`, `extra-turn`, …) into `oracle_tags` /
   `card_oracle_tags`, with the parent/child hierarchy materialised in
   `oracle_tag_closure` because parent tags like `ramp` or `removal` carry few or
-  no direct taggings (`CARD-010`, `CARD-016..019`). Each sync replaces the tag
+  no direct taggings (`CARD-010`, `CARD-060..063`). Each sync replaces the tag
   snapshot in one transaction; a Manafold-owned `disabled` flag lets a bad
   community tag be switched off. Reads: sqlc queries for a card's tags, cards by
   tag (optionally within a colour identity), and role counting over a card-id
-  set (`CARD-026`), plus `otag:` in card search (`CARD-025`).
-  `backend/seed/oracle_tags.json` keeps seed runs offline (`CARD-041`). Synergy
+  set (`CARD-065`), plus `otag:` in card search (`CARD-064`).
+  `backend/seed/oracle_tags.json` keeps seed runs offline (`CARD-066`). Synergy
   data will come from public Archidekt decklists (EDHREC has no open API) — a
   separate piece of groundwork.

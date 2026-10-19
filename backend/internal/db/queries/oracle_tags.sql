@@ -1,9 +1,9 @@
--- Oracle-tag reads over the mirror (CARD-026). Every read ignores a disabled
--- tag (CARD-019), and "tag or any descendant" goes through oracle_tag_closure
--- (CARD-018).
+-- Oracle-tag reads over the mirror (CARD-065). Every read ignores a disabled
+-- tag (CARD-063), and "tag or any descendant" goes through oracle_tag_closure
+-- (CARD-062).
 
 -- A card's directly applied, enabled oracle tags.
--- @spec CARD-026, CARD-019
+-- @spec CARD-065, CARD-063
 -- name: ListOracleTagsForCard :many
 SELECT t.slug, t.label, ct.weight
 FROM card_oracle_tags ct
@@ -15,7 +15,7 @@ ORDER BY t.slug;
 -- Cards carrying the tag with this slug or any of its descendants, optionally
 -- within a colour identity (an empty identity array means no filter), best
 -- (lowest edhrec_rank) first.
--- @spec CARD-026, CARD-018, CARD-019
+-- @spec CARD-065, CARD-062, CARD-063
 -- name: ListCardsByOracleTag :many
 SELECT c.* FROM cards c
 WHERE EXISTS (
@@ -36,7 +36,7 @@ LIMIT sqlc.arg(lim);
 
 -- The subset of card_ids carrying the tag with this slug or any of its
 -- descendants — role counting over a deck's cards.
--- @spec CARD-026, CARD-018, CARD-019
+-- @spec CARD-065, CARD-062, CARD-063
 -- name: FilterCardIDsByOracleTag :many
 SELECT DISTINCT ct.card_id
 FROM oracle_tags a

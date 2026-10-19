@@ -44,10 +44,10 @@ type stagedTagging struct {
 
 // ingestOracleTags ingests the oracle_tags export, recording a sync_runs row
 // (CARD-010, CARD-007). The snapshot replaces the mirrored one in a single
-// transaction (CARD-016, CARD-018); a tagging whose oracle_id is unparseable or
-// matches no cards row is skipped and counted (CARD-017).
+// transaction (CARD-060, CARD-062); a tagging whose oracle_id is unparseable or
+// matches no cards row is skipped and counted (CARD-061).
 //
-// @spec CARD-010, CARD-016, CARD-017, CARD-018
+// @spec CARD-010, CARD-060, CARD-061, CARD-062
 func ingestOracleTags(ctx context.Context, pool *pgxpool.Pool, q *db.Queries, r io.Reader, updatedAt time.Time) (tags, taggings, skipped int, err error) {
 	run, err := q.CreateSyncRun(ctx, db.CreateSyncRunParams{
 		BulkType:          "oracle_tags",
@@ -89,7 +89,7 @@ var tagImportColumns = []string{"id", "slug", "label", "description", "parent_id
 
 // The merge statements, run in order inside one transaction. Deleting absent
 // tags first lets the cascade clear their taggings and closure rows; the upsert
-// never touches the Manafold-owned disabled flag (CARD-019).
+// never touches the Manafold-owned disabled flag (CARD-063).
 const (
 	tagDeleteMissingSQL = `DELETE FROM oracle_tags t
 WHERE NOT EXISTS (SELECT 1 FROM oracle_tags_import i WHERE i.id = t.id)`
@@ -109,7 +109,7 @@ ON CONFLICT (id) DO UPDATE SET
 	tagClearTaggingsSQL = `DELETE FROM card_oracle_tags`
 
 	// The JOIN on cards resolves card_id and drops taggings on objects the
-	// Oracle export omits (CARD-017).
+	// Oracle export omits (CARD-061).
 	tagMergeTaggingsSQL = `
 INSERT INTO card_oracle_tags (card_id, tag_id, weight, annotation)
 SELECT DISTINCT ON (c.id, i.id) c.id, i.id, t.weight, t.annotation
@@ -121,7 +121,7 @@ ORDER BY c.id, i.id`
 	tagClearClosureSQL = `DELETE FROM oracle_tag_closure`
 
 	// UNION (not UNION ALL) de-duplicates the walk, so a cycle in the tag
-	// graph reaches a fixed point instead of recursing forever (CARD-018).
+	// graph reaches a fixed point instead of recursing forever (CARD-062).
 	tagRebuildClosureSQL = `
 INSERT INTO oracle_tag_closure (ancestor_id, descendant_id)
 WITH RECURSIVE edges AS (
@@ -138,10 +138,10 @@ SELECT ancestor_id, descendant_id FROM walk`
 
 // copyReplaceOracleTags streams every oracle tag from r into a TEMP staging
 // table with COPY, then replaces the mirrored tags, taggings, and closure with
-// set-based statements in the same transaction (CARD-016, CARD-018). It
+// set-based statements in the same transaction (CARD-060, CARD-062). It
 // returns the tags upserted, the taggings written, and the taggings skipped:
 // those with an unparseable oracle_id or no weight (dropped before staging)
-// plus staged taggings whose oracle_id matched no cards row (CARD-017).
+// plus staged taggings whose oracle_id matched no cards row (CARD-061).
 func copyReplaceOracleTags(ctx context.Context, pool *pgxpool.Pool, r io.Reader) (tags, taggings, skipped int, err error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {

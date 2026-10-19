@@ -21,7 +21,7 @@ import (
 // backend/seed/oracle_tags.json feeds the tag pass, so tag queries work offline
 // too.
 //
-// @spec CARD-040, CARD-041
+// @spec CARD-040, CARD-066
 func TestRun_DevSeed(t *testing.T) {
 	_ = godotenv.Load("../../.env")
 	dbURL := os.Getenv("DATABASE_URL")

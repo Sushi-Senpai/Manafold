@@ -135,7 +135,7 @@ func TestWhereSQL_RendersPlaceholdersAndArgs(t *testing.T) {
 	}
 }
 
-// @spec CARD-025
+// @spec CARD-064
 func TestParse_OracleTag(t *testing.T) {
 	for _, raw := range []string{"otag:Ramp", "oracletag:ramp", `otag:"ramp"`} {
 		got, err := Parse(raw)
@@ -151,7 +151,7 @@ func TestParse_OracleTag(t *testing.T) {
 	}
 }
 
-// @spec CARD-025, CARD-018, CARD-019
+// @spec CARD-064, CARD-062, CARD-063
 func TestWhereSQL_OracleTagWalksClosureAndSkipsDisabled(t *testing.T) {
 	q, err := Parse("otag:ramp t:artifact")
 	if err != nil {

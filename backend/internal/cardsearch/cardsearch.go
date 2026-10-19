@@ -4,7 +4,7 @@
 // because the query grammar grows and the parse step is where a
 // plausible-but-wrong query would silently return the wrong cards.
 //
-// @spec CARD-022, CARD-023, CARD-025
+// @spec CARD-022, CARD-023, CARD-064
 package cardsearch
 
 import (
@@ -28,7 +28,7 @@ type Query struct {
 	// CommanderOnly is set by is:commander.
 	CommanderOnly bool
 	// OracleTags are otag:<slug> predicates (lowercased): the card carries the
-	// tag or any of its descendants (CARD-025).
+	// tag or any of its descendants (CARD-064).
 	OracleTags []string
 }
 
@@ -257,7 +257,7 @@ func (q Query) WhereSQL(startParam int) (expr string, args []any, next int) {
 		clauses = append(clauses, "c.can_be_commander = true")
 	}
 	// The tag or any descendant, through the materialised closure; a disabled
-	// tag matches nothing, at either end (CARD-018, CARD-019).
+	// tag matches nothing, at either end (CARD-062, CARD-063).
 	for _, slug := range q.OracleTags {
 		add(`EXISTS (SELECT 1 FROM oracle_tags a
 			JOIN oracle_tag_closure cl ON cl.ancestor_id = a.id

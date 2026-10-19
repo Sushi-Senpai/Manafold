@@ -174,7 +174,7 @@ from `CARDSYNC_SEED_PATH` (one file feeds both card passes) or the per-pass
 `CARDSYNC_ORACLE_PATH` / `CARDSYNC_DEFAULT_PATH` / `CARDSYNC_TAGS_PATH`. With
 `CARDSYNC_SEED_PATH` set and no `CARDSYNC_TAGS_PATH`, an `oracle_tags.json`
 beside the seed file — when one exists — feeds the tag pass, so the single seed
-variable still yields a fully offline run (`CARD-041`). The tag pass downloads
+variable still yields a fully offline run (`CARD-066`). The tag pass downloads
 only when the run is fetching the manifest anyway (at least one card pass has no
 local file); a run whose two card passes both read local files and that names no
 tag file skips the tag pass, so a fixture run never touches the network
@@ -185,7 +185,7 @@ printing) so a local run and CI have searchable, image-bearing card data
 without a live Scryfall fetch (`CARD-040`). `backend/seed/oracle_tags.json`
 is its companion: the real Scryfall `oracle_tags` objects that tag any seed
 card, plus every ancestor of those tags, with taggings trimmed to the seed
-cards — a JSON array in the bulk export's object shape (`CARD-041`).
+cards — a JSON array in the bulk export's object shape (`CARD-066`).
 
 1. `GET https://api.scryfall.com/bulk-data` — the manifest. Read the
    `jsonl_download_uri` and `updated_at` for `oracle_cards`, `default_cards`,
@@ -241,7 +241,7 @@ cards — a JSON array in the bulk export's object shape (`CARD-041`).
    counted as skipped; finally delete and rebuild `oracle_tag_closure` with a
    `WITH RECURSIVE` walk over the unnested `parent_ids` edges, using `UNION`
    (not `UNION ALL`) so a cycle terminates. Re-running on the same export
-   yields the same rows (`CARD-016` / `CARD-017` / `CARD-018`). The
+   yields the same rows (`CARD-060` / `CARD-061` / `CARD-062`). The
    `sync_runs.rows_upserted` count is the taggings written.
 6. On success, update the `sync_runs` row: `status = 'succeeded'`,
    `rows_upserted`, `finished_at`. On any error, `status = 'failed'`, `error`,
@@ -376,7 +376,7 @@ plausible-but-wrong query silently returns the wrong cards.
   `backend/internal/db/migrations/000006_create_oracle_tags.up.sql`,
   `backend/internal/db/queries/cards.sql`, `backend/internal/db/queries/oracle_tags.sql`
 - Seed: `backend/seed/cards.json` (dev / CI card seed, `CARD-040`),
-  `backend/seed/oracle_tags.json` (its oracle tags, `CARD-041`)
+  `backend/seed/oracle_tags.json` (its oracle tags, `CARD-066`)
 - Test fixtures: `backend/internal/cardsync/testdata/`; seed test
   `backend/internal/cardsync/seed_test.go`
 - Cross-segment: `deck-building`'s validator reads `cards.color_identity`,

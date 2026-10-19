@@ -16,7 +16,7 @@
 // bulk-upserted with COPY into a session TEMP table plus one set-based merge
 // (CARD-014). Oracle Tags replaces the mirrored tag snapshot — tags, direct
 // taggings, and the hierarchy closure — in one transaction (CARD-010,
-// CARD-016; see oracletags.go).
+// CARD-060; see oracletags.go).
 //
 // @spec CARD-001, CARD-002, CARD-005, CARD-006, CARD-007, CARD-012, CARD-013, CARD-014, CARD-015
 package cardsync

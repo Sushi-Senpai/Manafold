@@ -30,7 +30,7 @@ type FilterCardIDsByOracleTagParams struct {
 
 // The subset of card_ids carrying the tag with this slug or any of its
 // descendants — role counting over a deck's cards.
-// @spec CARD-026, CARD-018, CARD-019
+// @spec CARD-065, CARD-062, CARD-063
 func (q *Queries) FilterCardIDsByOracleTag(ctx context.Context, arg FilterCardIDsByOracleTagParams) ([]pgtype.UUID, error) {
 	rows, err := q.db.Query(ctx, filterCardIDsByOracleTag, arg.Slug, arg.CardIds)
 	if err != nil {
@@ -79,7 +79,7 @@ type ListCardsByOracleTagParams struct {
 // Cards carrying the tag with this slug or any of its descendants, optionally
 // within a colour identity (an empty identity array means no filter), best
 // (lowest edhrec_rank) first.
-// @spec CARD-026, CARD-018, CARD-019
+// @spec CARD-065, CARD-062, CARD-063
 func (q *Queries) ListCardsByOracleTag(ctx context.Context, arg ListCardsByOracleTagParams) ([]Card, error) {
 	rows, err := q.db.Query(ctx, listCardsByOracleTag, arg.Slug, arg.Identity, arg.Lim)
 	if err != nil {
@@ -142,11 +142,11 @@ type ListOracleTagsForCardRow struct {
 	Weight string `json:"weight"`
 }
 
-// Oracle-tag reads over the mirror (CARD-026). Every read ignores a disabled
-// tag (CARD-019), and "tag or any descendant" goes through oracle_tag_closure
-// (CARD-018).
+// Oracle-tag reads over the mirror (CARD-065). Every read ignores a disabled
+// tag (CARD-063), and "tag or any descendant" goes through oracle_tag_closure
+// (CARD-062).
 // A card's directly applied, enabled oracle tags.
-// @spec CARD-026, CARD-019
+// @spec CARD-065, CARD-063
 func (q *Queries) ListOracleTagsForCard(ctx context.Context, cardID pgtype.UUID) ([]ListOracleTagsForCardRow, error) {
 	rows, err := q.db.Query(ctx, listOracleTagsForCard, cardID)
 	if err != nil {
