@@ -1,0 +1,9 @@
+patch 2 200
+2 0
+  {'severity': 'violation', 'kind': 'game_changers', 'message': '1 Game Changers; Bracket 2 allows 0', 'cards': ["Thassa's Oracle"]}
+  {'severity': 'warning', 'kind': 'mass_land_denial', 'message': 'Mass land denial is not expected below Bracket 4', 'cards': ['Armageddon']}
+  {'severity': 'warning', 'kind': 'combo', 'message': "Ruthless combo (Demonic Consultation + Thassa's Oracle) fits Bracket 4+", 'combo_id': '742-1295', 'cards': ['Demonic Consultation', "Thassa's Oracle"]}
+patch 3 200
+3 3
+  {'severity': 'warning', 'kind': 'mass_land_denial', 'message': 'Mass land denial is not expected below Bracket 4', 'cards': ['Armageddon']}
+  {'severity': 'warning', 'kind': 'combo', 'message': "Ruthless combo (Demonic Consultation + Thassa's Oracle) fits Bracket 4+", 'combo_id': '742-1295', 'cards': ['Demonic Consultation', "Thassa's Oracle"]}
