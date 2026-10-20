@@ -12,8 +12,7 @@ and rules decide*. `edhrec_rank` says how popular a card is overall; it cannot
 say which cards belong with a particular commander. This segment supplies that
 commander-specific signal: **per-commander card inclusion rates computed from
 public Archidekt decklists, compared against a colour-identity baseline**. The
-deck-building wizard is the main consumer. The builder shows a minimal synergy
-panel.
+deck-building wizard is the main consumer.
 
 **Synergy** for a card *c* under commander *K* is
 
@@ -269,14 +268,8 @@ legality filter and sample metadata.
 Wherever synergy data is shown, the surface shows the line **"Synergy data from
 public Archidekt decks"** linking to `https://archidekt.com`, plus the sample
 size the numbers come from. This is the attribution Archidekt's developer
-asked for.
-
-The builder's minimal surface is a **Synergy panel** in the right column under
-AI suggestions, shown once the deck has a commander. It lists the top cards
-with synergy and inclusion as whole percentages and an *Add* button. Cards
-already on the deck's main or command board show *In deck* instead. A footer
-gives the deck count, the fetch date, and the attribution link. When the
-commander has no data, the panel says so.
+asked for. This applies to any surface that shows the data, such as the
+wizard.
 
 ## Decisions & Alternatives
 
@@ -323,9 +316,7 @@ commander has no data, the panel says so.
   `TopCards`, `commanders.txt`), `backend/cmd/synergysync/main.go`,
   `backend/internal/api/synergy.go`,
   `backend/internal/db/migrations/000009_create_synergy.up.sql`,
-  `backend/internal/db/queries/synergy.sql`,
-  `frontend/src/components/builder/SynergyPanel.tsx`,
-  `frontend/src/lib/synergy.ts`
+  `backend/internal/db/queries/synergy.sql`
 - Test fixtures: `backend/internal/synergy/testdata/` (Archidekt-shaped search
   and deck responses, trimmed, with owner data removed)
 - Decision: `MANAFOLD.md` D7 (Archidekt option 1 and its accepted risk)

@@ -251,29 +251,6 @@ export type AISuggestResponse = {
   model: string;
 };
 
-// ---- synergy -----------------------------------------------------------
-
-export type SynergyCard = {
-  card: CardSummary;
-  decks: number;
-  inclusion: number;
-  baseline: number | null;
-  synergy: number | null;
-};
-
-export type CommanderSynergy = {
-  commander: { card_id: string; name: string; color_identity: string };
-  sample: {
-    deck_count: number;
-    duplicates_skipped: number;
-    fetched_at: string;
-    baseline_deck_count: number | null;
-    baseline_fetched_at: string | null;
-  };
-  cards: SynergyCard[];
-  attribution: { text: string; url: string };
-};
-
 export type AIExplainResponse = {
   card_id: string;
   explanation: string;
@@ -467,12 +444,6 @@ export const api = {
   getDeckTemplates: () => request<DeckTemplates>("/api/deck-templates"),
   getTemplateFit: (id: string) => request<TemplateFit>(`/api/decks/${id}/template-fit`),
   getDeckBracket: (id: string) => request<BracketReport>(`/api/decks/${id}/bracket`),
-
-  // ---- synergy ----
-  getCommanderSynergy: (cardId: string, limit?: number) =>
-    request<CommanderSynergy>(
-      `/api/synergy/commanders/${cardId}${limit ? `?limit=${limit}` : ""}`,
-    ),
 
   // ---- ai-assist ----
   suggestDeck: (id: string) =>

@@ -27,12 +27,11 @@
 - [x] **SYN-031**: When a run starts, the synergy job shall refresh only targets never sampled or whose last sample is older than `SYNERGY_REFRESH_DAYS` (default 7), stalest first, so that a run that stopped for any reason is continued by the next run without re-fetching targets it completed.
 - [x] **SYN-032**: The synergy job shall record a `synergy_runs` row per run carrying its status, requests made, targets refreshed, targets left pending, start and finish times, and error text on failure, and the process shall exit non-zero when the run fails.
 
-## Query & Display
+## Query & Attribution
 
 - [x] **SYN-040**: When a client calls `GET /api/synergy/commanders/{cardId}`, the system shall return, from the local database only, that commander's top synergy cards — ordered by synergy descending with nulls last, then inclusion descending, then name, capped at `limit` (default 30, maximum 100) — each with its mirror card summary, deck count, inclusion rate, baseline rate, and synergy, plus the sample's deck count, duplicates skipped, fetch time, baseline deck count, and baseline fetch time, and the attribution text "Synergy data from public Archidekt decks" with the link `https://archidekt.com`.
 - [x] **SYN-041**: The synergy query shall return only cards that resolve to a `cards` row that is commander-legal and not banned by `banlist_overrides`.
 - [x] **SYN-042**: If `GET /api/synergy/commanders/{cardId}` names a commander with no stored sample, then the system shall respond `404`.
-- [x] **SYN-043**: While a deck has a commander assigned, the builder shall show a synergy panel listing that commander's top synergy cards with synergy and inclusion percentages and an add-to-main action — showing "In deck" instead for cards already on the main or command board — and a footer giving the sample's deck count, fetch date, and the attribution "Synergy data from public Archidekt decks" linked to Archidekt; when the commander has no data the panel shall say so.
 
 ## Deferred
 

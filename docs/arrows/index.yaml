@@ -9,7 +9,7 @@ last_updated: 2026-10-19
 #     + search_cards tool + suggest-&-explain + single-card blurb + the
 #     validate-every-returned-card gate + ai_usage quotas + global spend ceiling.
 # 2026-10-19: synergy segment — Archidekt-derived per-commander synergy
-#     aggregates (cmd/synergysync batch job + query endpoint + builder panel).
+#     aggregates (cmd/synergysync batch job + query endpoint).
 
 taxonomy:
   features:
@@ -104,7 +104,7 @@ arrows:
     blocks: [ai-assist]
     blockedBy: [platform-shell, card-data]
     detail: synergy.md
-    next: "Landed: cmd/synergysync + internal/synergy — paced (6 s) Archidekt client with escalating 429 back-off and an honest User-Agent; commander + colour-identity-baseline sampling; tally excludes maybeboard / commander / deleted / basics; identical-decklist dedup; aggregates-only synergy_* tables replaced per target in one transaction with synergy recomputed per identity; request-budgeted, staleness-resumable runs audited in synergy_runs (SYN-001..032). GET /api/synergy/commanders/{cardId} + builder Synergy panel with Archidekt attribution (SYN-040..043). Deferred: bracket-sliced samples (SYN-050), partner pairs (SYN-051), a deployed cron."
+    next: "Landed: cmd/synergysync + internal/synergy — paced (6 s) Archidekt client with escalating 429 back-off and an honest User-Agent; commander + colour-identity-baseline sampling; tally excludes maybeboard / commander / deleted / basics; identical-decklist dedup; aggregates-only synergy_* tables replaced per target in one transaction with synergy recomputed per identity; request-budgeted, staleness-resumable runs audited in synergy_runs (SYN-001..032). GET /api/synergy/commanders/{cardId} with Archidekt attribution (SYN-040..042). Deferred: bracket-sliced samples (SYN-050), partner pairs (SYN-051), a deployed cron."
     drift: null
 
 unmapped:

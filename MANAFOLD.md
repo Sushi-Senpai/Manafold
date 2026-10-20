@@ -576,7 +576,6 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   transaction. Runs are bounded by a request budget and resumable by target
   staleness, with a `synergy_runs` audit row. `GET
   /api/synergy/commanders/{cardId}` serves the top cards (mirror rows only,
-  commander-legal) with sample sizes and attribution. A minimal Synergy panel
-  sits in the builder's right column. Tests replay recorded Archidekt-shaped
+  commander-legal) with sample sizes and attribution. Tests replay recorded Archidekt-shaped
   fixtures and never hit the network. No deployed cron yet: scheduling
   `/app/synergysync` is an operations call.

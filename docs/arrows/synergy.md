@@ -3,11 +3,11 @@
 Per-commander card synergy computed from public Archidekt decklists: the
 `cmd/synergysync` batch job, the `internal/synergy` package (paced Archidekt
 client, sampling, tally, aggregates, `TopCards`), `GET
-/api/synergy/commanders/{cardId}`, and the builder's Synergy panel.
+/api/synergy/commanders/{cardId}`.
 
 ## Status
 
-**MAPPED** — LLD + specs authored 2026-10-19 with the first slice; SYN-001..043
+**MAPPED** — LLD + specs authored 2026-10-19 with the first slice; SYN-001..042
 landed together. Deferred: bracket-sliced samples (SYN-050), partner pairs
 (SYN-051), and a deployed cron (an operations step).
 
@@ -30,7 +30,6 @@ landed together. Deferred: bracket-sliced samples (SYN-050), partner pairs
 - backend/internal/synergy/commanders_test.go — SYN-001 (list parsing, embedded default, file override).
 - backend/internal/synergy/run_test.go (needs Postgres) — SYN-001 (unresolved names skipped), SYN-011 (baseline from the mirror), SYN-020 (no deck or user columns), SYN-021 (synergy = inclusion − baseline; NULL until a baseline exists), SYN-022 (failed run leaves previous aggregates), SYN-030 (a target starts only when its worst case fits), SYN-031 (a second run re-fetches nothing), SYN-032 (`synergy_runs` rows), SYN-040..042 via `TopCards` (mirror-only, commander-legal, banlist override, ordering, limit).
 - backend/internal/api/synergy_test.go (needs Postgres) — SYN-040 (response shape, attribution, limit clamp), SYN-041 (banned and unknown cards never surface), SYN-042 (404 with no sample, 400 for a bad id).
-- frontend/src/lib/synergy.test.ts — SYN-043 (percent formatting, "In deck" set, sample footer).
 - Fixtures: backend/internal/synergy/testdata/ (Archidekt-shaped search and deck responses; no owner data).
 
 ### Code
@@ -39,7 +38,6 @@ landed together. Deferred: bracket-sliced samples (SYN-050), partner pairs
 - backend/internal/api/synergy.go (`RegisterSynergyRoutes`, `getCommanderSynergy`)
 - backend/internal/db/migrations/000006_create_synergy.up.sql / .down.sql
 - backend/internal/db/queries/synergy.sql
-- frontend/src/components/builder/SynergyPanel.tsx, frontend/src/lib/synergy.ts, `api.getCommanderSynergy` in frontend/src/lib/api.ts
 
 ## Architecture
 
