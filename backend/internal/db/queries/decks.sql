@@ -47,13 +47,14 @@ WHERE id = sqlc.arg(id)
   AND (user_id = sqlc.narg(user_id) OR anon_token = sqlc.narg(anon_token))
 RETURNING *;
 
--- @spec DECK-011
+-- @spec DECK-011, DECK-103
 -- name: UpdateDeckMeta :one
 UPDATE decks
 SET name = sqlc.arg(name),
     description = sqlc.arg(description),
     is_public = sqlc.arg(is_public),
-    bracket = sqlc.narg(bracket)
+    bracket = sqlc.narg(bracket),
+    archetype = sqlc.narg(archetype)
 WHERE id = sqlc.arg(id)
   AND (user_id = sqlc.narg(user_id) OR anon_token = sqlc.narg(anon_token))
 RETURNING *;
@@ -152,6 +153,7 @@ SELECT
     c.keywords,
     c.singleton_limit,
     c.can_be_commander,
+    c.card_faces,
     COALESCE(c.legalities ->> 'commander', '')::text AS legalities_commander,
     newest.image_uris,
     newest.prices,

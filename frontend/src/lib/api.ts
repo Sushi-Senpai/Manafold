@@ -147,6 +147,8 @@ export type Deck = {
   description: string;
   format: string;
   bracket: number | null;
+  // A deck-template key from GET /api/deck-templates, or null (DECK-103).
+  archetype: string | null;
   is_public: boolean;
   color_identity: string[];
 };
@@ -269,6 +271,46 @@ export type DeckStats = {
   category_targets: Record<string, [number, number]>;
 };
 
+// ---- deck templates ----------------------------------------------------
+
+// One row of a deck template: an inclusive target range for a card type or a
+// functional role, out of the 99 non-commander cards (DECK-100).
+export type TemplateRow = {
+  key: string;
+  label: string;
+  kind: "type" | "role";
+  min: number;
+  max: number;
+  // The one bracket at which a count below min, down to relaxed_floor, is
+  // acceptable (the land row only: Bracket 4, 32).
+  relaxed_at_bracket?: number;
+  relaxed_floor?: number;
+};
+
+export type DeckTemplate = {
+  key: string;
+  name: string;
+  rows: TemplateRow[];
+};
+
+export type DeckTemplates = {
+  version: number;
+  templates: DeckTemplate[];
+};
+
+export type FitStatus = "ok" | "under" | "over" | "relaxed";
+
+export type TemplateRowFit = TemplateRow & { count: number; status: FitStatus };
+
+// The deck's counts against its archetype's template (DECK-104); no rows when
+// the deck has no archetype.
+export type TemplateFit = {
+  archetype: string | null;
+  template_version: number;
+  bracket: number | null;
+  rows: TemplateRowFit[];
+};
+
 export const api = {
   // ---- account-access ----
   register: async (email: string, password: string) => {
@@ -320,7 +362,13 @@ export const api = {
     request<Deck>("/api/decks", { method: "POST", body: JSON.stringify({ name }) }),
   getDeck: (id: string) => request<DeckDetail>(`/api/decks/${id}`),
   getPublicDeck: (id: string) => request<DeckDetail>(`/public/decks/${id}`),
-  updateDeck: (id: string, patch: Partial<Pick<Deck, "name" | "description" | "is_public" | "bracket">>) =>
+  // archetype: a template key sets it, "" clears it (DECK-103).
+  updateDeck: (
+    id: string,
+    patch: Partial<Pick<Deck, "name" | "description" | "is_public" | "bracket">> & {
+      archetype?: string;
+    },
+  ) =>
     request<Deck>(`/api/decks/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   setCommander: (id: string, commanderCardId: string, partnerCardId?: string) =>
     request<DeckDetail>(`/api/decks/${id}/commander`, {
@@ -354,6 +402,8 @@ export const api = {
     }),
   getValidation: (id: string) => request<ValidationReport>(`/api/decks/${id}/validation`),
   getDeckStats: (id: string) => request<DeckStats>(`/api/decks/${id}/stats`),
+  getDeckTemplates: () => request<DeckTemplates>("/api/deck-templates"),
+  getTemplateFit: (id: string) => request<TemplateFit>(`/api/decks/${id}/template-fit`),
 
   // ---- ai-assist ----
   suggestDeck: (id: string) =>

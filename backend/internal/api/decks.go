@@ -12,6 +12,7 @@ import (
 
 	db "manafold-backend/internal/db/generated"
 	"manafold-backend/internal/deckrules"
+	"manafold-backend/internal/decktemplates"
 )
 
 var validBoards = map[string]bool{"command": true, "main": true, "maybe": true, "sideboard": true}
@@ -28,6 +29,7 @@ type deckJSON struct {
 	Description   string   `json:"description"`
 	Format        string   `json:"format"`
 	Bracket       *int32   `json:"bracket"`
+	Archetype     *string  `json:"archetype"`
 	IsPublic      bool     `json:"is_public"`
 	ColorIdentity []string `json:"color_identity"`
 }
@@ -39,6 +41,7 @@ func deckJSONFrom(d db.Deck) deckJSON {
 		Description:   d.Description,
 		Format:        d.Format,
 		Bracket:       int4Ptr(d.Bracket),
+		Archetype:     textPtr(d.Archetype),
 		IsPublic:      d.IsPublic,
 		ColorIdentity: nonNil(d.ColorIdentity),
 	}
@@ -363,7 +366,7 @@ func (a *API) getDeck(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ld.detailJSON())
 }
 
-// @spec DECK-011
+// @spec DECK-011, DECK-103
 func (a *API) updateDeck(w http.ResponseWriter, r *http.Request) {
 	deck, ok := a.deckForOwner(w, r)
 	if !ok {
@@ -374,6 +377,7 @@ func (a *API) updateDeck(w http.ResponseWriter, r *http.Request) {
 		Description *string `json:"description"`
 		IsPublic    *bool   `json:"is_public"`
 		Bracket     *int32  `json:"bracket"`
+		Archetype   *string `json:"archetype"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -386,6 +390,7 @@ func (a *API) updateDeck(w http.ResponseWriter, r *http.Request) {
 		Description: deck.Description,
 		IsPublic:    deck.IsPublic,
 		Bracket:     deck.Bracket,
+		Archetype:   deck.Archetype,
 		ID:          deck.ID,
 		UserID:      uid,
 		AnonToken:   tok,
@@ -401,6 +406,18 @@ func (a *API) updateDeck(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Bracket != nil {
 		params.Bracket = pgtype.Int4{Int32: *body.Bracket, Valid: true}
+	}
+	// archetype: a known template key sets it, "" clears it, anything else is
+	// rejected before any write (DECK-103).
+	if body.Archetype != nil {
+		params.Archetype = pgtype.Text{}
+		if key := *body.Archetype; key != "" {
+			if _, ok := decktemplates.Lookup(key); !ok {
+				writeError(w, http.StatusBadRequest, "unknown archetype")
+				return
+			}
+			params.Archetype = pgtype.Text{String: key, Valid: true}
+		}
 	}
 
 	updated, err := a.Queries.UpdateDeckMeta(r.Context(), params)

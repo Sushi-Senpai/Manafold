@@ -98,6 +98,7 @@ type Deck struct {
 	ColorIdentity   []string           `json:"color_identity"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	Archetype       pgtype.Text        `json:"archetype"`
 }
 
 type DeckCard struct {
