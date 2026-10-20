@@ -49,7 +49,7 @@ Stop after each phase for user review. **Docs carry current intent, written to b
 | `deck-building` | `DECK` | `decks` + `deck_cards` (qty / board / category), commander & partner assignment, `internal/deckrules` (color identity, singleton, count, banlist, commander shape), `internal/deckstats` (deterministic mana curve, colour-pip demand vs sources, functional-category roll-up), `internal/decktemplates` + `internal/deckroles` (archetype target ranges + role classifier), `internal/bracket` (deterministic bracket estimate + findings over the combo mirror), deck CRUD + read-only public share |
 | `ai-assist` | `AI` | Anthropic Claude client wrapper, `search_cards` tool over the mirror, suggest-&-explain, deck-health prose, model prose over the bracket report (the estimate itself is `deck-building`'s), the validate-every-returned-card gate |
 | `import-export` | `PORT` | parse/emit plain-text, MTGA, Moxfield, Archidekt decklists; `imports` audit table; unresolved-name reporting |
-| `synergy` | `SYN` | `cmd/synergysync` rate-limited batch job over public Archidekt decklists, per-commander inclusion vs colour-identity baseline aggregates (`synergy_*` tables), `GET /api/synergy/commanders/{cardId}`, the builder synergy panel + Archidekt attribution |
+| `synergy` | `SYN` | `cmd/synergysync` rate-limited batch job over public Archidekt decklists, per-commander inclusion vs colour-identity baseline aggregates (`synergy_*` tables), `GET /api/synergy/commanders/{cardId}`, the Archidekt attribution requirement for any surface showing the data |
 
 `collections` and `social` are deferred; each has a one-paragraph stub LLD only.
 

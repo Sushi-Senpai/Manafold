@@ -11,7 +11,7 @@ import (
 )
 
 // Attribution every surface showing synergy data must carry — the link back
-// Archidekt's developer asked for (SYN-040, SYN-043).
+// Archidekt's developer asked for (SYN-040).
 const (
 	AttributionText = "Synergy data from public Archidekt decks"
 	AttributionURL  = "https://archidekt.com"
