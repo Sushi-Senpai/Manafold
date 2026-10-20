@@ -40,7 +40,7 @@ samples (SYN-050), and partner pairs (SYN-051).
 - backend/internal/synergy/ (`Service` — `Ensure`, `Status`, `Commander`, `Enqueue`; `RunWorker`, `Drain`, `runJob`, `planJob`; `sampleTarget`, `writeTarget`; `archidektClient`; `tallyDeck`, `sample`; `OptionsFromEnv`)
 - backend/internal/api/synergy.go (`RegisterSynergyRoutes`, `ensureCommanderSynergy`, `getCommanderSynergy`)
 - backend/cmd/api/main.go (starts `RunWorker`), backend/cmd/synergysync/main.go (manual CLI)
-- backend/internal/db/migrations/000006_create_synergy.up.sql / .down.sql
+- backend/internal/db/migrations/000009_create_synergy.up.sql / .down.sql
 - backend/internal/db/queries/synergy.sql
 - frontend/src/lib/synergy.ts (`ensureOnce`), `api.ensureCommanderSynergy` in frontend/src/lib/api.ts, the effect in the builder page
 
