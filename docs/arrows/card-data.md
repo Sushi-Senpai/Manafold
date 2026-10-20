@@ -46,7 +46,7 @@ read-time hierarchy walk, tag queries, `otag:` search, and a seed tag file
   dedicated `@spec` test asserts the absence.
 
 ### Code
-- backend/internal/cardsync/ (`Run`, bulk manifest fetch → `jsonl_download_uri`, `downloadToTemp` spool + `idleReader` deadline, `openBulkFile` gzip inflation, `streamJSONObjects` / `jsonObjectStream` incremental JSONL decode, `ingestOracle` per-row upsert, `copyUpsertPrints` `COPY` + set-based merge, derived fields; oracletags.go `ingestOracleTags` / `copyReplaceOracleTags` snapshot replace + closure rebuild)
+- backend/internal/cardsync/ (`Run`, bulk manifest fetch → `jsonl_download_uri`, `downloadToTemp` spool + `idleReader` deadline, `openBulkFile` gzip inflation, `streamJSONObjects` / `jsonObjectStream` incremental JSONL decode, `ingestOracle` per-row upsert, `copyUpsertPrints` `COPY` + set-based merge, derived fields; oracletags.go `ingestOracleTags` / `copyReplaceOracleTags` snapshot replace)
 - backend/internal/cardsearch/ (`Parse`, predicate → SQL via `Query.WhereSQL`)
 - backend/internal/api/cards.go (`registerCardRoutes`, search + autocomplete handlers)
 - backend/cmd/cardsync/main.go (`seedOptions` — CARDSYNC_SEED_PATH / CARDSYNC_ORACLE_PATH / CARDSYNC_DEFAULT_PATH / CARDSYNC_TAGS_PATH, CARD-040, CARD-066)
