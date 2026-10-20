@@ -1,0 +1,50 @@
+{
+    "tag": "R",
+    "tag_label": "Ruthless",
+    "estimated_bracket": 4,
+    "borderline": false,
+    "target_bracket": 4,
+    "game_changers": {
+        "count": 1,
+        "limit": null,
+        "cards": [
+            "Thassa's Oracle"
+        ]
+    },
+    "mass_land_denial": [
+        "Armageddon"
+    ],
+    "extra_turns": [
+        "Time Warp"
+    ],
+    "combos": [
+        {
+            "id": "742-1295",
+            "cards": [
+                "Demonic Consultation",
+                "Thassa's Oracle"
+            ],
+            "produces": [
+                "Win the game"
+            ],
+            "mana_needed": "{U}{U}{B}",
+            "speed": 4,
+            "relevant": true,
+            "borderline_relevant": true,
+            "definitely_two_card": true,
+            "arguably_two_card": true,
+            "mass_land_denial": false,
+            "extra_turn": false,
+            "lock": false,
+            "skip_turns": false,
+            "control_all_opponents": false,
+            "control_some_opponents": false,
+            "tag": "R",
+            "tag_label": "",
+            "min_bracket": 4,
+            "borderline": false
+        }
+    ],
+    "findings": [],
+    "combo_data_available": true
+}

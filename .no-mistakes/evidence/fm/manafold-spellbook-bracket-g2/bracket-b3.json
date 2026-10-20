@@ -1,0 +1,69 @@
+{
+    "tag": "R",
+    "tag_label": "Ruthless",
+    "estimated_bracket": 4,
+    "borderline": false,
+    "target_bracket": 3,
+    "game_changers": {
+        "count": 1,
+        "limit": 3,
+        "cards": [
+            "Thassa's Oracle"
+        ]
+    },
+    "mass_land_denial": [
+        "Armageddon"
+    ],
+    "extra_turns": [
+        "Time Warp"
+    ],
+    "combos": [
+        {
+            "id": "742-1295",
+            "cards": [
+                "Demonic Consultation",
+                "Thassa's Oracle"
+            ],
+            "produces": [
+                "Win the game"
+            ],
+            "mana_needed": "{U}{U}{B}",
+            "speed": 4,
+            "relevant": true,
+            "borderline_relevant": true,
+            "definitely_two_card": true,
+            "arguably_two_card": true,
+            "mass_land_denial": false,
+            "extra_turn": false,
+            "lock": false,
+            "skip_turns": false,
+            "control_all_opponents": false,
+            "control_some_opponents": false,
+            "tag": "R",
+            "tag_label": "",
+            "min_bracket": 4,
+            "borderline": false
+        }
+    ],
+    "findings": [
+        {
+            "severity": "warning",
+            "kind": "mass_land_denial",
+            "message": "Mass land denial is not expected below Bracket 4",
+            "cards": [
+                "Armageddon"
+            ]
+        },
+        {
+            "severity": "warning",
+            "kind": "combo",
+            "message": "Ruthless combo (Demonic Consultation + Thassa's Oracle) fits Bracket 4+",
+            "combo_id": "742-1295",
+            "cards": [
+                "Demonic Consultation",
+                "Thassa's Oracle"
+            ]
+        }
+    ],
+    "combo_data_available": true
+}
