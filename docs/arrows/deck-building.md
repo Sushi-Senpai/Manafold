@@ -28,7 +28,10 @@ archetype templates as one versioned definition (`internal/decktemplates`,
 served at `GET /api/deck-templates`), a swappable role classifier
 (`internal/deckroles`), a persisted `decks.archetype`, the
 `GET /decks/{id}/template-fit` evaluation with the Bracket 4 land relaxation,
-and the builder's "deck vs. target" panel (`DECK-100..109`).
+and the builder's "deck vs. target" panel (`DECK-100..109`). Bracket check (2026-10-19): the pure
+`internal/bracket` estimator over the Commander Spellbook combo mirror,
+`GET /decks/{id}/bracket`, the chosen-bracket validation (`DECK-120..128`), and a
+collapsible Bracket section beside the stats.
 
 ## References
 
@@ -39,7 +42,7 @@ and the builder's "deck vs. target" panel (`DECK-100..109`).
 - docs/intent/deck-building/deck-building-design.md
 
 ### EARS
-- docs/intent/deck-building/deck-building-specs.md (DECK-001..013, DECK-020..021, DECK-030..031, DECK-040..041, DECK-050..052, DECK-060, DECK-070..078, DECK-080..088, DECK-090..096, DECK-100..109)
+- docs/intent/deck-building/deck-building-specs.md (DECK-001..013, DECK-020..021, DECK-030..031, DECK-040..041, DECK-050..052, DECK-060, DECK-070..078, DECK-080..088, DECK-090..096, DECK-100..109, DECK-120..128)
 
 ### Tests
 - backend/internal/deckrules/deckrules_test.go — DECK-004, DECK-006, DECK-008, DECK-020, DECK-021 (partner identity, DFC identity, singleton_limit cards, basic lands, banlist, count)
@@ -50,6 +53,9 @@ and the builder's "deck vs. target" panel (`DECK-100..109`).
 - frontend/src/lib/searchNav.test.ts — DECK-082, DECK-083 (cursor movement + clamping; per-card in-deck quantity)
 - frontend/src/lib/cardActions.test.ts — DECK-091, DECK-092, DECK-093 (context-filtered action list; Alt-chord mapping; commander limited to Copy Card Name)
 - E2E (Chrome DevTools Protocol against headless Chromium, evidence in repo — see `docs/evidence/builder-ux-v2/README.md`) — DECK-070, DECK-076, DECK-081, DECK-087, DECK-090, DECK-094: three-column layout, type-grouped decklist, image panel updating on hover, click-to-add, menu opening only from `⋯` and closing on scroll
+- backend/internal/bracket/bracket_test.go — DECK-120..125 (tag cascade from Game Changers / mass land denial / extra turns, combo presence and quantity re-check, commander and library ingredients excluded, speed table, findings against each chosen bracket)
+- backend/internal/api/bracket_test.go — DECK-120..122, DECK-124..126 (`TestDeckBracket_EndToEnd` over a seeded combo, flags and a Game Changer; maybe-board cards ignored; non-owner 404), DECK-128 (`TestUpdateDeck_BracketValidation` — 1–5 accepted, other values 400, null clears, absent key leaves it)
+- frontend/src/lib/bracket.test.ts — DECK-127 (header summary, Game Changer count against its limit, finding order, Spellbook link)
 - backend/internal/api/stats_test.go — DECK-051, DECK-052 (curve / pips / sources / category roll-up end to end; non-owner 404)
 - backend/internal/api/imports_test.go — DECK-060 (bulk write in one transaction, board + category preserved)
 - backend/internal/api/auth_test.go — DECK-040, DECK-041 (anonymous deck create/read scoped to the token; claim reassigns and nulls the token)
@@ -69,11 +75,13 @@ and the builder's "deck vs. target" panel (`DECK-100..109`).
 - backend/internal/api/templates.go (`listDeckTemplates`, `getTemplateFit`)
 - backend/internal/db/migrations/000006_add_deck_archetype.up.sql / .down.sql
 - frontend/src/components/builder/TemplateFitPanel.tsx, frontend/src/lib/templateFit.ts
+- backend/internal/bracket/ (`Check` — Go port of Commander Spellbook's MIT-licensed `estimate_bracket`; `GameChangerLimit`)
+- backend/internal/api/bracket.go (`getDeckBracket`, `loadCombos`); backend/internal/api/decks.go (`parseBracket`, DECK-128)
 - backend/internal/api/stats.go (`getDeckStats` — assembles `CardStat`s over main+command, echoes `CategoryTargets`)
 - backend/internal/db/migrations/000003_create_decks.up.sql / .down.sql
 - frontend/src/app/(app)/decks/page.tsx, frontend/src/app/(app)/decks/[id]/page.tsx (builder page: mounts the active-card provider + arranges the three-column workspace; stats collapsible + import/export dialog)
-- frontend/src/components/builder/ (ActiveCardContext, CardImagePanel, CardFrame, HoverCardName, useActiveCardTrigger, CommanderPicker, CardSearch, SearchResultList, SearchResultRow, ManaSymbols, Decklist, DecklistRow, QuantityStepper, CardActionMenu, ToolsMenu, ImportExportDialog)
-- frontend/src/lib/cardPreview.ts, frontend/src/lib/menuPlacement.ts, frontend/src/lib/searchNav.ts, frontend/src/lib/cardActions.ts, frontend/src/lib/deck.ts, frontend/src/lib/deckstats.ts
+- frontend/src/components/builder/ (ActiveCardContext, CardImagePanel, CardFrame, HoverCardName, useActiveCardTrigger, CommanderPicker, CardSearch, SearchResultList, SearchResultRow, ManaSymbols, Decklist, DecklistRow, QuantityStepper, CardActionMenu, ToolsMenu, ImportExportDialog, BracketPanel)
+- frontend/src/lib/cardPreview.ts, frontend/src/lib/menuPlacement.ts, frontend/src/lib/searchNav.ts, frontend/src/lib/cardActions.ts, frontend/src/lib/deck.ts, frontend/src/lib/deckstats.ts, frontend/src/lib/bracket.ts
 - frontend/src/lib/api.ts (`setCardQuantity`, `moveCard`)
 
 ## Architecture
@@ -88,6 +96,11 @@ and the builder's "deck vs. target" panel (`DECK-100..109`).
    colour identity ⊆ deck identity, singleton with `singleton_limit` + basics,
    `main`+`command` count vs 100, banlist (`legalities` + overrides), commander
    shape + the five partner variants.
+3a. `internal/bracket` — pure `Check(Input) Report`: Game Changer count vs the
+   chosen bracket's limit, present Spellbook combos classified in-deck (speed,
+   two-card, relevance, tag), mass-land-denial / extra-turn cards, an estimate
+   from Spellbook's tag cascade (never 5), and findings (violation / warning /
+   notice) that never block a mutation.
 3. `internal/deckstats` — pure `Analyze`: type counts, non-land mana curve
    (`0`–`6`, `7+`), colour-pip demand vs colour sources, category roll-up over a
    known vocabulary + synonyms with free-text passthrough, `CategoryTargets`

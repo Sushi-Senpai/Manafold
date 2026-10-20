@@ -11,3 +11,10 @@ var TempFileDir = &tempFileDir
 // DownloadIdleTimeout is the bulk-download idle deadline (CARD-015), shortened
 // by tests that exercise a stalled connection.
 var DownloadIdleTimeout = &downloadIdleTimeout
+
+// Combo-pass knobs (CARD-052..054), shortened or tightened by spellbook tests.
+var (
+	SpellbookMaxVariantsBytes = &spellbookMaxVariantsBytes
+	SpellbookPageDelay        = &spellbookPageDelay
+	SpellbookMaxPages         = &spellbookMaxPages
+)

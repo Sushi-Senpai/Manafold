@@ -33,6 +33,12 @@ go run ./cmd/cardsync
 # the seed's Scryfall oracle tags load from seed/oracle_tags.json beside it:
 CARDSYNC_SEED_PATH=seed/cards.json go run ./cmd/cardsync
 
+# ...plus the matching Commander Spellbook combo seed for the bracket check:
+CARDSYNC_SEED_PATH=seed/cards.json \
+  CARDSYNC_SPELLBOOK_VARIANTS_PATH=seed/spellbook-variants.json \
+  CARDSYNC_SPELLBOOK_CARDS_PATH=seed/spellbook-cards.json \
+  go run ./cmd/cardsync
+
 # Frontend (from frontend/, after copying .env.example to .env.local)
 yarn dev
 ```
@@ -55,3 +61,8 @@ Cards). Manafold is unofficial Fan Content permitted under the Fan Content
 Policy. Not approved/endorsed by Wizards of the Coast. Portions of the materials
 used are property of Wizards of the Coast. ©Wizards of the Coast LLC. Card data
 and images © Wizards of the Coast, provided by Scryfall.
+
+Combo data (used by the deck bracket check) is mirrored daily from
+[Commander Spellbook](https://commanderspellbook.com)'s public export; the
+bracket classifier is a Go port of Commander Spellbook's MIT-licensed
+`estimate_bracket` logic.

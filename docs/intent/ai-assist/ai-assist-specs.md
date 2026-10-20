@@ -3,7 +3,8 @@
 `internal/ai` ships a real Anthropic client from M4. A build with AI disabled
 (`AI_ENABLED` unset) wires a stub `Assistant` whose call methods return
 `ErrNotConfigured`, and every AI endpoint answers `503`. Deck-health prose
-(AI-022) and the bracket estimate (AI-023) stay gaps for their milestones.
+(AI-022) stays a gap for its milestone; the bracket estimate (AI-023) is the
+deterministic bracket check owned by `deck-building`.
 
 ## Package & Configuration
 
@@ -37,7 +38,8 @@
 ## Deferred
 
 - [ ] **AI-022**: When a client requests a deck-health report (M5), the system shall compute the deterministic analysis (curve, colour pips vs land sources, functional-category counts vs Commander rules-of-thumb) and return it, with an optional language-model prose summary and prioritized fix list layered on top that, if it fails, does not prevent the deterministic report from returning.
-- [ ] **AI-023**: When a client requests a bracket estimate (M6), the system shall combine the Game-Changers count, a two-card-combo match against Commander Spellbook, and extra-turn / mass-land-denial detection into a 1–5 estimate, with a language-model explanation layered on top.
+- [x] **AI-023**: The bracket estimate shall be decided by the deterministic `deck-building` bracket check (`DECK-120`..`DECK-126`: Game Changer count, Commander Spellbook combo match, mass-land-denial and extra-turn detection), never by the language model; any model output about a deck's bracket is explanation layered on top of that result.
+- [D] **AI-025**: When a client requests a bracket explanation, the system shall layer a language-model explanation over the deterministic bracket report that, if it fails, does not prevent the report from returning.
 - [D] **AI-040**: The system shall use EDHREC high-synergy data for a commander/theme as a recommendation input, pending resolution of EDHREC's data-access approach and Terms of Service.
 - [D] **AI-041**: When a client requests a generated deck under explicit constraints (budget ceiling, no infinite combos, no tutors, a tribe or theme lock, a free-text house rule), the system shall generate and validate the deck against those constraints in addition to Commander legality.
 - [D] **AI-042**: When producing a deck-health report, the system shall rank the deck's current cards by synergy/impact and surface the lowest as cut candidates, each with a suggested replacement.

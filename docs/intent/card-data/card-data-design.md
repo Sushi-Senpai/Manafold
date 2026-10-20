@@ -15,6 +15,11 @@ fallback on card add (that fallback is designed here, implemented no earlier tha
 M2). This is what makes deck validation a SQL join rather than a rate-limited API
 call, and it is a direct expression of the *own the card data* tenet.
 
+The same discipline covers combo data: Commander Spellbook's combo export is
+mirrored at sync time into `combos` / `combo_cards`, keyed to Scryfall
+`oracle_id`s, so the bracket check is a join too (see *Commander Spellbook Combo
+Mirror*).
+
 The model separates the **Oracle card** (rules-relevant, one row per Scryfall
 `oracle_id` — the unit legality is checked against) from the **printing**
 (art/set/price, one row per Scryfall `id` — the unit display uses).
@@ -89,7 +94,8 @@ re-sync is idempotent.
 
 ### `sync_runs`
 
-`id`, `bulk_type` (`oracle_cards` / `default_cards` / `oracle_tags` / `rulings`),
+`id`, `bulk_type` (`oracle_cards` / `default_cards` / `oracle_tags` / `rulings`,
+plus `spellbook_variants` / `spellbook_cards` for the combo pass),
 `scryfall_updated_at` timestamptz, `rows_upserted` int, `status`
 (`running` / `succeeded` / `failed`), `started_at`, `finished_at` null,
 `error` text null.
@@ -291,6 +297,127 @@ the M2 single-printing fallback) is held under ~2 req/s.
   names a distinct commander identity (rare "partner" wording); defaults to a
   copy of `color_identity`.
 
+## Commander Spellbook Combo Mirror
+
+Bracket checking (`deck-building`'s `internal/bracket`) needs to know which
+combos a deck contains, how much mana each needs, and what it produces.
+[Commander Spellbook](https://commanderspellbook.com) is the community combo
+database (MIT-licensed code, no published data restrictions, the source behind
+EDHREC's combo feature). It publishes a daily `variants.json` export of every
+combo *variant*. Manafold mirrors it the same way it mirrors Scryfall: at sync
+time, into its own tables, keyed to Scryfall `oracle_id`s so a deck's cards join
+straight onto it. No Spellbook endpoint — including its `estimate-bracket`
+classifier — is ever called on a client request path.
+
+The mirror stores the classifier's *inputs* verbatim (ingredients, zones,
+produced features with their status, mana needed); the classification itself
+(speed, two-card counts, relevance, the bracket tag) lives in one place,
+`internal/bracket`, so changing the rules never needs a resync.
+
+### Schema
+
+Migration `create_combos` creates `combos`, `combo_cards`, and
+`spellbook_card_flags`. None of them has a foreign key to `cards`: the join is on
+`scryfall_oracle_id` at query time, so the combo pass can run independently of
+the Scryfall passes and a combo naming a card the mirror lacks is harmless (it
+can never match a deck).
+
+#### `combos`
+
+| column | type | notes |
+|---|---|---|
+| `id` | text pk | Spellbook variant id (e.g. `742-1295`); also the combo's page slug |
+| `identity` | text not null | Spellbook's colour-identity letters (`UB`, `C` for colourless) |
+| `mana_needed` | text not null default `''` | Spellbook's mana string (`{U}{U}{B}`) |
+| `mana_value_needed` | int not null | Spellbook `manaValueNeeded` — the speed heuristic's input |
+| `has_notable_prerequisites` | bool not null | Spellbook `notablePrerequisites` is non-empty |
+| `produces` | jsonb not null | every produced feature as `[{name, status}]`; `status` is Spellbook's feature status (`S` standalone, `C` contextual, `H` helper, `HU` / `PU` utility) |
+| `bracket_tag` | text not null | Spellbook's published per-combo tag (`E` / `C` / `O` / `P` / `S` / `R` / `B`) — kept for later bracket-filtered combo browsing; the deck check computes its own in-deck tag |
+| `popularity` | int null | Spellbook `popularity` (decks on EDHREC using it) |
+
+#### `combo_cards`
+
+| column | type | notes |
+|---|---|---|
+| `combo_id` | text fk → combos on delete cascade | |
+| `scryfall_oracle_id` | uuid not null | Spellbook `card.oracleId` |
+| `quantity` | int not null | copies the combo needs (almost always 1) |
+| `zone_locations` | text not null | Spellbook zone letters the card starts in (`B` battlefield, `H` hand, `G` graveyard, `E` exile, `L` library, `C` command zone), concatenated |
+| `must_be_commander` | bool not null | |
+
+Primary key `(combo_id, scryfall_oracle_id)`; btree on `scryfall_oracle_id` (the
+deck-match probe).
+
+#### `spellbook_card_flags`
+
+`scryfall_oracle_id` uuid pk, `card_name` text, `mass_land_denial` bool,
+`extra_turn` bool. Spellbook's per-card mass-land-denial and extra-turn flags;
+only cards carrying at least one flag are stored.
+
+Footprint: ~107 k combos and ~380 k `combo_cards` rows, roughly 100 MB with
+indexes — the bulk of it the `produces` feature lists and the ingredient rows.
+Spellbook's long step-by-step `description` is *not* stored; the builder links to
+the combo's Spellbook page instead.
+
+### Combo pass (`cardsync.RunSpellbook`)
+
+`cmd/cardsync` runs `RunSpellbook` after the Scryfall passes succeed, so the
+daily cron refreshes both. A Spellbook failure exits the job non-zero (the
+Scryfall data it already committed stays). `SpellbookOptions.VariantsPath` /
+`CardsPath` replace the downloads with local files; `cmd/cardsync` sets them
+from `CARDSYNC_SPELLBOOK_VARIANTS_PATH` / `CARDSYNC_SPELLBOOK_CARDS_PATH`. A
+seed run (`CARDSYNC_SEED_PATH` set) never touches the network: without the
+Spellbook paths it skips the combo pass. `backend/seed/spellbook-variants.json`
+and `backend/seed/spellbook-cards.json` are the checked-in dev / CI combo seed —
+real Spellbook records, trimmed to the fields Manafold reads, over cards in
+`backend/seed/cards.json` (`CARD-055`).
+
+**Variants.**
+
+1. `GET https://json.commanderspellbook.com/variants.json` — a single
+   ~700 MB uncompressed JSON object `{timestamp, version, variants: [...],
+   aliases}`. It is spooled to a temp file exactly like a Scryfall export
+   (same etiquette headers, 429 back-off, response-header timeout, idle
+   deadline, and total deadline) and additionally capped at a maximum size, so
+   a runaway response fails rather than filling the disk. The temp file is
+   removed on every exit path.
+2. A `sync_runs` row (`bulk_type = 'spellbook_variants'`) is opened; the
+   export's `timestamp` is recorded as its source `updated_at` when the run
+   finishes.
+3. The file is decoded token by token: the top-level object is walked key by
+   key and the `variants` array is streamed one element at a time, so the
+   export is never held in memory whole. A variant is **eligible** when its
+   `status` is `OK` or `E` (example), `legalities.commander` is true, it has at
+   least one `uses` card, every `uses` card has a parseable `oracleId`, and its
+   `requires` list is empty. Variants that need *templates* ("any mana dork")
+   are skipped and counted: matching a template needs Spellbook's
+   template-to-card resolution (Scryfall queries), which the mirror cannot
+   evaluate. They are ~6 % of commander-legal variants.
+4. Every eligible variant is `COPY`d into a session `TEMP` staging table — one
+   row per variant, its ingredients carried as a jsonb array — then, in the
+   same transaction, `combos` is emptied and refilled from staging and
+   `combo_cards` is filled by expanding each staged ingredient array
+   (`jsonb_to_recordset`), summing any repeated card within one variant. The
+   pass is a **full replace**: a combo Spellbook delisted disappears, and
+   re-running the same export yields identical rows.
+5. If the export held **no** eligible variant, the transaction is rolled back
+   and the run fails — a truncated or reshaped export never wipes a good
+   mirror. Any decode or database error likewise rolls back, leaving the
+   previous combos in place, and marks the `sync_runs` row `failed`.
+
+**Card flags.** Spellbook publishes no card export, so the flags come from its
+paginated `GET https://backend.commanderspellbook.com/cards/?limit=100` API
+(~330 pages). The pass follows each page's `next` link — only while it stays on
+`backend.commanderspellbook.com` — sleeping a fixed interval between requests,
+bounding each request with a timeout, and stopping at a hard page cap. Cards
+with `massLandDenial` or `extraTurn` set are collected (a few hundred), then
+`spellbook_card_flags` is replaced in one transaction under a `sync_runs` row
+(`bulk_type = 'spellbook_cards'`). A crawl that saw no cards at all fails
+without touching the table. Because the flags change rarely and the crawl is
+hundreds of requests, it runs **at most weekly**: the pass is skipped while the
+latest succeeded `spellbook_cards` run is under seven days old. A local
+`CardsPath` file (one API page: `{results: [...]}`) is always ingested.
+
 ## HTTP API
 
 | Endpoint | Method | Query | Response |
@@ -349,6 +476,11 @@ plausible-but-wrong query silently returns the wrong cards.
 | Tag staging | One `COPY` of tag rows with their cleaned taggings as a `jsonb` column, exploded in SQL with `jsonb_to_recordset` | Two staging tables (tags, taggings) | A single streaming pass over the export can feed only one `COPY`; holding all taggings in Go to feed a second would buffer the export. Validating each `oracle_id` in Go first means the SQL cast to `uuid` can never fail the merge. |
 | Tag kill switch | A Manafold-owned `oracle_tags.disabled` column the sync never writes, honoured by every tag read; a tag-or-descendant read matches only through a path of enabled tags | Delete the tag locally; drop every descendant of a disabled tag | Scryfall asks downstream apps to be able to switch off a community tag; a local delete would be undone by the next sync. Dropping every descendant would hide a tag still reachable through another, enabled parent — a disabled tag should be ignored, not take its siblings' children with it. |
 | Tag keying on cards | `card_oracle_tags.card_id` → `cards.id`, resolved by joining on `scryfall_oracle_id` at sync | Key on the raw Scryfall `oracle_id` | Every reader already joins from `cards`; an FK with cascade keeps the table clean and mirrors `card_prints`. Taggings on objects the Oracle export omits are counted as skipped, like orphan printings. |
+| Combo data source | Mirror Commander Spellbook's daily `variants.json` export into `combos` / `combo_cards` at sync time | Call Spellbook's `POST /estimate-bracket` live per request; page the `/variants/` API | A live call puts an external dependency on every bracket check and every future wizard turn, and contradicts *own the card data*. The export is one bulk GET a day (it downloads in seconds); paging ~115 k variants through the API would be thousands of requests. |
+| What the combo mirror stores | Classifier inputs verbatim (ingredients + zones, produced features + status, mana needed); classification in `internal/bracket` | Precompute speed / two-card / relevance flags at ingest | One owner for the bracket rules; changing them never needs a resync, and `card-data` does not depend on a `deck-building` package. |
+| Template-bearing variants | Skip and count them at ingest | Store them and match templates heuristically | Matching "any mana dork" needs Spellbook's template-to-card resolution, which the export does not carry and the mirror cannot evaluate; they are ~6 % of commander-legal variants. |
+| Combo refresh shape | Full replace inside one transaction; an export with zero eligible variants fails and rolls back | Upsert + tombstone; truncate outside a transaction | A full replace makes delisted combos disappear and the pass idempotent; one transaction means readers see the old mirror until the new one commits, and the zero-row guard stops a truncated export wiping it. |
+| Spellbook card flags (MLD / extra turn) | Weekly crawl of Spellbook's paginated `/cards/` API into `spellbook_card_flags` | Read the `mass-land-denial` / `extra-turn` Scryfall `oracle_tags` already in the mirror | Spellbook derives these flags from the same Scryfall tags, but its `/cards/` data is the list its own classifier uses, so the bracket check agrees with Spellbook's published brackets and the tag hierarchy walk needs no bracket-specific rules. Weekly, because the flags change rarely and the crawl is ~330 requests. Moving to the mirrored tags is a deferred follow-up. |
 | Full-text index | Postgres `tsvector` column (`oracle_search`) + GIN | `pg_trgm` only; an external search engine | `tsvector` handles the Oracle-text predicates natively at sub-10 ms; `pg_trgm` additionally backs the name prefix/`ILIKE` paths. No external dependency. |
 
 ## Open Questions & Future Decisions
@@ -371,10 +503,18 @@ plausible-but-wrong query silently returns the wrong cards.
    `COPY` + set-based merge treatment `card_prints` uses. (The `card_prints`
    batching that this item originally called for has landed.)
 
+5. **Switch MLD / extra-turn flags to Scryfall `oracle_tags`** — the same
+   underlying tags are now mirrored (`CARD-010`), so the weekly crawl of
+   Spellbook's API could be dropped once the bracket check reads the tags.
+
 ### Gaps
-5. **Prices go stale between daily syncs** — acceptable; prices are advisory and
+6. **Template-bearing combos are not matched** — ~6 % of Spellbook's
+   commander-legal variants need a template ingredient ("a mana dork", "a
+   sacrifice outlet") and are skipped at ingest, so a deck assembling one is
+   not flagged.
+7. **Prices go stale between daily syncs** — acceptable; prices are advisory and
    the daily cadence matches Scryfall's own regeneration.
-6. **A `429` during a bulk stream** — retried once after a 30 s back-off; a
+8. **A `429` during a bulk stream** — retried once after a 30 s back-off; a
    second failure fails the `sync_runs` row and the job exits non-zero for the
    cron to surface. No partial-resume of a half-streamed file in v1.
 
@@ -386,12 +526,23 @@ plausible-but-wrong query silently returns the wrong cards.
   `backend/internal/db/migrations/000007_create_oracle_tags.up.sql`,
   `backend/internal/db/queries/cards.sql`, `backend/internal/db/queries/oracle_tags.sql`
 - Seed: `backend/seed/cards.json` (dev / CI card seed, `CARD-040`),
-  `backend/seed/oracle_tags.json` (its oracle tags, `CARD-066`)
+  `backend/seed/oracle_tags.json` (its oracle tags, `CARD-066`);
+  `backend/seed/spellbook-variants.json` + `backend/seed/spellbook-cards.json`
+  (dev / CI combo seed, `CARD-055`)
+- Combo mirror: `backend/internal/cardsync/spellbook.go` (`RunSpellbook`),
+  `backend/internal/db/migrations/000008_create_combos.up.sql`,
+  `backend/internal/db/queries/combos.sql`
 - Test fixtures: `backend/internal/cardsync/testdata/`; seed test
   `backend/internal/cardsync/seed_test.go`
 - Cross-segment: `deck-building`'s validator reads `cards.color_identity`,
   `cards.singleton_limit`, `cards.can_be_commander`, `cards.legalities`, and
-  `banlist_overrides` (`DECK-004` / `DECK-006` / `DECK-008`). `import-export`
+  `banlist_overrides` (`DECK-004` / `DECK-006` / `DECK-008`); its bracket
+  check reads `cards.is_game_changer`, `combos`, `combo_cards`, and
+  `spellbook_card_flags` (`DECK-120`..). `import-export`
   (`PORT`) and `ai-assist` (`AI`) resolve card names against `cards`.
+- Commander Spellbook: <https://commanderspellbook.com>, export
+  <https://json.commanderspellbook.com/variants.json>, API
+  <https://backend.commanderspellbook.com/>, source (MIT)
+  <https://github.com/SpaceCowMedia/commander-spellbook-backend>.
 - Scryfall: <https://scryfall.com/docs/api/bulk-data>, <https://scryfall.com/docs/api/tags>,
   <https://scryfall.com/docs/api/rate-limits>, <https://scryfall.com/docs/terms>.

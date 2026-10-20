@@ -28,7 +28,10 @@ Scryfall's card endpoints are never called on a client request path — only by
 the sync job and by a rare explicit "this printing isn't mirrored yet" fallback
 on card add. This is what makes Manafold's core operation — joining a deck's
 cards against their colour identity, singleton limits, and legality — a database
-query rather than a rate-limited third-party API call.
+query rather than a rate-limited third-party API call. Combo data follows the
+same rule: Commander Spellbook's daily combo export is mirrored by the same job,
+so bracket checking is a join over Manafold's own tables, never a call to
+Spellbook at request time.
 
 ### Rules are structural
 
@@ -136,7 +139,7 @@ flowchart TB
     end
 
     subgraph card["card-data (CARD)"]
-        sync["Scryfall bulk-data sync<br/>+ sync_runs audit"]
+        sync["Scryfall bulk-data sync<br/>+ Commander Spellbook combo mirror<br/>+ sync_runs audit"]
         mirror["cards / card_prints / card_rulings<br/>color_identity stored verbatim"]
         search["GET /api/cards/search<br/>GET /api/cards/autocomplete"]
     end
@@ -146,6 +149,7 @@ flowchart TB
         rules["internal/deckrules<br/>identity · singleton · count · banlist · shape"]
         stats["internal/deckstats<br/>curve · pips vs sources · category roll-up"]
         templates["internal/decktemplates + deckroles<br/>archetype target ranges · role classifier"]
+        bracket["internal/bracket<br/>Game Changers · combos · MLD · extra turns"]
         share["read-only public deck view"]
     end
 
@@ -180,6 +184,16 @@ Dependency DAG (`docs/arrows/index.yaml` is authoritative):
 | `ai-assist` | `card-data`, `deck-building` | — |
 
 ## Key Design Decisions
+
+- **Bracket checking is deterministic and local: mirror Commander Spellbook's
+  combo export, port its MIT bracket classifier to Go.** The Game Changer count
+  (`cards.is_game_changer`, 0 / ≤ 3 / unlimited by bracket) is the one hard
+  rule; combos, mass land denial, and extra turns surface as warnings the
+  player decides on, matching Wizards' turn-count framing of the brackets.
+  *Alternatives:* call Spellbook's `estimate-bracket` endpoint per request
+  (rejected — an external dependency on every check and every future wizard
+  turn); have the model judge the bracket (rejected — *statistics and rules
+  decide*).
 
 - **Mirror Scryfall bulk data into Postgres; sync daily; never crawl the card
   endpoints at request time.** *Alternatives:* a pure live Scryfall API
@@ -279,7 +293,7 @@ Milestones after M1 (the segment map does not change; these add specs and code):
 | **M3** | Real email + password auth (argon2id) + server-side sessions; deck ownership on real users; anonymous drafts + claim-on-sign-in; the read-only public deck URL | `account-access`, `deck-building` |
 | **M4** | AI v1: "suggest & explain" (candidate pool + Claude call + `search_cards` tool + validate-every-card gate) and single-card fit blurbs | `ai-assist` |
 | **M5** | Deterministic deck-health report vs Commander heuristics, with an LLM prose summary + prioritized fixes | `deck-building`, `ai-assist` |
-| **M6** | Bracket / power-level estimate: Game-Changers count + Commander Spellbook two-card-combo match + extra-turn / mass-land-denial detection | `ai-assist`, `card-data` |
+| **M6** | Bracket / power-level estimate: Game-Changers count + Commander Spellbook two-card-combo match + extra-turn / mass-land-denial detection, deterministic in `internal/bracket` over a local Spellbook mirror; a model explanation on top later | `card-data`, `deck-building`, `ai-assist` |
 | **M7** | Budget-swap suggestions; deck version history | `ai-assist`, `deck-building` |
 | **M8** | Collection tracking + "play with owned"; "build a shell from a commander" | `collections`, `ai-assist` |
 | **M9** | Playtester / goldfish / sample hand; combo detection surfaced inline | new segment; `ai-assist` |
@@ -336,4 +350,9 @@ Node's built-in test runner.
 - Scryfall API and bulk data: <https://scryfall.com/docs/api>,
   <https://scryfall.com/docs/api/bulk-data>, <https://scryfall.com/docs/terms>.
 - Official Commander rules: <https://mtgcommander.net/index.php/rules/>.
+- Commander Brackets and the Game Changers list:
+  <https://magic.wizards.com/en/formats/commander>.
+- Commander Spellbook (combo data; MIT source):
+  <https://commanderspellbook.com>,
+  <https://github.com/SpaceCowMedia/commander-spellbook-backend>.
 - GitHub: `github.com/Sushi-Senpai/Manafold` (public).

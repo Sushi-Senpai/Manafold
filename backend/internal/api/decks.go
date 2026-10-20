@@ -366,7 +366,31 @@ func (a *API) getDeck(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ld.detailJSON())
 }
 
-// @spec DECK-011, DECK-103
+// bracketUpdate is a parsed `bracket` field of a deck update.
+type bracketUpdate struct {
+	set   bool        // the key was present
+	value pgtype.Int4 // invalid (NULL) when the key was an explicit null
+}
+
+// parseBracket accepts an absent key, null (clears the chosen bracket), or an
+// integer from 1 to 5; anything else is an error (DECK-128).
+//
+// @spec DECK-128
+func parseBracket(raw json.RawMessage) (bracketUpdate, error) {
+	if len(raw) == 0 {
+		return bracketUpdate{}, nil
+	}
+	if string(raw) == "null" {
+		return bracketUpdate{set: true}, nil
+	}
+	var n int32
+	if err := json.Unmarshal(raw, &n); err != nil || n < 1 || n > 5 {
+		return bracketUpdate{}, errors.New("bracket must be an integer from 1 to 5, or null")
+	}
+	return bracketUpdate{set: true, value: pgtype.Int4{Int32: n, Valid: true}}, nil
+}
+
+// @spec DECK-011, DECK-103, DECK-128
 func (a *API) updateDeck(w http.ResponseWriter, r *http.Request) {
 	deck, ok := a.deckForOwner(w, r)
 	if !ok {
@@ -376,11 +400,18 @@ func (a *API) updateDeck(w http.ResponseWriter, r *http.Request) {
 		Name        *string `json:"name"`
 		Description *string `json:"description"`
 		IsPublic    *bool   `json:"is_public"`
-		Bracket     *int32  `json:"bracket"`
-		Archetype   *string `json:"archetype"`
+		// Bracket is raw so an absent key (leave unchanged) is told apart from
+		// an explicit null (clear the chosen bracket).
+		Bracket   json.RawMessage `json:"bracket"`
+		Archetype *string         `json:"archetype"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	bracket, bracketErr := parseBracket(body.Bracket)
+	if bracketErr != nil {
+		writeError(w, http.StatusBadRequest, bracketErr.Error())
 		return
 	}
 
@@ -404,8 +435,8 @@ func (a *API) updateDeck(w http.ResponseWriter, r *http.Request) {
 	if body.IsPublic != nil {
 		params.IsPublic = *body.IsPublic
 	}
-	if body.Bracket != nil {
-		params.Bracket = pgtype.Int4{Int32: *body.Bracket, Valid: true}
+	if bracket.set {
+		params.Bracket = bracket.value
 	}
 	// archetype: a known template key sets it, "" clears it, anything else is
 	// rejected before any write (DECK-103).

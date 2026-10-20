@@ -25,6 +25,8 @@ type Querier interface {
 	// number of drafts moved.
 	// @spec DECK-041, ACCT-021
 	ClaimAnonDecks(ctx context.Context, arg ClaimAnonDecksParams) (int64, error)
+	// @spec DECK-126
+	ComboDataAvailable(ctx context.Context) (bool, error)
 	// Calls this user has already made of one feature today. Wrapped in COALESCE so
 	// a user with no row yet returns 0 rather than no rows.
 	// @spec AI-031
@@ -43,6 +45,8 @@ type Querier interface {
 	// @spec CARD-001, CARD-007
 	CreateSyncRun(ctx context.Context, arg CreateSyncRunParams) (SyncRun, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// @spec CARD-053
+	DeleteAllSpellbookCardFlags(ctx context.Context) error
 	// The DELETE is joined to decks filtered by owner, so removing a card from a
 	// deck the caller does not own matches no row; the handler maps zero rows
 	// affected to 404 (DECK-009).
@@ -56,6 +60,10 @@ type Querier interface {
 	// @spec CARD-065, CARD-062, CARD-063
 	FilterCardIDsByOracleTag(ctx context.Context, arg FilterCardIDsByOracleTagParams) ([]pgtype.UUID, error)
 	FinishSyncRun(ctx context.Context, arg FinishSyncRunParams) error
+	// Commander Spellbook combo mirror (card-data, CARD-050..054) and the reads the
+	// deck bracket check makes over it (deck-building, DECK-122, DECK-124, DECK-126).
+	// @spec CARD-050
+	FinishSyncRunWithSource(ctx context.Context, arg FinishSyncRunWithSourceParams) error
 	GetCardByID(ctx context.Context, id pgtype.UUID) (Card, error)
 	GetCardByScryfallOracleID(ctx context.Context, scryfallOracleID pgtype.UUID) (Card, error)
 	GetCardsByIDs(ctx context.Context, ids []pgtype.UUID) ([]Card, error)
@@ -78,6 +86,10 @@ type Querier interface {
 	GetSession(ctx context.Context, id pgtype.UUID) (Session, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	// @spec CARD-053
+	InsertSpellbookCardFlag(ctx context.Context, arg InsertSpellbookCardFlagParams) error
+	// @spec CARD-054
+	LatestSucceededSyncRun(ctx context.Context, bulkType string) (SyncRun, error)
 	LatestSyncRun(ctx context.Context, bulkType string) (SyncRun, error)
 	// @spec CARD-030
 	ListBanlistOverrides(ctx context.Context) ([]ListBanlistOverridesRow, error)
@@ -86,6 +98,15 @@ type Querier interface {
 	// means no filter), best (lowest edhrec_rank) first.
 	// @spec CARD-065, CARD-062, CARD-063
 	ListCardsByOracleTag(ctx context.Context, arg ListCardsByOracleTagParams) ([]Card, error)
+	// @spec DECK-122
+	ListComboCards(ctx context.Context, comboIds []string) ([]ComboCard, error)
+	// Combos every one of whose card ingredients is among the given oracle ids —
+	// the deck's main + command cards. Candidates are found through the
+	// scryfall_oracle_id index, then any combo needing a card outside the set is
+	// discarded. Quantities are re-checked by internal/bracket (DECK-122).
+	//
+	// @spec DECK-122
+	ListCombosWithin(ctx context.Context, oracleIds []pgtype.UUID) ([]ListCombosWithinRow, error)
 	// @spec DECK-007
 	ListDeckCardEntries(ctx context.Context, deckID pgtype.UUID) ([]ListDeckCardEntriesRow, error)
 	ListDecksForOwner(ctx context.Context, arg ListDecksForOwnerParams) ([]Deck, error)
@@ -95,6 +116,8 @@ type Querier interface {
 	// A card's directly applied, enabled oracle tags.
 	// @spec CARD-065, CARD-063
 	ListOracleTagsForCard(ctx context.Context, cardID pgtype.UUID) ([]ListOracleTagsForCardRow, error)
+	// @spec DECK-124
+	ListSpellbookCardFlags(ctx context.Context, oracleIds []pgtype.UUID) ([]SpellbookCardFlag, error)
 	// The AI "suggest & explain" candidate pool: real cards ranked by edhrec_rank,
 	// inside the deck's colour identity, not banned in Commander, and not already in
 	// the deck (exclude_ids carries the deck's card ids plus its commander/partner).

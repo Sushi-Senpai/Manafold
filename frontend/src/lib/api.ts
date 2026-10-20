@@ -311,6 +311,45 @@ export type TemplateFit = {
   rows: TemplateRowFit[];
 };
 
+// ---- deck bracket check --------------------------------------------
+
+export type BracketFinding = {
+  severity: "violation" | "warning" | "notice";
+  kind: "game_changers" | "combo" | "mass_land_denial" | "extra_turn";
+  message: string;
+  combo_id?: string;
+  cards?: string[];
+};
+
+export type BracketCombo = {
+  id: string;
+  cards: string[];
+  produces: string[];
+  mana_needed: string;
+  speed: number;
+  relevant: boolean;
+  definitely_two_card: boolean;
+  arguably_two_card: boolean;
+  tag: string;
+  tag_label: string;
+  min_bracket: number;
+  borderline: boolean;
+};
+
+export type BracketReport = {
+  tag: string;
+  tag_label: string;
+  estimated_bracket: number;
+  borderline: boolean;
+  target_bracket: number | null;
+  game_changers: { count: number; limit: number | null; cards: string[] };
+  mass_land_denial: string[];
+  extra_turns: string[];
+  combos: BracketCombo[];
+  findings: BracketFinding[];
+  combo_data_available: boolean;
+};
+
 export const api = {
   // ---- account-access ----
   register: async (email: string, password: string) => {
@@ -404,6 +443,7 @@ export const api = {
   getDeckStats: (id: string) => request<DeckStats>(`/api/decks/${id}/stats`),
   getDeckTemplates: () => request<DeckTemplates>("/api/deck-templates"),
   getTemplateFit: (id: string) => request<TemplateFit>(`/api/decks/${id}/template-fit`),
+  getDeckBracket: (id: string) => request<BracketReport>(`/api/decks/${id}/bracket`),
 
   // ---- ai-assist ----
   suggestDeck: (id: string) =>

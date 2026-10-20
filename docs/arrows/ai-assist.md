@@ -1,7 +1,8 @@
 # Arrow: ai-assist
 
 The AI layer — Anthropic Claude wrapper, the `search_cards` tool over the mirror,
-suggest-&-explain, single-card fit blurbs, deck-health prose, bracket estimate,
+suggest-&-explain, single-card fit blurbs, deck-health prose, model prose over
+the bracket report,
 and the validate-every-returned-card gate.
 
 ## Status
@@ -12,8 +13,9 @@ suggest, `claude-haiku-4-5` for explain) plus a `Disabled()` stub used when
 `AI_ENABLED` is unset. `POST /api/decks/{id}/suggestions` and
 `POST /api/decks/{id}/cards/{cardId}/explain` are live behind the
 anti-hallucination gate, per-user daily quotas, and a global monthly spend
-ceiling. Deck-health prose (AI-022, M5) and the bracket estimate (AI-023, M6)
-remain gaps.
+ceiling. Deck-health prose (AI-022, M5) remains a gap. The bracket estimate (AI-023)
+is the deterministic `deck-building` bracket check (2026-10-19); a model-written
+explanation of it (AI-025) is deferred.
 
 ## References
 
@@ -24,7 +26,7 @@ remain gaps.
 - docs/intent/ai-assist/ai-assist-design.md
 
 ### EARS
-- docs/intent/ai-assist/ai-assist-specs.md (AI-001..004, AI-010..013, AI-020..021, AI-024, AI-030..035; deferred AI-022..023, AI-040..043)
+- docs/intent/ai-assist/ai-assist-specs.md (AI-001..004, AI-010..013, AI-020..021, AI-024, AI-030..035; deferred AI-022, AI-025, AI-040..043; AI-023 closed by deck-building)
 
 ### Tests
 - backend/internal/ai/ai_test.go — AI-001 (stub returns not-configured), AI-004 (per-feature model ids), cost estimate
@@ -68,10 +70,11 @@ card, never surface an illegal one.
 | Anti-hallucination gate | AI-010..013 | 4 | 0 | 0 |
 | Features | AI-020..021, AI-024 | 3 | 0 | 0 |
 | Cost control | AI-030..035 | 6 | 0 | 0 |
-| Deck-health / bracket | AI-022..023 | 0 | 0 | 2 (M5–M6) |
+| Deck-health | AI-022 | 0 | 0 | 1 (M5) |
+| Bracket | AI-023, AI-025 | 1 | 1 | 0 |
 | EDHREC / constrained gen / cut suggestions / embeddings | AI-040..043 | 0 | 4 | 0 |
 
-**Summary:** 17 of 23 implemented; 2 gaps (M5–M6); 4 deferred.
+**Summary:** 18 of 24 implemented; 1 gap (M5); 5 deferred.
 
 ## Key Findings
 
@@ -87,7 +90,7 @@ card, never surface an illegal one.
 ## Work Required
 
 ### Should Fix
-1. Deck-health report (AI-022, M5) and bracket estimate (AI-023, M6).
+1. Deck-health report (AI-022, M5).
 
 ### Nice to Have
 1. Reserve-then-call quota semantics to close the check-then-act race.

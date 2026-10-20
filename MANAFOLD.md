@@ -527,3 +527,23 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   `backend/seed/oracle_tags.json` keeps seed runs offline (`CARD-066`). Synergy
   data will come from public Archidekt decklists (EDHREC has no open API) — a
   separate piece of groundwork.
+
+- **2026-10-19** — Commander Spellbook combo mirror + deterministic bracket check
+  (own branch / PR; groundwork for the interactive deck-building wizard).
+  `cmd/cardsync` gained a combo pass (`cardsync.RunSpellbook`, `CARD-050`..`056`):
+  it spools Spellbook's daily `variants.json` export (~700 MB) to a temp file,
+  streams it into `combos` / `combo_cards` (a `COPY` into a `TEMP` staging table,
+  then one transactional full replace; template-bearing variants are skipped),
+  and weekly crawls Spellbook's `/cards/` API for mass-land-denial / extra-turn
+  flags into `spellbook_card_flags`. A new pure package `internal/bracket` ports
+  Spellbook's MIT-licensed `estimate_bracket` classifier to Go (`DECK-120`..`125`)
+  so no Spellbook endpoint is ever called on a request path; the Game Changer
+  count uses `cards.is_game_changer`. `GET /api/decks/{id}/bracket` serves the
+  report and the builder shows it in a collapsible "Bracket" section beside the
+  deck stats, with a chosen-bracket selector (`PATCH /api/decks/{id}` now accepts
+  `bracket` 1–5 or `null`, `DECK-128`). Only the Game Changer count is a hard
+  limit; combos, mass land denial and extra turns are warnings the user decides,
+  and no deck mutation is ever rejected. This closes `AI-023`; a model-written
+  bracket explanation stays deferred (`AI-025`). A small real-record seed
+  (`backend/seed/spellbook-*.json`, plus seven cards added to `seed/cards.json`)
+  covers local runs and CI.
