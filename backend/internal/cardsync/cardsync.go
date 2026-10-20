@@ -15,8 +15,8 @@
 // (CARD-012). Oracle Cards upserts one row at a time; Default Cards is
 // bulk-upserted with COPY into a session TEMP table plus one set-based merge
 // (CARD-014). Oracle Tags, fetched and ingested only after both card passes
-// commit, replaces the mirrored tag snapshot — tags, direct taggings, and the
-// hierarchy closure — in one transaction; its failure is recorded but never
+// commit, replaces the mirrored tag snapshot — tags and direct taggings — in
+// one transaction; its failure is recorded but never
 // fails the run (CARD-010, CARD-060, CARD-067; see oracletags.go).
 //
 // @spec CARD-001, CARD-002, CARD-005, CARD-006, CARD-007, CARD-012, CARD-013, CARD-014, CARD-015, CARD-067
@@ -111,7 +111,7 @@ type Result struct {
 }
 
 // Run ingests Oracle Cards into cards, Default Cards into card_prints, and
-// Oracle Tags into oracle_tags / card_oracle_tags / oracle_tag_closure,
+// Oracle Tags into oracle_tags / card_oracle_tags,
 // recording a sync_runs row per bulk type. A printing whose oracle_id has no
 // cards row is skipped and counted, not treated as an error (CARD-005). Any
 // other card-pass failure marks the sync_runs row failed with the error text

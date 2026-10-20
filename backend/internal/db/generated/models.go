@@ -142,11 +142,6 @@ type OracleTag struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
-type OracleTagClosure struct {
-	AncestorID   pgtype.UUID `json:"ancestor_id"`
-	DescendantID pgtype.UUID `json:"descendant_id"`
-}
-
 type Session struct {
 	ID        pgtype.UUID        `json:"id"`
 	UserID    pgtype.UUID        `json:"user_id"`

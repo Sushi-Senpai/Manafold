@@ -515,8 +515,8 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   `cmd/cardsync` now also ingests Scryfall's daily `oracle_tags` bulk export
   (Tagger's community tags: `ramp`, `mana-rock`, `fetchland`, `utility-land`,
   `tutor`, `mass-land-denial`, `extra-turn`, …) into `oracle_tags` /
-  `card_oracle_tags`, with the parent/child hierarchy materialised in
-  `oracle_tag_closure` because parent tags like `ramp` or `removal` carry few or
+  `card_oracle_tags`, with the parent/child hierarchy walked at read time by
+  `oracle_tag_reach` because parent tags like `ramp` or `removal` carry few or
   no direct taggings (`CARD-010`, `CARD-060..063`). Each sync replaces the tag
   snapshot in one transaction, after both card passes commit; a failed tag pass
   is recorded but never fails the card sync (`CARD-067`). A Manafold-owned

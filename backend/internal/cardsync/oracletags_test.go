@@ -35,7 +35,7 @@ func tagFixtureOptions() cardsync.Options {
 // TestRun_IngestsOracleTags runs the oracle-tags pass over the checked-in tag
 // fixture and checks the mirrored snapshot: direct taggings with their weight
 // and annotation, orphan and malformed taggings skipped and counted, non-oracle
-// tags skipped, the closure walking parent links (and terminating on a cycle),
+// tags skipped, the reach walk following child links (and terminating on a cycle),
 // the query surface resolving descendants, and the sync_runs audit row.
 //
 // @spec CARD-010, CARD-060, CARD-061, CARD-062, CARD-065
@@ -354,15 +354,14 @@ func searchNames(t *testing.T, ctx context.Context, pool *pgxpool.Pool, raw stri
 	return names
 }
 
-type tagCounts struct{ tags, taggings, closure int }
+type tagCounts struct{ tags, taggings int }
 
 func tagTableCounts(t *testing.T, ctx context.Context, pool *pgxpool.Pool) tagCounts {
 	t.Helper()
 	var c tagCounts
 	if err := pool.QueryRow(ctx, `SELECT
 		(SELECT count(*) FROM oracle_tags),
-		(SELECT count(*) FROM card_oracle_tags),
-		(SELECT count(*) FROM oracle_tag_closure)`).Scan(&c.tags, &c.taggings, &c.closure); err != nil {
+		(SELECT count(*) FROM card_oracle_tags)`).Scan(&c.tags, &c.taggings); err != nil {
 		t.Fatalf("count tag tables: %v", err)
 	}
 	return c

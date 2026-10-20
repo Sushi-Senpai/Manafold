@@ -2,7 +2,7 @@
 
 The Scryfall mirror: `cards` / `card_prints` / `card_rulings` / `sync_runs` /
 `banlist_overrides` plus the oracle-tag layer (`oracle_tags` /
-`card_oracle_tags` / `oracle_tag_closure`), the `internal/cardsync` ingestion job, the
+`card_oracle_tags`, plus the `oracle_tag_reach` walk), the `internal/cardsync` ingestion job, the
 `internal/cardsearch` query parser, and `GET /api/cards/search` + `/autocomplete`.
 
 ## Status
@@ -12,7 +12,7 @@ path corrected to `jsonl_download_uri` + gzip-inflated JSONL (CARD-012, 2026-09-
 sync hardened to download-then-ingest with a temp-file spool and a `COPY`-based
 batched `card_prints` upsert so the full Default Cards export lands (CARD-013 /
 CARD-014 / CARD-015, 2026-09-09); Scryfall oracle tags ingested with a
-materialised hierarchy closure, tag queries, `otag:` search, and a seed tag file
+read-time hierarchy walk, tag queries, `otag:` search, and a seed tag file
 (CARD-010, CARD-060..067, 2026-10-19).
 
 ## References
@@ -51,8 +51,7 @@ materialised hierarchy closure, tag queries, `otag:` search, and a seed tag file
 - backend/internal/api/cards.go (`registerCardRoutes`, search + autocomplete handlers)
 - backend/cmd/cardsync/main.go (`seedOptions` — CARDSYNC_SEED_PATH / CARDSYNC_ORACLE_PATH / CARDSYNC_DEFAULT_PATH / CARDSYNC_TAGS_PATH, CARD-040, CARD-066)
 - backend/seed/cards.json (checked-in dev / CI card seed — CARD-040); backend/seed/oracle_tags.json (its oracle tags — CARD-066)
-- backend/internal/db/migrations/000006_create_oracle_tags.up.sql / .down.sql
-- backend/internal/db/migrations/000007_create_oracle_tag_reach.up.sql / .down.sql (`oracle_tag_reach`, the enabled-tag walk behind every tag-or-descendant read — CARD-062, CARD-063)
+- backend/internal/db/migrations/000006_create_oracle_tags.up.sql / .down.sql (also `oracle_tag_reach`, the enabled-tag walk behind every tag-or-descendant read — CARD-062, CARD-063)
 - backend/internal/db/queries/oracle_tags.sql (CARD-065)
 - backend/internal/db/migrations/000001_create_card_data.up.sql / .down.sql
 - backend/internal/db/queries/cards.sql

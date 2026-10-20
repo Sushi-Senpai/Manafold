@@ -107,7 +107,7 @@ func TestRun_DevSeed(t *testing.T) {
 		t.Errorf("Atraxa type_line = %q", card.TypeLine)
 	}
 
-	// The seed's real Scryfall tags resolve through the closure: Sol Ring is a
+	// The seed's real Scryfall tags resolve through the oracle_tag_reach walk: Sol Ring is a
 	// mana rock, and "ramp" (a parent tag) reaches it and the mana dorks.
 	solRing, err := q.GetCardByScryfallOracleID(ctx, mustUUID(t, oracleIDOf(t, pool, "Sol Ring")))
 	if err != nil {

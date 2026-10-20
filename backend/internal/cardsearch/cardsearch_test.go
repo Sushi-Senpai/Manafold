@@ -152,7 +152,7 @@ func TestParse_OracleTag(t *testing.T) {
 }
 
 // @spec CARD-064, CARD-062, CARD-063
-func TestWhereSQL_OracleTagWalksClosureAndSkipsDisabled(t *testing.T) {
+func TestWhereSQL_OracleTagUsesReachWalk(t *testing.T) {
 	q, err := Parse("otag:ramp t:artifact")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)

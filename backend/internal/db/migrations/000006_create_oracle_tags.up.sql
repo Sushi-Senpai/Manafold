@@ -23,7 +23,7 @@ CREATE TRIGGER oracle_tags_set_updated_at
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- Direct taggings only: one row per (card, tag) the export lists. Inherited
--- tags come from oracle_tag_closure. weight is text (median / strong /
+-- tags come from oracle_tag_reach (below). weight is text (median / strong /
 -- very_strong today) so a new Scryfall weight never fails a sync.
 CREATE TABLE card_oracle_tags (
     card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
@@ -35,14 +35,25 @@ CREATE TABLE card_oracle_tags (
 
 CREATE INDEX idx_card_oracle_tags_tag_id ON card_oracle_tags (tag_id);
 
--- Transitive closure of the tag hierarchy, rebuilt with every tag sync: one
--- row per tag paired with itself and with every tag reachable from it through
--- child links (CARD-062). "Cards with tag T or any descendant" is
--- ancestor_id = T joined to card_oracle_tags on descendant_id.
-CREATE TABLE oracle_tag_closure (
-    ancestor_id UUID NOT NULL REFERENCES oracle_tags(id) ON DELETE CASCADE,
-    descendant_id UUID NOT NULL REFERENCES oracle_tags(id) ON DELETE CASCADE,
-    PRIMARY KEY (ancestor_id, descendant_id)
-);
-
-CREATE INDEX idx_oracle_tag_closure_descendant ON oracle_tag_closure (descendant_id);
+-- The enabled tags reachable from the tag(s) with this slug: the tag itself and
+-- every descendant joined to it by a path of enabled tags through child links
+-- (the inverse of parent_ids). The walk never enters a disabled tag, so a
+-- disabled queried tag reaches nothing and a descendant reachable only through
+-- a disabled tag drops out, while one still reachable through an enabled path
+-- stays (CARD-062, CARD-063). It reads disabled live, so a maintainer's toggle
+-- takes effect without a sync; UNION makes a cycle reach a fixed point. Every
+-- tag-or-descendant read — the sqlc tag queries and otag: search — goes through
+-- this one definition.
+CREATE FUNCTION oracle_tag_reach(root_slug TEXT) RETURNS SETOF UUID
+LANGUAGE sql STABLE AS $$
+    WITH RECURSIVE walk (id) AS (
+        SELECT t.id FROM oracle_tags t
+        WHERE t.slug = lower(root_slug) AND NOT t.disabled
+        UNION
+        SELECT c.id
+        FROM walk w
+        JOIN oracle_tags c ON w.id = ANY (c.parent_ids)
+        WHERE NOT c.disabled
+    )
+    SELECT id FROM walk
+$$;

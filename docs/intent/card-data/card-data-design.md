@@ -26,7 +26,8 @@ Migration `create_card_data` creates `cards`, `card_prints`, `card_rulings`,
 shared `set_updated_at()` trigger (defined here since this is the first
 migration), `jsonb` for `legalities` / `prices` / `image_uris` / `card_faces`,
 `ON DELETE CASCADE` on child FKs. Migration `create_oracle_tags` adds the
-functional-tag layer — `oracle_tags`, `card_oracle_tags`, `oracle_tag_closure`
+functional-tag layer — `oracle_tags`, `card_oracle_tags`, and the
+`oracle_tag_reach` walk function
 (below).
 
 ### `cards` (Oracle layer)
@@ -112,8 +113,8 @@ denial" without parsing Oracle text. Scryfall publishes them as a daily
 `slug`, `label`, `description`, `parent_ids`, `child_ids`, `aliases`, and
 `taggings: [{oracle_id, weight, annotation?}]` — the tag's **direct**
 taggings only. Parent tags such as `ramp`, `removal`, or `tutor` often carry few
-or no direct taggings; their meaning is the union over their descendants, so the
-mirror materialises the hierarchy's transitive closure. Scryfall warns that
+or no direct taggings; their meaning is the union over their descendants, so
+every tag read walks the hierarchy at read time (`oracle_tag_reach`). Scryfall warns that
 slugs and labels are not permanent identifiers (the `id` is), and that tag data
 is community-moderated, so downstream apps should be able to switch a tag off.
 
@@ -125,7 +126,7 @@ is community-moderated, so downstream apps should be able to switch a tag off.
 | `slug` | text not null | btree-indexed, deliberately not unique: a slug is not a permanent identifier and two tags may trade slugs within one snapshot |
 | `label` | text not null | |
 | `description` | text null | |
-| `parent_ids` | uuid[] not null default `'{}'` | as provided; the closure is built from it |
+| `parent_ids` | uuid[] not null default `'{}'` | as provided; `oracle_tag_reach` walks its inverse |
 | `aliases` | text[] not null default `'{}'` | |
 | `disabled` | bool not null default false | **Manafold-owned**: the sync never writes it; a disabled tag is ignored by every tag read, and a tag-or-descendant read never walks through it |
 | `created_at`, `updated_at` | timestamptz | |
@@ -138,15 +139,6 @@ today; stored as text so a new Scryfall weight never fails a sync),
 `annotation` text null. Primary key `(card_id, tag_id)`; btree on `tag_id`.
 Direct taggings only — inheritance goes through `oracle_tag_reach`.
 
-#### `oracle_tag_closure`
-
-`ancestor_id`, `descendant_id`, both uuid fk → oracle_tags on delete cascade;
-primary key `(ancestor_id, descendant_id)`; btree on `descendant_id`. One row
-per tag paired with itself and with every tag reachable from it through child
-links (the inverse of `parent_ids`), ignoring `disabled`. Tag-or-descendant
-reads go through `oracle_tag_reach` instead, because the kill switch is
-path-based and applies without a sync. The full Scryfall graph is ~4.6 k tags and ~12 k closure rows.
-
 #### `oracle_tag_reach(slug)` (SQL function)
 
 The one definition of "the tag or any descendant" every tag-or-descendant read
@@ -155,7 +147,8 @@ uses. A `WITH RECURSIVE` walk over the child links (the inverse of
 enters a disabled tag, returning the reachable tag ids; `UNION` lets a cycle
 reach a fixed point. It reads `disabled` live, so a maintainer's toggle takes
 effect without a sync: a descendant reachable only through a disabled tag drops
-out, while one still reachable through an enabled parent stays (`CARD-063`).
+out, while one still reachable through an enabled parent stays (`CARD-062`,
+`CARD-063`). The full Scryfall graph is ~4.6 k tags, so the walk is cheap.
 
 #### Query surface (`queries/oracle_tags.sql`)
 
@@ -234,7 +227,7 @@ cards — a JSON array in the bulk export's object shape (`CARD-066`).
    object with an unparseable `oracle_id` (dropped before staging), are counted
    as skipped. A duplicate `scryfall_id` inside one export collapses via
    `DISTINCT ON` rather than failing the merge.
-5. **Oracle Tags → `oracle_tags` / `card_oracle_tags` / `oracle_tag_closure`**:
+5. **Oracle Tags → `oracle_tags` / `card_oracle_tags`**:
    the manifest lookup, download, and ingest all run only after both card
    passes have committed — taggings resolve against `cards`, and the tag data is
    additive, so it must never stand between the run and a refreshed card
@@ -248,16 +241,15 @@ cards — a JSON array in the bulk export's object shape (`CARD-066`).
    into a session `TEMP` staging table, its cleaned taggings carried as one
    `jsonb` column so the export is streamed once and never held in memory.
    Then, in order: delete `oracle_tags` rows absent from the staging table (the
-   cascade removes their taggings and closure rows); `INSERT … ON CONFLICT (id)
+   cascade removes their taggings); `INSERT … ON CONFLICT (id)
    DO UPDATE` every staged tag (never touching `disabled`); delete every
    `card_oracle_tags` row and re-insert from `jsonb_to_recordset` over the
    staged taggings `JOIN cards ON scryfall_oracle_id`, with `DISTINCT ON
    (card_id, tag_id)` — a tagging whose `oracle_id` is not in `cards` (Scryfall
    tags some non-playable objects the Oracle export omits) is dropped and
-   counted as skipped; finally delete and rebuild `oracle_tag_closure` with a
-   `WITH RECURSIVE` walk over the unnested `parent_ids` edges, using `UNION`
-   (not `UNION ALL`) so a cycle terminates. Re-running on the same export
-   yields the same rows (`CARD-060` / `CARD-061` / `CARD-062`). The
+   counted as skipped. The hierarchy is not materialised: reads walk it via
+   `oracle_tag_reach`. Re-running on the same export yields the same rows
+   (`CARD-060` / `CARD-061`). The
    `sync_runs.rows_upserted` count is the taggings written.
 6. On success, update the `sync_runs` row: `status = 'succeeded'`,
    `rows_upserted`, `finished_at`. On any error, `status = 'failed'`, `error`,
@@ -351,9 +343,9 @@ plausible-but-wrong query silently returns the wrong cards.
 | Printing upsert shape | `COPY` all printings into a session `TEMP` table, then one `INSERT … SELECT … JOIN cards … ON CONFLICT DO UPDATE` | One `SELECT` for `card_id` plus one `INSERT … ON CONFLICT` per printing (~118 k × 2 round-trips) | The per-row path is the reason a real sync cannot finish inside the cron wall-clock and why the connection is held open so long. `COPY` + a set-based merge is two statements for the whole export, resolves `card_id` in SQL, and yields the orphan-skip count from a `LEFT JOIN`. The `TEMP` table is session-scoped so concurrent syncs never collide. |
 | Bulk download deadline | A short `context.WithTimeout` around the manifest fetch+decode, `Transport.ResponseHeaderTimeout` for each bulk GET's response-header wait, and — for each bulk body — a per-download idle/read deadline (fail if no bytes arrive for a bounded interval) plus a generous total `context.WithTimeout` (~30 min) over the whole file download | A single `http.Client{Timeout}` covering the whole request | A whole-request timeout has to be set long enough for the full ingest, so it cannot also catch a genuinely stalled download promptly; once download and ingest are decoupled it would only ever fire spuriously on a healthy long ingest. The manifest timeout and `ResponseHeaderTimeout` fail a connection that completes TLS but never answers (or stalls mid-manifest) — otherwise unbounded under `cmd/cardsync`'s `context.Background()` — while the idle deadline fails a dead connection mid-body and the total deadline backstops a CDN trickling just enough bytes to keep the idle timer alive; none touches the ingest. |
 | Oracle-tag identity | Key `oracle_tags` on Scryfall's tag `id`; slug indexed but not unique | Key on `slug` | Scryfall documents the `id` as the stable identifier and slugs/labels as renameable; keying on slug would orphan taggings on every rename, and a unique slug index could fail a snapshot in which two tags trade slugs. |
-| Tag hierarchy reads | A read-time recursive walk over enabled tags (`oracle_tag_reach`), shared by the sqlc queries and `otag:` search | A plain join through the sync-time `oracle_tag_closure`; let callers walk `parent_ids` | Parent tags (`ramp`, `removal`, `tutor`) carry few or no direct taggings, so every useful read needs the descendants. The kill switch is path-based and toggled without a sync, which the sync-time closure cannot express (it would keep or drop a multi-parent tag regardless of its other, enabled parents); the graph is ~4.6 k tags, so the walk is cheap, and one SQL function keeps a single definition. |
+| Tag hierarchy reads | A read-time recursive walk over enabled tags (`oracle_tag_reach`), shared by the sqlc queries and `otag:` search | A sync-time materialised closure table joined at read time; let callers walk `parent_ids` | Parent tags (`ramp`, `removal`, `tutor`) carry few or no direct taggings, so every useful read needs the descendants. The kill switch is path-based and toggled without a sync, which the sync-time closure cannot express (it would keep or drop a multi-parent tag regardless of its other, enabled parents); the graph is ~4.6 k tags, so the walk is cheap, and one SQL function keeps a single definition. |
 | Tag-pass failure | Fetch and ingest the tags after both card passes commit; a failure is a recorded `oracle_tags` `sync_runs` failure reported in `Result.TagsErr`, not a run failure | Fetch all three exports up front and fail the run on any error | The tags are additive community data; an outage in the Tagger export must not stop the core card mirror from refreshing. |
-| Tag snapshot shape | Full replace in one transaction (upsert tags, delete missing tags, delete-and-reinsert taggings, rebuild closure) | Upsert-only taggings | Tagger removes taggings as the community corrects them; upsert-only would keep stale roles forever. The export is a complete daily snapshot (~237 k taggings), so a set-based replace is cheap and is idempotent by construction. |
+| Tag snapshot shape | Full replace in one transaction (upsert tags, delete missing tags, delete-and-reinsert taggings) | Upsert-only taggings | Tagger removes taggings as the community corrects them; upsert-only would keep stale roles forever. The export is a complete daily snapshot (~237 k taggings), so a set-based replace is cheap and is idempotent by construction. |
 | Tag staging | One `COPY` of tag rows with their cleaned taggings as a `jsonb` column, exploded in SQL with `jsonb_to_recordset` | Two staging tables (tags, taggings) | A single streaming pass over the export can feed only one `COPY`; holding all taggings in Go to feed a second would buffer the export. Validating each `oracle_id` in Go first means the SQL cast to `uuid` can never fail the merge. |
 | Tag kill switch | A Manafold-owned `oracle_tags.disabled` column the sync never writes, honoured by every tag read; a tag-or-descendant read matches only through a path of enabled tags | Delete the tag locally; drop every descendant of a disabled tag | Scryfall asks downstream apps to be able to switch off a community tag; a local delete would be undone by the next sync. Dropping every descendant would hide a tag still reachable through another, enabled parent — a disabled tag should be ignored, not take its siblings' children with it. |
 | Tag keying on cards | `card_oracle_tags.card_id` → `cards.id`, resolved by joining on `scryfall_oracle_id` at sync | Key on the raw Scryfall `oracle_id` | Every reader already joins from `cards`; an FK with cascade keeps the table clean and mirrors `card_prints`. Taggings on objects the Oracle export omits are counted as skipped, like orphan printings. |

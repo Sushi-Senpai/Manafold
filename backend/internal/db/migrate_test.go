@@ -67,7 +67,7 @@ func TestMigrate_FromEmptySchema_ReachesLatestVersion(t *testing.T) {
 		"SELECT id, deck_id, card_id, board, quantity FROM deck_cards LIMIT 0",
 		"SELECT id, slug, parent_ids, disabled FROM oracle_tags LIMIT 0",           // @spec CARD-060, CARD-063
 		"SELECT card_id, tag_id, weight, annotation FROM card_oracle_tags LIMIT 0", // @spec CARD-060
-		"SELECT ancestor_id, descendant_id FROM oracle_tag_closure LIMIT 0",        // @spec CARD-062
+		"SELECT * FROM oracle_tag_reach('ramp') LIMIT 0",                           // @spec CARD-062
 		"SELECT oracle_tag_reach('ramp') LIMIT 0",                                  // @spec CARD-063
 	} {
 		if _, err := scopedPool.Exec(ctx, probe); err != nil {
