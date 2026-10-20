@@ -4,7 +4,7 @@
 // because the query grammar grows and the parse step is where a
 // plausible-but-wrong query would silently return the wrong cards.
 //
-// @spec CARD-022, CARD-023
+// @spec CARD-022, CARD-023, CARD-064
 package cardsearch
 
 import (
@@ -27,6 +27,9 @@ type Query struct {
 	ManaValue []NumPredicate
 	// CommanderOnly is set by is:commander.
 	CommanderOnly bool
+	// OracleTags are otag:<slug> predicates (lowercased): the card carries the
+	// tag or any of its descendants (CARD-064).
+	OracleTags []string
 }
 
 // ColorPredicate constrains a card's color_identity. Op is one of
@@ -96,6 +99,14 @@ func Parse(raw string) (Query, error) {
 				return Query{}, err
 			}
 			q.ManaValue = append(q.ManaValue, np)
+		case "otag", "oracletag":
+			if op != ":" && op != "=" {
+				return Query{}, &ParseError{Token: tok, Reason: "otag supports : and = only"}
+			}
+			if val == "" {
+				return Query{}, &ParseError{Token: tok, Reason: "empty oracle tag"}
+			}
+			q.OracleTags = append(q.OracleTags, strings.ToLower(val))
 		case "is":
 			if strings.EqualFold(val, "commander") {
 				q.CommanderOnly = true
@@ -244,6 +255,12 @@ func (q Query) WhereSQL(startParam int) (expr string, args []any, next int) {
 	}
 	if q.CommanderOnly {
 		clauses = append(clauses, "c.can_be_commander = true")
+	}
+	// The tag or any descendant reachable through enabled tags, via the
+	// shared oracle_tag_reach walk (CARD-062, CARD-063).
+	for _, slug := range q.OracleTags {
+		add(`EXISTS (SELECT 1 FROM card_oracle_tags ct
+			WHERE ct.card_id = c.id AND ct.tag_id IN (SELECT oracle_tag_reach($%d)))`, slug)
 	}
 
 	if len(clauses) == 0 {

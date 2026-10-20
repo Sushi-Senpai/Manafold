@@ -25,7 +25,10 @@ Migration `create_card_data` creates `cards`, `card_prints`, `card_rulings`,
 `sync_runs`, and `banlist_overrides`. UUID PKs via `gen_random_uuid()`, the
 shared `set_updated_at()` trigger (defined here since this is the first
 migration), `jsonb` for `legalities` / `prices` / `image_uris` / `card_faces`,
-`ON DELETE CASCADE` on child FKs.
+`ON DELETE CASCADE` on child FKs. Migration `create_oracle_tags` adds the
+functional-tag layer — `oracle_tags`, `card_oracle_tags`, and the
+`oracle_tag_reach` walk function
+(below).
 
 ### `cards` (Oracle layer)
 
@@ -86,7 +89,7 @@ re-sync is idempotent.
 
 ### `sync_runs`
 
-`id`, `bulk_type` (`oracle_cards` / `default_cards` / `rulings`),
+`id`, `bulk_type` (`oracle_cards` / `default_cards` / `oracle_tags` / `rulings`),
 `scryfall_updated_at` timestamptz, `rows_upserted` int, `status`
 (`running` / `succeeded` / `failed`), `started_at`, `finished_at` null,
 `error` text null.
@@ -98,23 +101,98 @@ The escape hatch for the gap between a Commander Format Panel announcement and
 Scryfall's next data refresh. `deck-building`'s validator consults this table
 after `legalities->>'commander'`.
 
+### Oracle tags (functional tags)
+
+Scryfall's oracle tags come from Tagger, its community tagging project: a
+hierarchy of functional tags (`ramp` → `mana-rock`, `land` → `fetchland`,
+`utility-land`, `mass-land-denial`, `extra-turn`, `tutor`, …) applied to Oracle
+cards. They are what lets a caller ask "which cards in this colour identity are
+fetchlands", "how many ramp pieces does this deck run", or "exclude mass land
+denial" without parsing Oracle text. Scryfall publishes them as a daily
+`oracle_tags` bulk export: one JSON object per tag carrying a stable UUID `id`,
+`slug`, `label`, `description`, `parent_ids`, `child_ids`, `aliases`, and
+`taggings: [{oracle_id, weight, annotation?}]` — the tag's **direct**
+taggings only. Parent tags such as `ramp`, `removal`, or `tutor` often carry few
+or no direct taggings; their meaning is the union over their descendants, so
+every tag read walks the hierarchy at read time (`oracle_tag_reach`). Scryfall warns that
+slugs and labels are not permanent identifiers (the `id` is), and that tag data
+is community-moderated, so downstream apps should be able to switch a tag off.
+
+#### `oracle_tags`
+
+| column | type | notes |
+|---|---|---|
+| `id` | uuid pk | **Scryfall's tag id** — the stable identifier, so a renamed slug updates in place |
+| `slug` | text not null | btree-indexed, deliberately not unique: a slug is not a permanent identifier and two tags may trade slugs within one snapshot |
+| `label` | text not null | |
+| `description` | text null | |
+| `parent_ids` | uuid[] not null default `'{}'` | as provided; `oracle_tag_reach` walks its inverse |
+| `aliases` | text[] not null default `'{}'` | |
+| `disabled` | bool not null default false | **Manafold-owned**: the sync never writes it; a disabled tag is ignored by every tag read, and a tag-or-descendant read never walks through it |
+| `created_at`, `updated_at` | timestamptz | |
+
+#### `card_oracle_tags`
+
+`card_id` uuid fk → cards on delete cascade, `tag_id` uuid fk → oracle_tags on
+delete cascade, `weight` text not null (`median` / `strong` / `very_strong`
+today; stored as text so a new Scryfall weight never fails a sync),
+`annotation` text null. Primary key `(card_id, tag_id)`; btree on `tag_id`.
+Direct taggings only — inheritance goes through `oracle_tag_reach`.
+
+#### `oracle_tag_reach(slug)` (SQL function)
+
+The one definition of "the tag or any descendant" every tag-or-descendant read
+uses. A `WITH RECURSIVE` walk over the child links (the inverse of
+`parent_ids`) that starts from the enabled tag(s) with that slug and never
+enters a disabled tag, returning the reachable tag ids; `UNION` lets a cycle
+reach a fixed point. It reads `disabled` live, so a maintainer's toggle takes
+effect without a sync: a descendant reachable only through a disabled tag drops
+out, while one still reachable through an enabled parent stays (`CARD-062`,
+`CARD-063`). The full Scryfall graph is ~4.6 k tags, so the walk is cheap.
+
+#### Query surface (`queries/oracle_tags.sql`)
+
+- `ListOracleTagsForCard(card_id)` — the card's direct, enabled tags (`slug`,
+  `label`, `weight`), by slug.
+- `ListCardsByOracleTag(slug, identity, lim)` — distinct cards carrying the tag
+  or any enabled descendant, optionally limited to `color_identity <@ identity`
+  (an empty / null identity means no filter), by `edhrec_rank` asc nulls last
+  then name. This is the "show me fetchlands in my colours" shape.
+- `FilterCardIDsByOracleTag(slug, card_ids)` — the subset of `card_ids`
+  carrying the tag or any enabled descendant. This is the role-counting shape
+  ("how many of this deck's cards are ramp").
+
+`GET /api/cards/search` exposes the same `oracle_tag_reach` lookup as Scryfall's own
+`otag:` syntax (see HTTP API), so the tags are reachable from the existing
+search surface without a new endpoint.
+
 ## Sync Job (`internal/cardsync`)
 
 `cardsync.Run(ctx, pool, opts)` is the ingestion entry point, called by
 `cmd/cardsync/main.go` (and, in tests, directly with a fixture).
 
-`opts.OracleCardsPath` / `opts.DefaultCardsPath` replace the download with a
-local file for that pass. `cmd/cardsync` sets them from `CARDSYNC_SEED_PATH`
-(one file feeds both passes) or the per-pass `CARDSYNC_ORACLE_PATH` /
-`CARDSYNC_DEFAULT_PATH`. `backend/seed/cards.json` is the checked-in dev / CI
+`opts.OracleCardsPath` / `opts.DefaultCardsPath` / `opts.OracleTagsPath`
+replace the download with a local file for that pass. `cmd/cardsync` sets them
+from `CARDSYNC_SEED_PATH` (one file feeds both card passes) or the per-pass
+`CARDSYNC_ORACLE_PATH` / `CARDSYNC_DEFAULT_PATH` / `CARDSYNC_TAGS_PATH`. With
+`CARDSYNC_SEED_PATH` set and no `CARDSYNC_TAGS_PATH`, an `oracle_tags.json`
+beside the seed file — when one exists — feeds the tag pass, so the single seed
+variable still yields a fully offline run (`CARD-066`). The tag pass downloads
+only when the run is fetching the manifest anyway (at least one card pass has no
+local file); a run whose two card passes both read local files and that names no
+tag file skips the tag pass, so a fixture run never touches the network
+(`CARD-010`). `backend/seed/cards.json` is the checked-in dev / CI
 seed — a JSON array of real Scryfall card objects (commanders, a colour / type /
 mana-value spread, two modal double-faced cards, one deliberately imageless
 printing) so a local run and CI have searchable, image-bearing card data
-without a live Scryfall fetch (`CARD-040`).
+without a live Scryfall fetch (`CARD-040`). `backend/seed/oracle_tags.json`
+is its companion: the real Scryfall `oracle_tags` objects that tag any seed
+card, plus every ancestor of those tags, with taggings trimmed to the seed
+cards — a JSON array in the bulk export's object shape (`CARD-066`).
 
 1. `GET https://api.scryfall.com/bulk-data` — the manifest. Read the
-   `jsonl_download_uri` and `updated_at` for `oracle_cards` and `default_cards`
-   (and `rulings` when `opts.IncludeRulings`). A manifest entry missing
+   `jsonl_download_uri` and `updated_at` for `oracle_cards`, `default_cards`,
+   and `oracle_tags` (and `rulings` when `opts.IncludeRulings`). A manifest entry missing
    `jsonl_download_uri` fails the run.
 2. **Download, then ingest — never both at once.** For each export, `GET` the
    `jsonl_download_uri` (a `.jsonl.gz` on `data.scryfall.io`, served as
@@ -149,17 +227,43 @@ without a live Scryfall fetch (`CARD-040`).
    object with an unparseable `oracle_id` (dropped before staging), are counted
    as skipped. A duplicate `scryfall_id` inside one export collapses via
    `DISTINCT ON` rather than failing the merge.
-5. On success, update the `sync_runs` row: `status = 'succeeded'`,
+5. **Oracle Tags → `oracle_tags` / `card_oracle_tags`**:
+   the manifest lookup, download, and ingest all run only after both card
+   passes have committed — taggings resolve against `cards`, and the tag data is
+   additive, so it must never stand between the run and a refreshed card
+   mirror. Any tag-pass failure (no `oracle_tags` manifest entry, a download
+   error or timeout, an unreadable file, malformed JSON, an export with no
+   oracle tags) records a failed `oracle_tags` `sync_runs` row, keeps the prior
+   tag snapshot, and is reported in `Result.TagsErr` rather than returned, so
+   `cmd/cardsync` logs it and exits successfully (`CARD-067`). One transaction replaces the whole snapshot. Each decoded tag is validated in
+   Go — a non-`oracle` `type` or an unparseable `id` skips the tag, and a
+   tagging with an unparseable `oracle_id` is dropped and counted — then `COPY`d
+   into a session `TEMP` staging table, its cleaned taggings carried as one
+   `jsonb` column so the export is streamed once and never held in memory.
+   Then, in order: delete `oracle_tags` rows absent from the staging table (the
+   cascade removes their taggings); `INSERT … ON CONFLICT (id)
+   DO UPDATE` every staged tag (never touching `disabled`); delete every
+   `card_oracle_tags` row and re-insert from `jsonb_to_recordset` over the
+   staged taggings `JOIN cards ON scryfall_oracle_id`, with `DISTINCT ON
+   (card_id, tag_id)` — a tagging whose `oracle_id` is not in `cards` (Scryfall
+   tags some non-playable objects the Oracle export omits) is dropped and
+   counted as skipped. The hierarchy is not materialised: reads walk it via
+   `oracle_tag_reach`. Re-running on the same export yields the same rows
+   (`CARD-060` / `CARD-061`). The
+   `sync_runs.rows_upserted` count is the taggings written.
+6. On success, update the `sync_runs` row: `status = 'succeeded'`,
    `rows_upserted`, `finished_at`. On any error, `status = 'failed'`, `error`,
-   `finished_at`, and return the error.
+   `finished_at`, and — for a card pass — return the error; a tag-pass error is
+   reported in `Result.TagsErr` instead (`CARD-067`).
 
 ### HTTP etiquette (non-negotiable)
 
 Every request sends `User-Agent: Manafold/1.0
 (github.com/Sushi-Senpai/Manafold)` and `Accept:
 application/json;q=0.9,*/*;q=0.8`. Sustained traffic stays under 10 req/s with
-50–100 ms between calls; the bulk downloads are two large streamed GETs spooled
-to a temp file, not a crawl. An HTTP `429` triggers a 30 s back-off then one
+50–100 ms between calls; the bulk downloads are three streamed GETs (the two
+large card exports and the ~6 MB oracle-tags export) spooled to a temp file, not
+a crawl. An HTTP `429` triggers a 30 s back-off then one
 retry. The non-body phases are each bounded so a stalled connection cannot hang
 a `context.Background()` run: the manifest fetch **and its JSON decode** run
 under a short `context.WithTimeout` (a few-KB document fetched once), and each
@@ -210,6 +314,9 @@ mirror. M1 supports:
 - `cmc<=N` / `cmc>=N` / `cmc=N` / `cmc:N` → `mana_value` comparison.
 - `o:"<phrase>"` / `o:word` → Oracle-text phrase match.
 - `is:commander` → `can_be_commander = true`.
+- `otag:<slug>` / `oracletag:<slug>` → the card carries the oracle tag with that
+  slug (case-insensitive) or any of its descendants, through
+  `oracle_tag_reach`, which never walks through a disabled tag.
 
 Results are `unique = cards` (Oracle rows). Each `CardSummary` carries the
 card's Oracle fields plus its newest printing's `image_uris` and `prices`
@@ -235,6 +342,13 @@ plausible-but-wrong query silently returns the wrong cards.
 | Download vs. ingest coupling | Spool each export to a temp file first (closing the connection), then ingest from local disk; remove the temp file on every exit path | Ingest straight off the live HTTP body, one object read interleaved with its DB write | Interleaving made every body read wait on Postgres write latency, so the connection stayed open for the whole ingest and was torn down mid-stream (a `PROTOCOL_ERROR` surfaced from the CDN or an `http.Client` deadline), leaving ~87% of cards with no printing row. A spooled download is bounded and quick; the disk cost is the compressed export size, released immediately after. |
 | Printing upsert shape | `COPY` all printings into a session `TEMP` table, then one `INSERT … SELECT … JOIN cards … ON CONFLICT DO UPDATE` | One `SELECT` for `card_id` plus one `INSERT … ON CONFLICT` per printing (~118 k × 2 round-trips) | The per-row path is the reason a real sync cannot finish inside the cron wall-clock and why the connection is held open so long. `COPY` + a set-based merge is two statements for the whole export, resolves `card_id` in SQL, and yields the orphan-skip count from a `LEFT JOIN`. The `TEMP` table is session-scoped so concurrent syncs never collide. |
 | Bulk download deadline | A short `context.WithTimeout` around the manifest fetch+decode, `Transport.ResponseHeaderTimeout` for each bulk GET's response-header wait, and — for each bulk body — a per-download idle/read deadline (fail if no bytes arrive for a bounded interval) plus a generous total `context.WithTimeout` (~30 min) over the whole file download | A single `http.Client{Timeout}` covering the whole request | A whole-request timeout has to be set long enough for the full ingest, so it cannot also catch a genuinely stalled download promptly; once download and ingest are decoupled it would only ever fire spuriously on a healthy long ingest. The manifest timeout and `ResponseHeaderTimeout` fail a connection that completes TLS but never answers (or stalls mid-manifest) — otherwise unbounded under `cmd/cardsync`'s `context.Background()` — while the idle deadline fails a dead connection mid-body and the total deadline backstops a CDN trickling just enough bytes to keep the idle timer alive; none touches the ingest. |
+| Oracle-tag identity | Key `oracle_tags` on Scryfall's tag `id`; slug indexed but not unique | Key on `slug` | Scryfall documents the `id` as the stable identifier and slugs/labels as renameable; keying on slug would orphan taggings on every rename, and a unique slug index could fail a snapshot in which two tags trade slugs. |
+| Tag hierarchy reads | A read-time recursive walk over enabled tags (`oracle_tag_reach`), shared by the sqlc queries and `otag:` search | A sync-time materialised closure table joined at read time; let callers walk `parent_ids` | Parent tags (`ramp`, `removal`, `tutor`) carry few or no direct taggings, so every useful read needs the descendants. The kill switch is path-based and toggled without a sync, which the sync-time closure cannot express (it would keep or drop a multi-parent tag regardless of its other, enabled parents); the graph is ~4.6 k tags, so the walk is cheap, and one SQL function keeps a single definition. |
+| Tag-pass failure | Fetch and ingest the tags after both card passes commit; a failure is a recorded `oracle_tags` `sync_runs` failure reported in `Result.TagsErr`, not a run failure | Fetch all three exports up front and fail the run on any error | The tags are additive community data; an outage in the Tagger export must not stop the core card mirror from refreshing. |
+| Tag snapshot shape | Full replace in one transaction (upsert tags, delete missing tags, delete-and-reinsert taggings) | Upsert-only taggings | Tagger removes taggings as the community corrects them; upsert-only would keep stale roles forever. The export is a complete daily snapshot (~237 k taggings), so a set-based replace is cheap and is idempotent by construction. |
+| Tag staging | One `COPY` of tag rows with their cleaned taggings as a `jsonb` column, exploded in SQL with `jsonb_to_recordset` | Two staging tables (tags, taggings) | A single streaming pass over the export can feed only one `COPY`; holding all taggings in Go to feed a second would buffer the export. Validating each `oracle_id` in Go first means the SQL cast to `uuid` can never fail the merge. |
+| Tag kill switch | A Manafold-owned `oracle_tags.disabled` column the sync never writes, honoured by every tag read; a tag-or-descendant read matches only through a path of enabled tags | Delete the tag locally; drop every descendant of a disabled tag | Scryfall asks downstream apps to be able to switch off a community tag; a local delete would be undone by the next sync. Dropping every descendant would hide a tag still reachable through another, enabled parent — a disabled tag should be ignored, not take its siblings' children with it. |
+| Tag keying on cards | `card_oracle_tags.card_id` → `cards.id`, resolved by joining on `scryfall_oracle_id` at sync | Key on the raw Scryfall `oracle_id` | Every reader already joins from `cards`; an FK with cascade keeps the table clean and mirrors `card_prints`. Taggings on objects the Oracle export omits are counted as skipped, like orphan printings. |
 | Full-text index | Postgres `tsvector` column (`oracle_search`) + GIN | `pg_trgm` only; an external search engine | `tsvector` handles the Oracle-text predicates natively at sub-10 ms; `pg_trgm` additionally backs the name prefix/`ILIKE` paths. No external dependency. |
 
 ## Open Questions & Future Decisions
@@ -244,15 +358,12 @@ plausible-but-wrong query silently returns the wrong cards.
    number not yet mirrored, one `GET /cards/collection` call (≤ 2 req/s) fetches
    and upserts just that printing. Designed here; implemented at M2 alongside
    import/export, which is where unmirrored printings first show up in bulk.
-2. **`oracle_tags` ingestion** — Scryfall's community functional-tag bulk file,
-   to seed `deck-building`'s auto-categorizer. A third `bulk_type` for
-   `cardsync`; deferred to M2/M5 with the real categorizer.
-3. **In-process ticker fallback** — if the Render cron is unavailable on the
+2. **In-process ticker fallback** — if the Render cron is unavailable on the
    free tier, a guarded goroutine ticker in `cmd/api` is an acceptable
    single-instance stopgap; revisit before any multi-instance deploy.
-4. **`All Cards` (every language)** — v1 mirrors English-only Default Cards.
+3. **`All Cards` (every language)** — v1 mirrors English-only Default Cards.
    Non-English printing support is a later, larger ingestion.
-5. **Batch the Oracle Cards ingest too** — `ingestOracle` still upserts one
+4. **Batch the Oracle Cards ingest too** — `ingestOracle` still upserts one
    `cards` row per object (~40 k round trips). It survives because the download
    is now spooled first, so nothing gates the HTTP connection, and 40 k
    single-table upserts finish well inside the cron wall-clock. If the Oracle
@@ -261,9 +372,9 @@ plausible-but-wrong query silently returns the wrong cards.
    batching that this item originally called for has landed.)
 
 ### Gaps
-6. **Prices go stale between daily syncs** — acceptable; prices are advisory and
+5. **Prices go stale between daily syncs** — acceptable; prices are advisory and
    the daily cadence matches Scryfall's own regeneration.
-7. **A `429` during a bulk stream** — retried once after a 30 s back-off; a
+6. **A `429` during a bulk stream** — retried once after a 30 s back-off; a
    second failure fails the `sync_runs` row and the job exits non-zero for the
    cron to surface. No partial-resume of a half-streamed file in v1.
 
@@ -272,13 +383,15 @@ plausible-but-wrong query silently returns the wrong cards.
 - Code: `backend/internal/cardsync/`, `backend/internal/cardsearch/`,
   `backend/internal/api/cards.go`, `backend/cmd/cardsync/main.go`
   (`seedOptions`), `backend/internal/db/migrations/000001_create_card_data.up.sql`,
-  `backend/internal/db/queries/cards.sql`
-- Seed: `backend/seed/cards.json` (dev / CI card seed, `CARD-040`)
+  `backend/internal/db/migrations/000007_create_oracle_tags.up.sql`,
+  `backend/internal/db/queries/cards.sql`, `backend/internal/db/queries/oracle_tags.sql`
+- Seed: `backend/seed/cards.json` (dev / CI card seed, `CARD-040`),
+  `backend/seed/oracle_tags.json` (its oracle tags, `CARD-066`)
 - Test fixtures: `backend/internal/cardsync/testdata/`; seed test
   `backend/internal/cardsync/seed_test.go`
 - Cross-segment: `deck-building`'s validator reads `cards.color_identity`,
   `cards.singleton_limit`, `cards.can_be_commander`, `cards.legalities`, and
   `banlist_overrides` (`DECK-004` / `DECK-006` / `DECK-008`). `import-export`
   (`PORT`) and `ai-assist` (`AI`) resolve card names against `cards`.
-- Scryfall: <https://scryfall.com/docs/api/bulk-data>,
+- Scryfall: <https://scryfall.com/docs/api/bulk-data>, <https://scryfall.com/docs/api/tags>,
   <https://scryfall.com/docs/api/rate-limits>, <https://scryfall.com/docs/terms>.

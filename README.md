@@ -29,7 +29,8 @@ DEV_AUTH=true go run ./cmd/api   # applies pending migrations itself at startup
 go run ./cmd/cardsync
 
 # ...or seed a small set of real cards for local/CI work without a Scryfall
-# fetch (commanders, a colour/type/MV spread, double-faced + imageless cases):
+# fetch (commanders, a colour/type/MV spread, double-faced + imageless cases);
+# the seed's Scryfall oracle tags load from seed/oracle_tags.json beside it:
 CARDSYNC_SEED_PATH=seed/cards.json go run ./cmd/cardsync
 
 # Frontend (from frontend/, after copying .env.example to .env.local)

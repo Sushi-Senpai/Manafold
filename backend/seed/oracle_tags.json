@@ -1,0 +1,5976 @@
+[
+  {
+    "object": "tag",
+    "id": "c3205476-406b-485a-9f7e-d9bca73fdca0",
+    "label": "activate from command zone",
+    "slug": "activate-from-command-zone",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/activate-from-command-zone",
+    "description": null,
+    "parent_ids": [
+      "acf78b42-a1d5-4829-bef0-69204f29e260"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "acf78b42-a1d5-4829-bef0-69204f29e260",
+    "label": "activated ability",
+    "slug": "activated-ability",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/activated-ability",
+    "description": "Cards with activated abilities. Not for cards that only gain or give activated abilities.",
+    "parent_ids": [],
+    "child_ids": [
+      "c3205476-406b-485a-9f7e-d9bca73fdca0"
+    ],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "b2c6aa39-2d2a-459c-a555-fb48ba993373",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "68418069-f615-40ef-ae0d-764192acae00",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "ca204b66-8d0c-431a-8d34-282f7c2d17da",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "68954295-54e3-4303-a6bc-fc4547a4e3a3",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a731e87b-8d99-4b64-8ee3-8e540d652366",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "bc71ebf6-2056-41f7-be35-b2e5c34afa99",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "c23e5b80-08d2-4e24-9908-fe2aa4f30f6f",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "65986c1b-8e51-4604-b685-d82fa7d1263a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "6ad8011d-3471-4369-9d68-b264cc027487",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d3a0b660-358c-41bd-9cd2-41fbf3491b1a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "1c633e02-95ef-445e-b4e0-fbfbc5ed9cc9",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "458887e7-bfa8-4933-8746-4c9efb578c54",
+    "label": "adds multiple mana",
+    "slug": "adds-multiple-mana",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/adds-multiple-mana",
+    "description": "Cards that net you more than one mana at a time.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [
+      "produces multiple mana"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "6ad8011d-3471-4369-9d68-b264cc027487",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "e506f033-f9d4-4263-b4b7-8a0eecd2cbe1",
+    "label": "affinity",
+    "slug": "affinity",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/affinity",
+    "description": "Affinity is an ability that reduces the mana cost of the spell by the number of permanents of a specified type that the player controls. Variations of this ability exist, such as referencing the number of cards in the players' graveyard or the number of attacking creatures. ",
+    "parent_ids": [
+      "bd38985d-b7cc-4eac-b45d-1ac0cee3b8f7"
+    ],
+    "child_ids": [
+      "5b5da10c-69c2-437f-b502-cf8858ea77e2"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "5b5da10c-69c2-437f-b502-cf8858ea77e2",
+    "label": "affinity for creatures",
+    "slug": "affinity-for-creatures",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/affinity-for-creatures",
+    "description": null,
+    "parent_ids": [
+      "e506f033-f9d4-4263-b4b7-8a0eecd2cbe1",
+      "aaa12ab3-a0e3-4d09-9ddb-be85e733cbff"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "7a2484a9-04fd-41a0-8224-610c1c07ed10",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "a3909e64-69d4-442e-8da1-fffa309492b8",
+    "label": "alliteration",
+    "slug": "alliteration",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/alliteration",
+    "description": "Cards that alliterate, either properly or per Treacherous Trapezist.",
+    "parent_ids": [
+      "5a0a0531-5462-477d-add9-886148c4413f"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a731e87b-8d99-4b64-8ee3-8e540d652366",
+        "weight": "median",
+        "annotation": "the back face name: \"Malakir Mire\""
+      },
+      {
+        "oracle_id": "00c0543c-2a1f-4425-8283-4062d74a1637",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "5882dba5-2955-4c88-a399-604f1cf58784",
+    "label": "alternative cost",
+    "slug": "alternative-cost",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/alternative-cost",
+    "description": "Spells with alternative casting costs, which may be cheaper or more expensive than their mana costs. See CR 118.9.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [
+      "alternate-cost"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "ee03d192-c144-4e8c-88d3-ba7cd68c9474",
+    "label": "attack trigger",
+    "slug": "attack-trigger",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/attack-trigger",
+    "description": null,
+    "parent_ids": [
+      "4d7fc833-e0af-4022-b298-6a9c99a56ac1"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "cb8d80c9-ed58-4f2d-aa8c-c383370c7f1a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "d540c4fb-c2dd-49be-aecc-73883ae9edd9",
+    "label": "attacking matters",
+    "slug": "attacking-matters",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/attacking-matters",
+    "description": "Cards that care about attacking. See also [attacking matters-self](attacking-matters-self) for cards that care about themselves attacking.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "eb78924e-cf3a-4d52-9b04-4f69ca876626",
+    "label": "attacking matters-self",
+    "slug": "attacking-matters-self",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/attacking-matters-self",
+    "description": "Cards that care about themselves attacking. See also [attacking matters](attacking-matters) for cards that care about attacking in general.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "cb8d80c9-ed58-4f2d-aa8c-c383370c7f1a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "d46392d2-3275-4a65-aa6d-0ad03cbc9596",
+    "label": "black effect",
+    "slug": "black-effect",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/black-effect",
+    "description": "Effects which are iconically black.",
+    "parent_ids": [],
+    "child_ids": [
+      "f95a613c-8d77-42a9-ae4c-962ee0667f76"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "022df3fc-9720-478d-8b40-755865b70cdb",
+    "label": "blue effect",
+    "slug": "blue-effect",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/blue-effect",
+    "description": "Effects which are iconically blue.",
+    "parent_ids": [],
+    "child_ids": [
+      "690fc968-48ba-4854-a948-3db6bf19d3a9",
+      "28369f1b-1cf8-4077-99aa-e32fd59c19e1"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "cd7e37e6-8b6e-4001-b263-68acf062d11a",
+    "label": "bottomless mana sink",
+    "slug": "bottomless-mana-sink",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/bottomless-mana-sink",
+    "description": "Repeatable effects that, if an arbitrary amount of mana is dumped into them, will probably win you the game—for example, by drawing your whole deck, creating an arbitrarily large attacker, making an endless army of tokens, gaining infinite life, etc.",
+    "parent_ids": [
+      "ef02b1a3-a5ae-4d8a-86ca-302d6f477744"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "infinite mana sink"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "de1ee67d-74ab-4ffc-8d65-1e5c0d233464",
+    "label": "bounce",
+    "slug": "bounce",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/bounce",
+    "description": "Returning a permanent from the battlefield to its owner's hand",
+    "parent_ids": [],
+    "child_ids": [
+      "07f8788a-acd7-4768-a86f-f63816c5f09d",
+      "28369f1b-1cf8-4077-99aa-e32fd59c19e1"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "0641a74c-4dd5-426d-be58-2ab86d71995d",
+    "label": "burn",
+    "slug": "burn",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/burn",
+    "description": "Effects that deal damage, whether to creatures, players, or planeswalkers.",
+    "parent_ids": [],
+    "child_ids": [
+      "081ebf89-e53b-47ff-88e8-1535068212b0",
+      "c80fafa2-d5c9-47e5-8ef9-cbf7c1316d0a",
+      "7a0d9ee9-b672-451a-8722-0c5fc6087ff0"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "d58bcedc-2dcd-42c3-8b52-5359457e6802",
+    "label": "burn any",
+    "slug": "burn-any",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/burn-any",
+    "description": "Cards that burn any target: players, creatures, battles, or planeswalkers.",
+    "parent_ids": [
+      "081ebf89-e53b-47ff-88e8-1535068212b0",
+      "c80fafa2-d5c9-47e5-8ef9-cbf7c1316d0a",
+      "9b437740-9a6c-40cd-90db-a2b057df8e3f",
+      "01c171be-e0db-443c-830d-578873c27792"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "c80fafa2-d5c9-47e5-8ef9-cbf7c1316d0a",
+    "label": "burn battle",
+    "slug": "burn-battle",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/burn-battle",
+    "description": null,
+    "parent_ids": [
+      "0641a74c-4dd5-426d-be58-2ab86d71995d"
+    ],
+    "child_ids": [
+      "d58bcedc-2dcd-42c3-8b52-5359457e6802"
+    ],
+    "aliases": [
+      "removal-battle-burn"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "01c171be-e0db-443c-830d-578873c27792",
+    "label": "burn creature",
+    "slug": "burn-creature",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/burn-creature",
+    "description": null,
+    "parent_ids": [
+      "7a0d9ee9-b672-451a-8722-0c5fc6087ff0",
+      "d91e421d-ff87-4aad-a4bf-5aefc51252b6"
+    ],
+    "child_ids": [
+      "d58bcedc-2dcd-42c3-8b52-5359457e6802"
+    ],
+    "aliases": [
+      "removal-creature-burn"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "7a2484a9-04fd-41a0-8224-610c1c07ed10",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "9b437740-9a6c-40cd-90db-a2b057df8e3f",
+    "label": "burn planeswalker",
+    "slug": "burn-planeswalker",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/burn-planeswalker",
+    "description": null,
+    "parent_ids": [
+      "7a0d9ee9-b672-451a-8722-0c5fc6087ff0",
+      "591fb358-e9d7-490e-8c15-24aecbbe697e"
+    ],
+    "child_ids": [
+      "d58bcedc-2dcd-42c3-8b52-5359457e6802"
+    ],
+    "aliases": [
+      "removal-planeswalker-burn"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "081ebf89-e53b-47ff-88e8-1535068212b0",
+    "label": "burn player",
+    "slug": "burn-player",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/burn-player",
+    "description": null,
+    "parent_ids": [
+      "0641a74c-4dd5-426d-be58-2ab86d71995d"
+    ],
+    "child_ids": [
+      "d58bcedc-2dcd-42c3-8b52-5359457e6802"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "a9b682a7-47ed-4d0d-8a2f-30e9d075525f",
+    "label": "card advantage",
+    "slug": "card-advantage",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/card-advantage",
+    "description": "Things that give you access to more cards.  (The technical meaning of card advantage can be much broader than this, but this is what we're using here.)",
+    "parent_ids": [],
+    "child_ids": [
+      "c05235dd-282d-4799-95a8-44e8b0bd2d30",
+      "efbbede8-8f54-4392-82a7-62ad84528aeb",
+      "78844aa5-9575-4bed-81c1-3330b5c56299",
+      "b6448c45-ce65-4848-aa98-2151e4e07437",
+      "8cb1bab7-38db-4f6b-bee4-15d5c26a879d",
+      "d78256ae-3a8b-4b09-96d5-ebac711ed533"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "5a0a0531-5462-477d-add9-886148c4413f",
+    "label": "card names",
+    "slug": "card-names",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/card-names",
+    "description": "A collection of tags identifying properties and naming schemes in cards.",
+    "parent_ids": [],
+    "child_ids": [
+      "a3909e64-69d4-442e-8da1-fffa309492b8",
+      "f368227a-25f4-4b58-8eef-0ceb99f9f8d3",
+      "1bce3cda-e9a8-461c-925b-73742244d3e6",
+      "a798d4bf-1499-4a50-931e-bfbaaf46f4df",
+      "9ded20e3-ba4c-4cf2-9a03-576889613615",
+      "d729f8cf-e947-41c4-80af-71b250bab7dd",
+      "36f3801c-18c7-4cbd-828d-5cc7642edea2"
+    ],
+    "aliases": [
+      "naming scheme"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "7b69d9ad-db35-4299-9335-76e20e01e709",
+    "label": "cards in graveyard matter",
+    "slug": "cards-in-graveyard-matter",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cards-in-graveyard-matter",
+    "description": "Mechanics that care about the cards in one or more graveyards.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "e4625704-1d52-44e4-804f-2f45644d76ac",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "7511d08e-7d7e-4ddf-8208-9568a54703aa",
+    "label": "cast on resolution",
+    "slug": "cast-on-resolution",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cast-on-resolution",
+    "description": "Spells and abilities that let you cast spells as part of their resolution.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "ad4c8156-1a70-4da1-93b6-f59ddd86be8c",
+    "label": "cast tax",
+    "slug": "cast-tax",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cast-tax",
+    "description": "When a spell is cast, something happens unless the player casting the spell pays a cost, usually mana.",
+    "parent_ids": [
+      "2ffad104-2092-410d-9a71-080c57b2e8c5"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "53236dd7-845a-444c-96d5-f41ed7325d8f",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "4539431a-4109-4fee-91fc-caea0fcccb88",
+    "label": "cast trigger",
+    "slug": "cast-trigger",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cast-trigger",
+    "description": null,
+    "parent_ids": [
+      "4d7fc833-e0af-4022-b298-6a9c99a56ac1"
+    ],
+    "child_ids": [
+      "93c7dfa5-b55a-47fb-a73c-c056c649e198",
+      "d334d276-7784-478c-abc3-2310c12275fd"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "d334d276-7784-478c-abc3-2310c12275fd",
+    "label": "cast trigger-other",
+    "slug": "cast-trigger-other",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cast-trigger-other",
+    "description": null,
+    "parent_ids": [
+      "4539431a-4109-4fee-91fc-caea0fcccb88"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "53236dd7-845a-444c-96d5-f41ed7325d8f",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "93c7dfa5-b55a-47fb-a73c-c056c649e198",
+    "label": "cast trigger-you",
+    "slug": "cast-trigger-you",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cast-trigger-you",
+    "description": "Whenever you cast X, do something.",
+    "parent_ids": [
+      "4539431a-4109-4fee-91fc-caea0fcccb88"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "330c3d98-c1ed-4eed-82da-63ff282846c0",
+    "label": "castable from exile",
+    "slug": "castable-from-exile",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/castable-from-exile",
+    "description": "Cards you can cast or access from exile.",
+    "parent_ids": [
+      "65d43202-9817-4f68-89cf-02792cc2c9be",
+      "7ef982da-7f7a-4003-8bb9-84fd368f4441"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "65d43202-9817-4f68-89cf-02792cc2c9be",
+    "label": "castable from nonhand",
+    "slug": "castable-from-nonhand",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/castable-from-nonhand",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [
+      "330c3d98-c1ed-4eed-82da-63ff282846c0"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "41001ec8-915d-4113-9f6d-e4d103cc4b5d",
+    "label": "cheaper than mv",
+    "slug": "cheaper-than-mv",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cheaper-than-mv",
+    "description": "The actual cost you pay for an effect (or for an alternate mode) will often be lower than the card's mana value.",
+    "parent_ids": [],
+    "child_ids": [
+      "bd38985d-b7cc-4eac-b45d-1ac0cee3b8f7"
+    ],
+    "aliases": [
+      "less expensive than mv"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a731e87b-8d99-4b64-8ee3-8e540d652366",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "eb641bf6-0a54-43fc-8934-d22463c1159f",
+    "label": "cheat death",
+    "slug": "cheat-death",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cheat-death",
+    "description": "Return a creature or permanent to the battlefield or to your hand at the moment it dies.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [
+      "graveflicker",
+      "creature-reanimation-automatic"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "a731e87b-8d99-4b64-8ee3-8e540d652366",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "44012cd5-95e4-42f1-b74d-453ca9130f8f",
+    "label": "color break",
+    "slug": "color-break",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/color-break",
+    "description": "Cards known to break the modern color pie, granting a color access to something it shouldn't be able to do.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "7735eeba-693b-47e2-bd51-414379cf1016",
+        "weight": "median",
+        "annotation": "Creature destruction in green (without involving your own creatures)"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "1be51991-024b-44c1-a918-8b75087820ab",
+    "label": "commander identity matters",
+    "slug": "commander-identity-matters",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/commander-identity-matters",
+    "description": "Cards that care about your commander's color identity.",
+    "parent_ids": [
+      "bb173616-aeeb-405f-88c7-7a68d6f36b33"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+        "weight": "very_strong"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "bb173616-aeeb-405f-88c7-7a68d6f36b33",
+    "label": "commander matters",
+    "slug": "commander-matters",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/commander-matters",
+    "description": "Cards that care about commander mechanics. See child tags for the specific mechanics being engaged in.",
+    "parent_ids": [],
+    "child_ids": [
+      "1be51991-024b-44c1-a918-8b75087820ab",
+      "137ad7eb-702f-4277-b3c3-affb570f0aea"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "137ad7eb-702f-4277-b3c3-affb570f0aea",
+    "label": "commander tax evasion",
+    "slug": "commander-tax-evasion",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/commander-tax-evasion",
+    "description": "Don't pay the {2}, become a tax evader! These effects replace, discount, or eliminate commander tax.",
+    "parent_ids": [
+      "bb173616-aeeb-405f-88c7-7a68d6f36b33"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "f6cb45db-9890-4bbb-a744-c19da0ecefa6",
+    "label": "control changing effects",
+    "slug": "control-changing-effects",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/control-changing-effects",
+    "description": "Effects that change control of cards, permanents, and spells.",
+    "parent_ids": [],
+    "child_ids": [
+      "3404c16e-d708-492a-8c0f-27bb388e4cc8"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "dd10dded-2973-446e-b078-4240bce90cea",
+    "label": "cost ignorer",
+    "slug": "cost-ignorer",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cost-ignorer",
+    "description": "Cards that allow you to bypass mana costs. This could be by making the spell free or by setting a static cost that's independent of the original.",
+    "parent_ids": [],
+    "child_ids": [
+      "2e5e26a1-4eec-4f7f-ac27-3df3ea9a1571"
+    ],
+    "aliases": [
+      "cheat mana"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "1a8e9788-b694-4330-a1a4-1aed6183bd57",
+    "label": "cost reducer",
+    "slug": "cost-reducer",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cost-reducer",
+    "description": "Cards that make other spells cost less. (Does not apply to effects that reduce a spell's own cost, like delve.)",
+    "parent_ids": [],
+    "child_ids": [
+      "b117578c-1254-488c-81b8-ba98eaf9f626"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "b117578c-1254-488c-81b8-ba98eaf9f626",
+    "label": "cost-reducer-creature",
+    "slug": "cost-reducer-creature",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cost-reducer-creature",
+    "description": null,
+    "parent_ids": [
+      "1a8e9788-b694-4330-a1a4-1aed6183bd57"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "9cbfd4f0-aa13-4d0e-9e57-11d1d482e8a0",
+    "label": "counters matter",
+    "slug": "counters-matter",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/counters-matter",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [
+      "b7cfc923-3a15-4168-876b-525ce37850c5"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "690fc968-48ba-4854-a948-3db6bf19d3a9",
+    "label": "counterspell",
+    "slug": "counterspell",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/counterspell",
+    "description": "Spells that counter stuff. See child tags for variants on the behaviour; notably [counterspell-soft](/tags/card/counterspell-soft) which gives the opponent a buyout cost.",
+    "parent_ids": [
+      "022df3fc-9720-478d-8b40-755865b70cdb"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "counter"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "cc187110-1148-4090-bbb8-e205694a39f5",
+        "weight": "very_strong"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "aaa12ab3-a0e3-4d09-9ddb-be85e733cbff",
+    "label": "creature count matters",
+    "slug": "creature-count-matters",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/creature-count-matters",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [
+      "5b5da10c-69c2-437f-b502-cf8858ea77e2"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "d78256ae-3a8b-4b09-96d5-ebac711ed533",
+    "label": "creature engine",
+    "slug": "creature-engine",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/creature-engine",
+    "description": "Playing your creatures gives you more cards.",
+    "parent_ids": [
+      "a9b682a7-47ed-4d0d-8a2f-30e9d075525f"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "3dadc330-1d86-409a-8ce6-d93d1df90f15",
+    "label": "creaturefall",
+    "slug": "creaturefall",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/creaturefall",
+    "description": "Cards that care about a creature entering the battlefield. Also known as Alliance in New Capenna.",
+    "parent_ids": [
+      "f85a2d76-cc7a-414b-9151-1288bfdaacd1"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "alliance",
+      "etb-other-creature"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "9ef8a6a5-ebdc-4f81-9363-d5169c9225ac",
+    "label": "crucible of worlds",
+    "slug": "crucible-of-worlds",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/crucible-of-worlds",
+    "description": "Play lands from your graveyard.",
+    "parent_ids": [
+      "96bf3655-ba91-47b6-a6d7-ad96f41be43c"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "crucible"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "e4625704-1d52-44e4-804f-2f45644d76ac",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "8ed438b5-a53c-47e5-b903-7fe97e3d6a82",
+    "label": "curiosity-like",
+    "slug": "curiosity-like",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/curiosity-like",
+    "description": "Cards that can give you some form of card advantage upon dealing damage, usually combat damage, to a player.",
+    "parent_ids": [
+      "89ac2a80-7d3c-445a-973f-809e61015b77"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "1adda1a4-e23d-4212-a4da-58303a20e00c",
+    "label": "cycle",
+    "slug": "cycle",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle",
+    "description": "All the cycles from Magic history.",
+    "parent_ids": [],
+    "child_ids": [
+      "5f445c19-ffcd-42f1-a2de-f0c593938f1a",
+      "d6de64fb-5dc9-461e-bca8-78ab13d4bb40",
+      "a33c02a2-caa9-4a15-bebd-1f5470cf0a87",
+      "5a244dd0-c94d-4de1-b885-cea1d8fde7ce",
+      "a6b0438e-9083-43d6-85bc-ba9281a669d4",
+      "dd0dc94d-8a9f-4f2e-af02-6e5aaf23dd34",
+      "589a4e6e-ad91-4458-910f-8bdc4fc33e3b",
+      "a50f1146-42b0-43d6-ad29-5be2b0367717",
+      "da5ddd19-b005-4bd7-aeb1-4ee453614340",
+      "a839043f-53ec-4de0-9d90-633829f93876",
+      "e90c6a65-a2b4-4030-afa2-63611dd42928",
+      "ab4b1438-8ef6-49a8-965b-81599dfd5549",
+      "548ba6ee-750d-4170-95f3-100fdfea298e",
+      "de3614d6-bcf6-40aa-a29f-54eaa3410bbd",
+      "d89ff73a-d593-4611-8e17-c289adda3be3",
+      "720da0a3-fa12-427f-aa13-04b3fcea84e9"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "5f445c19-ffcd-42f1-a2de-f0c593938f1a",
+    "label": "cycle-1mv-tutor",
+    "slug": "cycle-1mv-tutor",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-1mv-tutor",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "cycle-1cmc-tutor"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "ededbdae-d9dc-4206-9335-d7158f2d7700",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "5a244dd0-c94d-4de1-b885-cea1d8fde7ce",
+    "label": "cycle-c16-face-commander",
+    "slug": "cycle-c16-face-commander",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-c16-face-commander",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c",
+      "1f17b570-e7c3-44d7-a215-04eaa50d7110"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "cycle-c16-mnop-commander"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "7e6b9b59-cd68-4e3c-827b-38833c92d6eb",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "a33c02a2-caa9-4a15-bebd-1f5470cf0a87",
+    "label": "cycle-c17-eminence-commander",
+    "slug": "cycle-c17-eminence-commander",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-c17-eminence-commander",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c",
+      "1f17b570-e7c3-44d7-a215-04eaa50d7110"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "e90c6a65-a2b4-4030-afa2-63611dd42928",
+    "label": "cycle-c18-sub-commander",
+    "slug": "cycle-c18-sub-commander",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-c18-sub-commander",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "d6de64fb-5dc9-461e-bca8-78ab13d4bb40",
+    "label": "cycle-cmd-face-commander",
+    "slug": "cycle-cmd-face-commander",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-cmd-face-commander",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c",
+      "1f17b570-e7c3-44d7-a215-04eaa50d7110"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "cycle-cmd-wedge-commander"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "cb8d80c9-ed58-4f2d-aa8c-c383370c7f1a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "de3614d6-bcf6-40aa-a29f-54eaa3410bbd",
+    "label": "cycle-cmm-r-two-color-legend",
+    "slug": "cycle-cmm-r-two-color-legend",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-cmm-r-two-color-legend",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "1d4cce43-894f-488b-9f7c-e7d50e62cb1a",
+    "label": "cycle-dual-land",
+    "slug": "cycle-dual-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-dual-land",
+    "description": "Dual land cycles. See also [dual land](https://tagger.scryfall.com/tags/card/dual-land) for non-cycle dual lands.",
+    "parent_ids": [
+      "589a4e6e-ad91-4458-910f-8bdc4fc33e3b",
+      "97e00241-272e-4a67-97e8-193e4ff69b82"
+    ],
+    "child_ids": [
+      "19828ae2-f6c3-445b-acb5-3b6de5816eba"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "a6b0438e-9083-43d6-85bc-ba9281a669d4",
+    "label": "cycle-eld-brawler",
+    "slug": "cycle-eld-brawler",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-eld-brawler",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "dd0dc94d-8a9f-4f2e-af02-6e5aaf23dd34",
+    "label": "cycle-ema-tutor",
+    "slug": "cycle-ema-tutor",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-ema-tutor",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ededbdae-d9dc-4206-9335-d7158f2d7700",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "720da0a3-fa12-427f-aa13-04b3fcea84e9",
+    "label": "cycle-fra-lorwyn-five",
+    "slug": "cycle-fra-lorwyn-five",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-fra-lorwyn-five",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "589a4e6e-ad91-4458-910f-8bdc4fc33e3b",
+    "label": "cycle-land",
+    "slug": "cycle-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-land",
+    "description": "All the land cycles. See in particular: [monocolor land cycles](/tags/card/cycle-mono-land), [dual land cycles](/tags/card/cycle-dual-land), and [triland cycles](/tags/card/cycle-triland).",
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [
+      "1d4cce43-894f-488b-9f7c-e7d50e62cb1a",
+      "0894aee7-19cf-443c-a825-fcb41bab8faf"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "2c878f16-80b5-4eaf-90b5-12f0f3d7f46a",
+    "label": "cycle-lea-basic-land",
+    "slug": "cycle-lea-basic-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-lea-basic-land",
+    "description": null,
+    "parent_ids": [
+      "0894aee7-19cf-443c-a825-fcb41bab8faf"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "bc71ebf6-2056-41f7-be35-b2e5c34afa99",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "b2c6aa39-2d2a-459c-a555-fb48ba993373",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "a50f1146-42b0-43d6-ad29-5be2b0367717",
+    "label": "cycle-lea-slush-art",
+    "slug": "cycle-lea-slush-art",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-lea-slush-art",
+    "description": "These cards were designed last-minute for Alpha and not playtested, and designed to use up leftover art. Read more here: [Alpha Top-Down cards  by WotC](https://magic.wizards.com/en/articles/archive/alpha-top-down-cards-2003-06-13)",
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "cycle-lea-top-down"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "d3a0b660-358c-41bd-9cd2-41fbf3491b1a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "da5ddd19-b005-4bd7-aeb1-4ee453614340",
+    "label": "cycle-m13-legend",
+    "slug": "cycle-m13-legend",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-m13-legend",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "68418069-f615-40ef-ae0d-764192acae00",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "ab4b1438-8ef6-49a8-965b-81599dfd5549",
+    "label": "cycle-mh2-r-two-color-new",
+    "slug": "cycle-mh2-r-two-color-new",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-mh2-r-two-color-new",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "548ba6ee-750d-4170-95f3-100fdfea298e",
+    "label": "cycle-mom-u-mono-invasion",
+    "slug": "cycle-mom-u-mono-invasion",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-mom-u-mono-invasion",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "0894aee7-19cf-443c-a825-fcb41bab8faf",
+    "label": "cycle-mono-land",
+    "slug": "cycle-mono-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-mono-land",
+    "description": "Monocolor land cycles.",
+    "parent_ids": [
+      "589a4e6e-ad91-4458-910f-8bdc4fc33e3b"
+    ],
+    "child_ids": [
+      "2c878f16-80b5-4eaf-90b5-12f0f3d7f46a"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "19828ae2-f6c3-445b-acb5-3b6de5816eba",
+    "label": "cycle-pathway",
+    "slug": "cycle-pathway",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-pathway",
+    "description": null,
+    "parent_ids": [
+      "1d4cce43-894f-488b-9f7c-e7d50e62cb1a"
+    ],
+    "child_ids": [
+      "005b4626-cb6e-497e-b8cf-08ddb37b1466"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "d89ff73a-d593-4611-8e17-c289adda3be3",
+    "label": "cycle-rvr-r-mono-legend",
+    "slug": "cycle-rvr-r-mono-legend",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-rvr-r-mono-legend",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "68418069-f615-40ef-ae0d-764192acae00",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "a839043f-53ec-4de0-9d90-633829f93876",
+    "label": "cycle-spellshaped-from-fut",
+    "slug": "cycle-spellshaped-from-fut",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-spellshaped-from-fut",
+    "description": null,
+    "parent_ids": [
+      "1adda1a4-e23d-4212-a4da-58303a20e00c"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "68954295-54e3-4303-a6bc-fc4547a4e3a3",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "005b4626-cb6e-497e-b8cf-08ddb37b1466",
+    "label": "cycle-znr-pathway",
+    "slug": "cycle-znr-pathway",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/cycle-znr-pathway",
+    "description": null,
+    "parent_ids": [
+      "19828ae2-f6c3-445b-acb5-3b6de5816eba"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "1c633e02-95ef-445e-b4e0-fbfbc5ed9cc9",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "3bcd7cdd-61ca-42dd-adc5-1a695eaec2d2",
+    "label": "death trigger",
+    "slug": "death-trigger",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/death-trigger",
+    "description": "Abilities that trigger from permanents being sent to a graveyard. See also [leaves trigger](leaves-battlefield-trigger).",
+    "parent_ids": [
+      "4d7fc833-e0af-4022-b298-6a9c99a56ac1"
+    ],
+    "child_ids": [
+      "63353a72-d5ba-429d-a70d-ba706a0d74b8"
+    ],
+    "aliases": [
+      "deathtrigger"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "65986c1b-8e51-4604-b685-d82fa7d1263a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a731e87b-8d99-4b64-8ee3-8e540d652366",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "63353a72-d5ba-429d-a70d-ba706a0d74b8",
+    "label": "death trigger-self",
+    "slug": "death-trigger-self",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/death-trigger-self",
+    "description": "Permanents with abilities that trigger when they die.",
+    "parent_ids": [
+      "3bcd7cdd-61ca-42dd-adc5-1a695eaec2d2"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "00c0543c-2a1f-4425-8283-4062d74a1637",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "45ca71a0-f26d-4e50-b46e-48ce5a97d53c",
+    "label": "deprecated card types",
+    "slug": "deprecated-card-types",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/deprecated-card-types",
+    "description": "Cards featuring deprecated card types in some of their prints.",
+    "parent_ids": [],
+    "child_ids": [
+      "a5615e6a-1236-47b0-8d4f-423910b0be7f"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "bd38985d-b7cc-4eac-b45d-1ac0cee3b8f7",
+    "label": "discount-self",
+    "slug": "discount-self",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/discount-self",
+    "description": "Cards that have a way to reduce their own cost",
+    "parent_ids": [
+      "41001ec8-915d-4113-9f6d-e4d103cc4b5d"
+    ],
+    "child_ids": [
+      "e506f033-f9d4-4263-b4b7-8a0eecd2cbe1"
+    ],
+    "aliases": [
+      "cost-reducer-self"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "baf0028c-c0d7-44e2-8840-da458377bdbe",
+    "label": "donate rampant growth",
+    "slug": "donate-rampant-growth",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/donate-rampant-growth",
+    "description": "Cards that allow you to ramp another player's mana by putting a land from their (or your) deck onto the battlefield. Compare [donate mana](donate-mana), which lets you add mana directly to their mana pool.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "568637db-e729-4474-b860-3bb28fca02a7",
+    "label": "donate token",
+    "slug": "donate-token",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/donate-token",
+    "description": "Effects that can create tokens under an opponents control.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "7735eeba-693b-47e2-bd51-414379cf1016",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "b6448c45-ce65-4848-aa98-2151e4e07437",
+    "label": "draw",
+    "slug": "draw",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/draw",
+    "description": "Spells and abilities that textually draw you cards. See also [pure draw](pure-draw).",
+    "parent_ids": [
+      "a9b682a7-47ed-4d0d-8a2f-30e9d075525f"
+    ],
+    "child_ids": [
+      "45ae9f00-85ba-47ee-b07f-fa5f2e838124",
+      "544b4fd6-abf7-4ae3-846f-d8d1e134054c"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "0e87cf9c-591e-4f2a-b4fd-675021f120ae",
+    "label": "draw engine",
+    "slug": "draw-engine",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/draw-engine",
+    "description": "Card draw effects that can net you additional cards repeatedly over time. Contrast [Burst Draw](burst-draw), which nets you multiple cards right away.",
+    "parent_ids": [
+      "544b4fd6-abf7-4ae3-846f-d8d1e134054c"
+    ],
+    "child_ids": [
+      "77f8c103-b6fb-4f74-9048-51ca6f6ccfc0"
+    ],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "53236dd7-845a-444c-96d5-f41ed7325d8f",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "65986c1b-8e51-4604-b685-d82fa7d1263a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "4c4a713b-b4b3-45dc-98e1-f8aa8adeb3ca",
+    "label": "draw hate",
+    "slug": "draw-hate",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/draw-hate",
+    "description": "Cards that can hate on players drawing cards.",
+    "parent_ids": [
+      "249eaa21-acc1-45de-bb29-757cd60dffb8"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "hate-draw"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "153376c9-dffd-458c-8ce3-a4c8269bc4e9",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "0c584af0-6c13-4f44-8ef2-56d4dccce473",
+    "label": "drawback",
+    "slug": "drawback",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/drawback",
+    "description": "Cards that have some kind of disadvantage. ",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [
+      "downside",
+      "own at cost"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "b1544f21-7e98-461b-aed5-e748b0168c52",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "97e00241-272e-4a67-97e8-193e4ff69b82",
+    "label": "dual land",
+    "slug": "dual-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/dual-land",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [
+      "1d4cce43-894f-488b-9f7c-e7d50e62cb1a"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "f8fd7561-dfa4-4a98-8135-0ba91a5c8378",
+    "label": "eminence",
+    "slug": "eminence",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/eminence",
+    "description": "An ability that works either in the command zone or on the battlefield, introduced by the tribal leaders of Commander 2017.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "9ded20e3-ba4c-4cf2-9a03-576889613615",
+    "label": "eponymous",
+    "slug": "eponymous",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/eponymous",
+    "description": "Non-token cards with a name matching their subtypes.",
+    "parent_ids": [
+      "5a0a0531-5462-477d-add9-886148c4413f"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "name-type"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "b2c6aa39-2d2a-459c-a555-fb48ba993373",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "bc71ebf6-2056-41f7-be35-b2e5c34afa99",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "c7756471-d290-452f-bfc6-24866c841f28",
+    "label": "evasion",
+    "slug": "evasion",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/evasion",
+    "description": "Creatures that are harder to block through keywords (flying, menace) or other means.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "cb8d80c9-ed58-4f2d-aa8c-c383370c7f1a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d3a0b660-358c-41bd-9cd2-41fbf3491b1a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "7e6b9b59-cd68-4e3c-827b-38833c92d6eb",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "9e39900a-5ff6-45a2-8039-bc0f9784e82e",
+    "label": "exile-self",
+    "slug": "exile-self",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/exile-self",
+    "description": "Cards which exile themselves (from the battlefield, from the graveyard, from your hand, etc.)",
+    "parent_ids": [],
+    "child_ids": [
+      "b907f0ef-4388-4d56-ab60-e363756bf1c7"
+    ],
+    "aliases": [
+      "exiles-self"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "b907f0ef-4388-4d56-ab60-e363756bf1c7",
+    "label": "exile-self-dfc-transform",
+    "slug": "exile-self-dfc-transform",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/exile-self-dfc-transform",
+    "description": "DFCs that exile themselves as part of their transformation.",
+    "parent_ids": [
+      "9e39900a-5ff6-45a2-8039-bc0f9784e82e"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "flicker-dfc-transform"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "93bfb93a-ffaa-45cf-8335-4805dbe7c6de",
+    "label": "exponential",
+    "slug": "exponential",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/exponential",
+    "description": "Effects that involve some amount of exponential growth. This can be an exponential value, or a token creation effect that would be exponential if allowed to progress unhindered. See [quadratic](quadratic) for a different, but similar kind of effect.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "68418069-f615-40ef-ae0d-764192acae00",
+        "weight": "median",
+        "annotation": "Creates a number of goblins that grows exponentially"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "88e643b3-9fd4-4f46-9f36-cb1a72a7bc3c",
+    "label": "extra land",
+    "slug": "extra-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/extra-land",
+    "description": "Effects that allow you to put additional lands from your hand, top of the library, or graveyard onto the battlefield outside of your normal once-per-turn land play. For effects that let you search your library for cards, refer to [tutor land](/tags/card/tutor-land).",
+    "parent_ids": [
+      "2f3e4ad7-5e60-41b4-bdbc-653f16869cf6"
+    ],
+    "child_ids": [
+      "0186bf9b-d4b8-42a8-ac50-3740e242ab82"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "1f17b570-e7c3-44d7-a215-04eaa50d7110",
+    "label": "face-commander",
+    "slug": "face-commander",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/face-commander",
+    "description": "A card that is the primary, marquee legendary creature featured on the packaging of a pre-constructed Commander deck. It sets the main mechanical theme and color identity of the deck.",
+    "parent_ids": [],
+    "child_ids": [
+      "d6de64fb-5dc9-461e-bca8-78ab13d4bb40",
+      "a33c02a2-caa9-4a15-bebd-1f5470cf0a87",
+      "5a244dd0-c94d-4de1-b885-cea1d8fde7ce"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "e894517d-c9cc-48ea-bc05-7cd257c15155",
+    "label": "flavors of vanilla",
+    "slug": "flavors-of-vanilla",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/flavors-of-vanilla",
+    "description": "Magic has various flavors of \"vanilla\", referencing cards with no abilities or only keyword abilities. For vanilla creatures (those with no abilities) see [is:vanilla](https://scryfall.com/search?q=is%3Avanilla) in Scryfall search.",
+    "parent_ids": [],
+    "child_ids": [
+      "e181b762-73f6-4a38-91fd-2d54b6a210ec"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "ad5d352c-b556-42b8-abb8-d93d1c2fdbcd",
+    "label": "flowstone",
+    "slug": "flowstone",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/flowstone",
+    "description": "Abilities that grant +N/-N and/or -N/+N",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "65986c1b-8e51-4604-b685-d82fa7d1263a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "f9579474-bf53-4029-a2ae-e3dfe2de1012",
+    "label": "force draw",
+    "slug": "force-draw",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/force-draw",
+    "description": "Force an opponent to draw cards, whether they like it or not. The lesser used mode on Ancestral Recall.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [
+      "opponent draw"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "bee3a384-5923-4d95-872f-08c8edf6403e",
+    "label": "four loyalty abilities",
+    "slug": "four-loyalty-abilities",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/four-loyalty-abilities",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "ab654d3f-c8a7-4e52-b488-bba83be17951",
+    "label": "french vanilla equipment",
+    "slug": "french-vanilla-equipment",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/french-vanilla-equipment",
+    "description": "Equipment that give a creature a stat change and/or a keyword with no other effects.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ca204b66-8d0c-431a-8d34-282f7c2d17da",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "7deb3a80-1a94-485b-b66d-ef400700a616",
+    "label": "full refund",
+    "slug": "full-refund",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/full-refund",
+    "description": "Cards that give you mana equal to or greater than the amount of mana spent for it, either in the form of a immediately usable mana ability, a ritual effect, or untapped lands ",
+    "parent_ids": [
+      "82e2cb8b-1a53-4814-a7a2-76c1369055b4"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "6ad8011d-3471-4369-9d68-b264cc027487",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "b30fe15d-4dd2-43c9-b57a-f99c4e4c5c0d",
+    "label": "gains haste",
+    "slug": "gains-haste",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/gains-haste",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "eb4a8d84-9daa-4aee-8491-2566673a5749",
+    "label": "gains pp counters",
+    "slug": "gains-pp-counters",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/gains-pp-counters",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "5b1d0b6c-c422-4ee4-8f14-dfe6966ef9d0",
+    "label": "gains trample",
+    "slug": "gains-trample",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/gains-trample",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "c0ee2fd9-8363-4d7f-b3d7-f883eadf02f0",
+    "label": "gives castable from exile",
+    "slug": "gives-castable-from-exile",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/gives-castable-from-exile",
+    "description": "Cards that let you cast things from exile.",
+    "parent_ids": [
+      "800416e9-d68c-46f6-af28-d93b66866144"
+    ],
+    "child_ids": [
+      "78844aa5-9575-4bed-81c1-3330b5c56299"
+    ],
+    "aliases": [
+      "cast from exile"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "6798d754-7d85-48fe-b35b-2123e710bb1c",
+    "label": "gives castable from graveyard",
+    "slug": "gives-castable-from-graveyard",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/gives-castable-from-graveyard",
+    "description": "Allows you to play other cards from the graveyard.",
+    "parent_ids": [
+      "800416e9-d68c-46f6-af28-d93b66866144",
+      "82b824ad-648f-467f-a190-2e0fa9a795d2"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "cast from graveyard"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "e4625704-1d52-44e4-804f-2f45644d76ac",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "800416e9-d68c-46f6-af28-d93b66866144",
+    "label": "gives castable from nonhand",
+    "slug": "gives-castable-from-nonhand",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/gives-castable-from-nonhand",
+    "description": "Allows you to play other cards from zones other than your hand.",
+    "parent_ids": [],
+    "child_ids": [
+      "c0ee2fd9-8363-4d7f-b3d7-f883eadf02f0",
+      "6798d754-7d85-48fe-b35b-2123e710bb1c"
+    ],
+    "aliases": [
+      "cast from nonhand"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "702286e6-707d-4adb-9a98-21de8ca13519",
+    "label": "gives haste",
+    "slug": "gives-haste",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/gives-haste",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ca204b66-8d0c-431a-8d34-282f7c2d17da",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "c1100c9e-08bf-4845-9263-1a5f86b9005f",
+    "label": "gives pp counters",
+    "slug": "gives-pp-counters",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/gives-pp-counters",
+    "description": "Cards that give +1/+1 counters. For permanents that only give +1/+1 counters to themselves, see [gains pp counters](gains-pp-counters) (which may overlap for cards that can give counters to themselves as well as others).",
+    "parent_ids": [],
+    "child_ids": [
+      "b504c445-169d-4145-abc4-65270686c208"
+    ],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "b504c445-169d-4145-abc4-65270686c208",
+    "label": "gives pp counters to all",
+    "slug": "gives-pp-counters-to-all",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/gives-pp-counters-to-all",
+    "description": "Put +1/+1 counters on all of your creatures.",
+    "parent_ids": [
+      "c1100c9e-08bf-4845-9263-1a5f86b9005f",
+      "e7f7559f-5ddd-4262-90ad-04f2ea2a735b",
+      "3c3c90d3-b93c-46fb-9848-7940a3adebf7"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "gives counters to all"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "3b101f28-8f85-4e8d-9194-302c00d67e44",
+    "label": "gives shroud",
+    "slug": "gives-shroud",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/gives-shroud",
+    "description": null,
+    "parent_ids": [
+      "6e2cdc7c-b02c-4b59-a171-f93723721b79"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ca204b66-8d0c-431a-8d34-282f7c2d17da",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "12b7f1f1-1a32-4e82-8b3b-47be7c8bf373",
+    "label": "gives trample",
+    "slug": "gives-trample",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/gives-trample",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "a07140be-dadf-4c3b-a68a-3e885028aed1",
+    "label": "group hug",
+    "slug": "group-hug",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/group-hug",
+    "description": "Cards that can be used to benefit other players, including opponents, usually by giving them resources ",
+    "parent_ids": [],
+    "child_ids": [
+      "84d4490e-341b-40fe-893e-e98e80f25b89"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "9c231dce-0511-4d19-9722-e9a5a892c4b6",
+    "label": "group slug",
+    "slug": "group-slug",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/group-slug",
+    "description": "Cards that are able to deal damage or otherwise target multiple players at once.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "afb0c553-e747-4859-9b8b-f11791b56e31",
+    "label": "hand size increase",
+    "slug": "hand-size-increase",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/hand-size-increase",
+    "description": "Cards that increase the maximum amount of cards you can hold. ",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "c23e5b80-08d2-4e24-9908-fe2aa4f30f6f",
+        "weight": "very_strong"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "1ac18133-4f7b-41ef-ac84-d367059757a7",
+    "label": "has identical token",
+    "slug": "has-identical-token",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/has-identical-token",
+    "description": "A token exists that's identical to these cards. See more: [token versions of cards](token-versions-of-cards).",
+    "parent_ids": [
+      "78f49da2-3dac-4c5e-a141-628e61de7c14"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "68954295-54e3-4303-a6bc-fc4547a4e3a3",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "249eaa21-acc1-45de-bb29-757cd60dffb8",
+    "label": "hate",
+    "slug": "hate",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/hate",
+    "description": "Cards that hate on things — colors, card types, zones, etc.",
+    "parent_ids": [],
+    "child_ids": [
+      "4c4a713b-b4b3-45dc-98e1-f8aa8adeb3ca",
+      "486b89e1-bd1c-4cbc-8aaf-5e9249478650",
+      "ee9e8ca2-e241-4910-8278-c08051ce38aa",
+      "c40dfb14-6ca3-4931-a514-167a0b84489b"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "486b89e1-bd1c-4cbc-8aaf-5e9249478650",
+    "label": "hate-graveyard",
+    "slug": "hate-graveyard",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/hate-graveyard",
+    "description": null,
+    "parent_ids": [
+      "249eaa21-acc1-45de-bb29-757cd60dffb8"
+    ],
+    "child_ids": [
+      "e5442780-5df7-4ebe-be78-2b73f20a4ffc"
+    ],
+    "aliases": [
+      "graveyard hate"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "c40dfb14-6ca3-4931-a514-167a0b84489b",
+    "label": "hate-regenerate",
+    "slug": "hate-regenerate",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/hate-regenerate",
+    "description": null,
+    "parent_ids": [
+      "249eaa21-acc1-45de-bb29-757cd60dffb8"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "hate-regeneration",
+      "stops regeneration",
+      "prevent regeneration"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "34515b16-c9a4-4f98-8c77-416a7a523407",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "ee9e8ca2-e241-4910-8278-c08051ce38aa",
+    "label": "hate-wide",
+    "slug": "hate-wide",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/hate-wide",
+    "description": "The more creatures your opponent controls, the more these cards scale up to punish them for it.",
+    "parent_ids": [
+      "249eaa21-acc1-45de-bb29-757cd60dffb8"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "7a2484a9-04fd-41a0-8224-610c1c07ed10",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "c05235dd-282d-4799-95a8-44e8b0bd2d30",
+    "label": "impulse",
+    "slug": "impulse",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/impulse",
+    "description": "Look at the top N cards and put 1+ of them into your hand. Not to be confused with Red's pseudo-card-draw effect, [impulsive draw](/tags/card/impulsive-draw).",
+    "parent_ids": [
+      "a9b682a7-47ed-4d0d-8a2f-30e9d075525f"
+    ],
+    "child_ids": [
+      "12cc0718-e08e-485c-85ee-3331f688fd54"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "78844aa5-9575-4bed-81c1-3330b5c56299",
+    "label": "impulsive draw",
+    "slug": "impulsive-draw",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/impulsive-draw",
+    "description": "Cards which let you cast a card for a limited time off the top of a library (via exile). Use it or lose it. Typically a red card advantage mechanic. See also [impulsive mill](impulsive-mill). For the effect seen on the [card Impulse](/card/vis/34), see the [tag impulse](impulse).",
+    "parent_ids": [
+      "67f54c14-5ebf-44b2-853b-618c3846dce2",
+      "a9b682a7-47ed-4d0d-8a2f-30e9d075525f",
+      "c0ee2fd9-8363-4d7f-b3d7-f883eadf02f0"
+    ],
+    "child_ids": [
+      "eae7fdc3-18a2-4bfc-b6b7-6e69011fdfeb"
+    ],
+    "aliases": [
+      "impulse draw",
+      "bottle draw"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "a5615e6a-1236-47b0-8d4f-423910b0be7f",
+    "label": "interrupt",
+    "slug": "interrupt",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/interrupt",
+    "description": "This spell was an interrupt before Sixth Edition Rules introduced the stack.",
+    "parent_ids": [
+      "45ca71a0-f26d-4e50-b46e-48ce5a97d53c"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "cc187110-1148-4090-bbb8-e205694a39f5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "68f9547a-5c51-4d1b-86c4-8c07e654f789",
+    "label": "intervening if clause",
+    "slug": "intervening-if-clause",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/intervening-if-clause",
+    "description": "At/When/Whenever [event], if [clause], [effect].",
+    "parent_ids": [
+      "4d7fc833-e0af-4022-b298-6a9c99a56ac1"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "7cf712eb-1472-491d-8966-e682506db8b8",
+    "label": "invitational card",
+    "slug": "invitational-card",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/invitational-card",
+    "description": "Cards designed by players who won Invitationals. The original print traditionally features the winning player. See also [Player Spotlight](player-spotlight).",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "00c0543c-2a1f-4425-8283-4062d74a1637",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "8e3bf407-28b7-49ab-83d5-5a9c46b1cd79",
+    "label": "land ramp",
+    "slug": "land-ramp",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/land-ramp",
+    "description": "Ramp spells that net you more lands on your side of the battlefield.",
+    "parent_ids": [
+      "2f3e4ad7-5e60-41b4-bdbc-653f16869cf6"
+    ],
+    "child_ids": [
+      "d5903e3a-53df-4357-8143-faaefc45f95e"
+    ],
+    "aliases": [
+      "rampant growth"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "00c0543c-2a1f-4425-8283-4062d74a1637",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "8b755881-a72d-4e21-a369-d2924eb4585a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+        "weight": "median",
+        "annotation": "if you target a Creature you control"
+      },
+      {
+        "oracle_id": "1593ea18-2f2f-4ab4-83fb-6ccc0bec8a90",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "f2486826-9b36-4aba-88bb-c2482e72f9ec",
+    "label": "library manipulation",
+    "slug": "library-manipulation",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/library-manipulation",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [
+      "71109955-3204-48a7-8487-35032fd91620"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "e07644cf-2b48-4e1f-bfb0-92bbdcffe129",
+    "label": "life payment",
+    "slug": "life-payment",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/life-payment",
+    "description": "Cards that cost life to use; not necessarily with the \"pay\" keyword.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a731e87b-8d99-4b64-8ee3-8e540d652366",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "ededbdae-d9dc-4206-9335-d7158f2d7700",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "4caab3cc-1d60-44fb-a26a-cc833bc67c97",
+    "label": "lifegain",
+    "slug": "lifegain",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/lifegain",
+    "description": "Cards that cause you to gain life.",
+    "parent_ids": [],
+    "child_ids": [
+      "2dabdf83-e041-48a4-b0e5-08e1842f008c"
+    ],
+    "aliases": [
+      "life gain"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "b1544f21-7e98-461b-aed5-e748b0168c52",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "bb6c0ff7-302d-48ff-aee9-5cfefd44e351",
+    "label": "mana dork",
+    "slug": "mana-dork",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/mana-dork",
+    "description": "Creatures which can repeatedly generate mana",
+    "parent_ids": [
+      "5f1260dd-e1dc-435a-a9ff-ce7172b7a5cd"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "68954295-54e3-4303-a6bc-fc4547a4e3a3",
+        "weight": "very_strong"
+      },
+      {
+        "oracle_id": "d3a0b660-358c-41bd-9cd2-41fbf3491b1a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+        "weight": "median",
+        "annotation": "On the back side"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "5f1260dd-e1dc-435a-a9ff-ce7172b7a5cd",
+    "label": "mana producer",
+    "slug": "mana-producer",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/mana-producer",
+    "description": "Nonland cards that generate mana.",
+    "parent_ids": [
+      "2f3e4ad7-5e60-41b4-bdbc-653f16869cf6"
+    ],
+    "child_ids": [
+      "bb6c0ff7-302d-48ff-aee9-5cfefd44e351",
+      "523a4f29-25ee-483c-8123-a8e62b62af5a"
+    ],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "523a4f29-25ee-483c-8123-a8e62b62af5a",
+    "label": "mana rock",
+    "slug": "mana-rock",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/mana-rock",
+    "description": "Noncreature artifacts that net increase your mana.",
+    "parent_ids": [
+      "5f1260dd-e1dc-435a-a9ff-ce7172b7a5cd"
+    ],
+    "child_ids": [
+      "8c2afeb7-e6c8-4cbc-9a5e-079f09b1cace"
+    ],
+    "aliases": [
+      "manarock-cc",
+      "manarock-c",
+      "manarock-any-color",
+      "manarock-chosen-color",
+      "manarock-ccc",
+      "manarock"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "6ad8011d-3471-4369-9d68-b264cc027487",
+        "weight": "very_strong"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "8c2afeb7-e6c8-4cbc-9a5e-079f09b1cace",
+    "label": "mana rock with set's mechanic",
+    "slug": "mana-rock-with-set-s-mechanic",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/mana-rock-with-set-s-mechanic",
+    "description": null,
+    "parent_ids": [
+      "8a7328cb-d21a-436a-a311-f05dc09c2190",
+      "523a4f29-25ee-483c-8123-a8e62b62af5a"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "ef02b1a3-a5ae-4d8a-86ca-302d6f477744",
+    "label": "mana sink",
+    "slug": "mana-sink",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/mana-sink",
+    "description": "Cards with repeatable effects that you can dump a bunch of mana (at least 3) into each turn.",
+    "parent_ids": [],
+    "child_ids": [
+      "cd7e37e6-8b6e-4001-b263-68acf062d11a"
+    ],
+    "aliases": [
+      "mana dump"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "2bcab7f4-d89b-4f8a-979f-f2f6c3c02346",
+    "label": "mana value matters",
+    "slug": "mana-value-matters",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/mana-value-matters",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [
+      "9109865e-2711-48f0-a11f-f55bfd7ecae0"
+    ],
+    "aliases": [
+      "cmc matters",
+      "converted mana cost matters"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "97dc6a1e-f6d5-46b6-afee-df9cd1c865c1",
+    "label": "meme",
+    "slug": "meme",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/meme",
+    "description": "Cards that have become memes in Magic, or are explicitly based off of memes.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "153376c9-dffd-458c-8ce3-a4c8269bc4e9",
+        "weight": "median",
+        "annotation": "\"Do you pay the two?\""
+      },
+      {
+        "oracle_id": "53236dd7-845a-444c-96d5-f41ed7325d8f",
+        "weight": "median",
+        "annotation": "\"Do you pay the one?\""
+      },
+      {
+        "oracle_id": "b2c6aa39-2d2a-459c-a555-fb48ba993373",
+        "weight": "median",
+        "annotation": "\"The most powerful card in the game.\""
+      },
+      {
+        "oracle_id": "cc187110-1148-4090-bbb8-e205694a39f5",
+        "weight": "median",
+        "annotation": "The infamous \"No\" spell will come up often."
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "9826a011-f71f-42a1-bfe8-557ed6a24b80",
+    "label": "mini refund",
+    "slug": "mini-refund",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/mini-refund",
+    "description": "Immediately gives you a small amount of mana or untapped lands back (typically no more than about one-third of the mana cost you paid)",
+    "parent_ids": [
+      "82e2cb8b-1a53-4814-a7a2-76c1369055b4"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "947c480e-ca29-4778-a66f-88a8c6c4d310",
+    "label": "modal",
+    "slug": "modal",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/modal",
+    "description": "Spells which give you your choice from two or more distinct functions.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "40570ef7-e185-4f0b-ba52-edc4de748817",
+    "label": "more expensive than mv",
+    "slug": "more-expensive-than-mv",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/more-expensive-than-mv",
+    "description": "The actual cost you pay for an effect (or for an alternate mode) will often be higher than the card's mana value. See also [cards with X in their mana cost](https://scryfall.com/search?q=m%3Ax).",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [
+      "bigger than mv"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "d5903e3a-53df-4357-8143-faaefc45f95e",
+    "label": "multi land ramp",
+    "slug": "multi-land-ramp",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/multi-land-ramp",
+    "description": "Land ramp that (potentially) nets two or more lands on your side of the battlefield",
+    "parent_ids": [
+      "8e3bf407-28b7-49ab-83d5-5a9c46b1cd79"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "explosive vegetation",
+      "mass land ramp"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "9e24fc1e-327c-41be-a9d6-c46218134ffe",
+    "label": "multiplayer",
+    "slug": "multiplayer",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/multiplayer",
+    "description": "Cards that interact with all of the players in the game. They might scale with the number of players or affect the turn order for example.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "e7209681-3921-4d27-b105-00bf2fd0ad5c",
+    "label": "multiple species types",
+    "slug": "multiple-species-types",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/multiple-species-types",
+    "description": "Creatures that have two or more types that are considered to be a species, such as \"Human\" or \"Elf\"",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "a798d4bf-1499-4a50-931e-bfbaaf46f4df",
+    "label": "namesake spell",
+    "slug": "namesake-spell",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/namesake-spell",
+    "description": "Spells (or, mostly spells) with names that identify them with a specific named character.",
+    "parent_ids": [
+      "5a0a0531-5462-477d-add9-886148c4413f"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "1593ea18-2f2f-4ab4-83fb-6ccc0bec8a90",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "b3182c40-5361-4dc7-9db4-f232236be135",
+    "label": "non mana ability mana",
+    "slug": "non-mana-ability-mana",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/non-mana-ability-mana",
+    "description": "Abilities that produce mana, but aren't mana abilities (as defined by CR 605.1)",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "dc75cad6-0cc5-4ebc-b53f-2afbaf070edc",
+    "label": "noncreature typal",
+    "slug": "noncreature-typal",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/noncreature-typal",
+    "description": "Cards that care about creature types, but not necessarily on a creature card—so they're compatible with the Kindred cards from Lorwyn, for example.",
+    "parent_ids": [
+      "8047bd80-db1d-4437-ad82-7e9bca525a79"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "noncreature-tribal"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "68418069-f615-40ef-ae0d-764192acae00",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "95829a45-7878-4a08-8ed1-faffb50d4089",
+    "label": "offcolor ability",
+    "slug": "offcolor-ability",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/offcolor-ability",
+    "description": "Abilities with a mana cost outside the card's colors.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "33aff104-fb99-4b0f-936a-5296bba57701",
+    "label": "opponent lifegain",
+    "slug": "opponent-lifegain",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/opponent-lifegain",
+    "description": "Cards that make your opponents gain life.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "b1544f21-7e98-461b-aed5-e748b0168c52",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "c0d4b22b-b12e-44c8-8485-36a7247b660f",
+    "label": "opponent loses life",
+    "slug": "opponent-loses-life",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/opponent-loses-life",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "0387216a-0e23-47fb-a71d-7029f36dbf4e",
+    "label": "pillowfort",
+    "slug": "pillowfort",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/pillowfort",
+    "description": "Cards that disincentivise or make it harder for opponents to attack you",
+    "parent_ids": [],
+    "child_ids": [
+      "c251e9e5-b448-4d82-88e0-9790fa66b654"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "a96e7ee2-d411-435f-978f-0f50e1ce7a16",
+    "label": "pinger",
+    "slug": "pinger",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/pinger",
+    "description": "Effects that deal just 1-2 damage repeatedly.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [
+      "tim"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "e7f7559f-5ddd-4262-90ad-04f2ea2a735b",
+    "label": "power boost to all",
+    "slug": "power-boost-to-all",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/power-boost-to-all",
+    "description": "Cards that provide power to all creatures you control. May be limited to certain types or colors.",
+    "parent_ids": [],
+    "child_ids": [
+      "b504c445-169d-4145-abc4-65270686c208"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "6e2cdc7c-b02c-4b59-a171-f93723721b79",
+    "label": "protection",
+    "slug": "protection",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/protection",
+    "description": "Effects relating to protecting your permanents (not necessarily via the protection keyword.)",
+    "parent_ids": [],
+    "child_ids": [
+      "7d4c079e-5fb5-487c-bb38-769d06ce1e2b",
+      "3b101f28-8f85-4e8d-9194-302c00d67e44"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "7d4c079e-5fb5-487c-bb38-769d06ce1e2b",
+    "label": "protects-creature",
+    "slug": "protects-creature",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/protects-creature",
+    "description": "Effects that can protect a creature, e.g. with protection,  hexproof, indestructible, etc.",
+    "parent_ids": [
+      "6e2cdc7c-b02c-4b59-a171-f93723721b79"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ca204b66-8d0c-431a-8d34-282f7c2d17da",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a731e87b-8d99-4b64-8ee3-8e540d652366",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "92c990fa-2b50-4f04-a95e-ad8b62284d7e",
+    "label": "pseudo-fog",
+    "slug": "pseudo-fog",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/pseudo-fog",
+    "description": "Effects that can protect you from an entire combat phase, similar to the card Fog, but using less conventional means than damage prevention.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "45ae9f00-85ba-47ee-b07f-fa5f2e838124",
+    "label": "pure draw",
+    "slug": "pure-draw",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/pure-draw",
+    "description": "Spells and abilities that let you draw (a) card(s) without discarding other cards or sacrificing other permanents.",
+    "parent_ids": [
+      "b6448c45-ce65-4848-aa98-2151e4e07437"
+    ],
+    "child_ids": [
+      "524845ed-ea82-4a60-8b54-8a38ab06a503"
+    ],
+    "aliases": [
+      "draw card"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "00c0543c-2a1f-4425-8283-4062d74a1637",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "6671420c-fd48-417e-bd71-a1f3c5553866",
+    "label": "rainbow land",
+    "slug": "rainbow-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/rainbow-land",
+    "description": "A land that can net one or more mana of any color.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "2f3e4ad7-5e60-41b4-bdbc-653f16869cf6",
+    "label": "ramp",
+    "slug": "ramp",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/ramp",
+    "description": "Effects that increase available mana for current or later turns.",
+    "parent_ids": [],
+    "child_ids": [
+      "5f1260dd-e1dc-435a-a9ff-ce7172b7a5cd",
+      "88e643b3-9fd4-4f46-9f36-cb1a72a7bc3c",
+      "c6b4d855-398f-4671-b18d-2437e0792c1a",
+      "8e3bf407-28b7-49ab-83d5-5a9c46b1cd79"
+    ],
+    "aliases": [
+      "mana ramp",
+      "acceleration"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "153376c9-dffd-458c-8ce3-a4c8269bc4e9",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "c6b4d855-398f-4671-b18d-2437e0792c1a",
+    "label": "ramp with set's mechanic",
+    "slug": "ramp-with-set-s-mechanic",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/ramp-with-set-s-mechanic",
+    "description": null,
+    "parent_ids": [
+      "2f3e4ad7-5e60-41b4-bdbc-653f16869cf6",
+      "8a7328cb-d21a-436a-a311-f05dc09c2190"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "ramp with set mechanic"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "1593ea18-2f2f-4ab4-83fb-6ccc0bec8a90",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "d729f8cf-e947-41c4-80af-71b250bab7dd",
+    "label": "real life animal name",
+    "slug": "real-life-animal-name",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/real-life-animal-name",
+    "description": "Card names that match real world english animal names. \"Manta ray\" is accepted, while \"Hurr jackal\" is not. Adjectives can disqualify a card unless it is a part of their name. \"Giant ladybug\" is a species name and therefore accepted, while \"Venomous dragonfly\" is not.",
+    "parent_ids": [
+      "5a0a0531-5462-477d-add9-886148c4413f"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d3a0b660-358c-41bd-9cd2-41fbf3491b1a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "524d7da0-9b4b-4567-bf38-a867673e21f3",
+    "label": "reanimate",
+    "slug": "reanimate",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/reanimate",
+    "description": "Return permanent cards from the graveyard to the battlefield.",
+    "parent_ids": [
+      "82b824ad-648f-467f-a190-2e0fa9a795d2"
+    ],
+    "child_ids": [
+      "96bf3655-ba91-47b6-a6d7-ad96f41be43c",
+      "c05a300c-2ec4-446a-a399-b3c314497de7",
+      "b38407c6-be4b-499d-bd2a-76aab98e767a",
+      "7380799a-d0ef-4129-a0f2-d7a196b6f920"
+    ],
+    "aliases": [
+      "zombify",
+      "resurrect"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "b38407c6-be4b-499d-bd2a-76aab98e767a",
+    "label": "reanimate-cast",
+    "slug": "reanimate-cast",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/reanimate-cast",
+    "description": "Cast a permanent spell from a graveyard.",
+    "parent_ids": [
+      "524d7da0-9b4b-4567-bf38-a867673e21f3"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "e4625704-1d52-44e4-804f-2f45644d76ac",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "c05a300c-2ec4-446a-a399-b3c314497de7",
+    "label": "reanimate-creature",
+    "slug": "reanimate-creature",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/reanimate-creature",
+    "description": "Return creature cards currently in the graveyard to the battlefield. Not to be confused with [cheat death](/tags/card/cheat-death), which interacts right as the creature dies.",
+    "parent_ids": [
+      "524d7da0-9b4b-4567-bf38-a867673e21f3",
+      "a72183e8-512d-4be2-8eef-65e43db6cad0"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "96bf3655-ba91-47b6-a6d7-ad96f41be43c",
+    "label": "reanimate-land",
+    "slug": "reanimate-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/reanimate-land",
+    "description": null,
+    "parent_ids": [
+      "524d7da0-9b4b-4567-bf38-a867673e21f3",
+      "f6ba5380-259b-4f37-b1bf-1a53033ec70e"
+    ],
+    "child_ids": [
+      "9ef8a6a5-ebdc-4f81-9363-d5169c9225ac"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "7380799a-d0ef-4129-a0f2-d7a196b6f920",
+    "label": "reanimate-permanent",
+    "slug": "reanimate-permanent",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/reanimate-permanent",
+    "description": null,
+    "parent_ids": [
+      "524d7da0-9b4b-4567-bf38-a867673e21f3",
+      "e6126b51-e098-4550-a004-b4d215c6a79f"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "e4625704-1d52-44e4-804f-2f45644d76ac",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "82b824ad-648f-467f-a190-2e0fa9a795d2",
+    "label": "recursion",
+    "slug": "recursion",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/recursion",
+    "description": "Get stuff back from your graveyard to use it again. See: reanimate (to battlefield), regrowth (to hand), and restock (to library).",
+    "parent_ids": [],
+    "child_ids": [
+      "524d7da0-9b4b-4567-bf38-a867673e21f3",
+      "efbbede8-8f54-4392-82a7-62ad84528aeb",
+      "a72183e8-512d-4be2-8eef-65e43db6cad0",
+      "4b465f67-93fe-4e68-b7c6-f2e94670cc87",
+      "f6ba5380-259b-4f37-b1bf-1a53033ec70e",
+      "e6126b51-e098-4550-a004-b4d215c6a79f",
+      "6798d754-7d85-48fe-b35b-2123e710bb1c"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "4b465f67-93fe-4e68-b7c6-f2e94670cc87",
+    "label": "recursion-any",
+    "slug": "recursion-any",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/recursion-any",
+    "description": null,
+    "parent_ids": [
+      "82b824ad-648f-467f-a190-2e0fa9a795d2"
+    ],
+    "child_ids": [
+      "89389ebb-3df0-4b39-8fc1-c152497344d1"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "a72183e8-512d-4be2-8eef-65e43db6cad0",
+    "label": "recursion-creature",
+    "slug": "recursion-creature",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/recursion-creature",
+    "description": null,
+    "parent_ids": [
+      "82b824ad-648f-467f-a190-2e0fa9a795d2"
+    ],
+    "child_ids": [
+      "c05a300c-2ec4-446a-a399-b3c314497de7"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "f6ba5380-259b-4f37-b1bf-1a53033ec70e",
+    "label": "recursion-land",
+    "slug": "recursion-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/recursion-land",
+    "description": null,
+    "parent_ids": [
+      "82b824ad-648f-467f-a190-2e0fa9a795d2"
+    ],
+    "child_ids": [
+      "96bf3655-ba91-47b6-a6d7-ad96f41be43c"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "e6126b51-e098-4550-a004-b4d215c6a79f",
+    "label": "recursion-permanent",
+    "slug": "recursion-permanent",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/recursion-permanent",
+    "description": null,
+    "parent_ids": [
+      "82b824ad-648f-467f-a190-2e0fa9a795d2"
+    ],
+    "child_ids": [
+      "7380799a-d0ef-4129-a0f2-d7a196b6f920"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "67f54c14-5ebf-44b2-853b-618c3846dce2",
+    "label": "red effect",
+    "slug": "red-effect",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/red-effect",
+    "description": "Effects which are iconically red.",
+    "parent_ids": [],
+    "child_ids": [
+      "78844aa5-9575-4bed-81c1-3330b5c56299"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "82e2cb8b-1a53-4814-a7a2-76c1369055b4",
+    "label": "refund",
+    "slug": "refund",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/refund",
+    "description": "Immediately get mana or untapped lands back.",
+    "parent_ids": [],
+    "child_ids": [
+      "7deb3a80-1a94-485b-b66d-ef400700a616",
+      "9826a011-f71f-42a1-bfe8-557ed6a24b80"
+    ],
+    "aliases": [
+      "instant rebate"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "efbbede8-8f54-4392-82a7-62ad84528aeb",
+    "label": "regrowth",
+    "slug": "regrowth",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/regrowth",
+    "description": "Effects that return other cards from your graveyard to your hand.",
+    "parent_ids": [
+      "82b824ad-648f-467f-a190-2e0fa9a795d2",
+      "a9b682a7-47ed-4d0d-8a2f-30e9d075525f"
+    ],
+    "child_ids": [
+      "89389ebb-3df0-4b39-8fc1-c152497344d1"
+    ],
+    "aliases": [
+      "recall"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "89389ebb-3df0-4b39-8fc1-c152497344d1",
+    "label": "regrowth-any",
+    "slug": "regrowth-any",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/regrowth-any",
+    "description": "Bring back a card of any card type from your graveyard to your hand.",
+    "parent_ids": [
+      "efbbede8-8f54-4392-82a7-62ad84528aeb",
+      "4b465f67-93fe-4e68-b7c6-f2e94670cc87"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "444f824c-f910-4530-9dbe-ede7a84cd7f9",
+    "label": "removal",
+    "slug": "removal",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal",
+    "description": "Get things off the table.",
+    "parent_ids": [],
+    "child_ids": [
+      "d91e421d-ff87-4aad-a4bf-5aefc51252b6",
+      "ea1ae714-3500-481b-9bdd-f33c57db8678",
+      "ecee5d4b-f573-4ec8-b918-ad134873005e",
+      "e8aefad7-dea9-4c48-80a2-8a4ef5996dea",
+      "d2a563f5-66f7-442c-91cd-3e8b6c0fc0c5",
+      "70a43edc-86e9-4ad9-abf8-7feefee35d5d",
+      "89d7c9d3-f820-4b16-8507-75977dba8d39",
+      "591fb358-e9d7-490e-8c15-24aecbbe697e",
+      "cd7d50fb-4058-4892-9d2b-b395357fd5c2",
+      "43a67a5e-2053-4c00-8d73-f56751ad6a01",
+      "cc12d27d-1d0e-4849-9551-71caead74d24",
+      "6bda5d89-d8fb-4d99-a217-9142fee8ae3f",
+      "4dbace62-9708-4c6e-975a-c09fae7bb7e7",
+      "28369f1b-1cf8-4077-99aa-e32fd59c19e1",
+      "7a0d9ee9-b672-451a-8722-0c5fc6087ff0",
+      "f79b019e-fdf5-48e0-a3af-bc0e4c8d8c95",
+      "9d6ce7cd-6fb8-4273-b663-d44ec6b16483",
+      "3fb7e4fd-5304-4120-b7c4-8a89f70ad3f0"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "ea1ae714-3500-481b-9bdd-f33c57db8678",
+    "label": "removal-artifact",
+    "slug": "removal-artifact",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-artifact",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "89d7c9d3-f820-4b16-8507-75977dba8d39",
+      "f6cdebcf-d2e3-4b56-8443-e6eca8ac9873"
+    ],
+    "aliases": [
+      "artifact removal"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "e8aefad7-dea9-4c48-80a2-8a4ef5996dea",
+    "label": "removal-aura",
+    "slug": "removal-aura",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-aura",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "89d7c9d3-f820-4b16-8507-75977dba8d39",
+      "f6cdebcf-d2e3-4b56-8443-e6eca8ac9873"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "43a67a5e-2053-4c00-8d73-f56751ad6a01",
+    "label": "removal-battle",
+    "slug": "removal-battle",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-battle",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "89d7c9d3-f820-4b16-8507-75977dba8d39",
+      "f6cdebcf-d2e3-4b56-8443-e6eca8ac9873"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "28369f1b-1cf8-4077-99aa-e32fd59c19e1",
+    "label": "removal-bounce",
+    "slug": "removal-bounce",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-bounce",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9",
+      "de1ee67d-74ab-4ffc-8d65-1e5c0d233464",
+      "022df3fc-9720-478d-8b40-755865b70cdb"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "7a0d9ee9-b672-451a-8722-0c5fc6087ff0",
+    "label": "removal-burn",
+    "slug": "removal-burn",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-burn",
+    "description": null,
+    "parent_ids": [
+      "0641a74c-4dd5-426d-be58-2ab86d71995d",
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "01c171be-e0db-443c-830d-578873c27792",
+      "9b437740-9a6c-40cd-90db-a2b057df8e3f"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "d91e421d-ff87-4aad-a4bf-5aefc51252b6",
+    "label": "removal-creature",
+    "slug": "removal-creature",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-creature",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "89d7c9d3-f820-4b16-8507-75977dba8d39",
+      "f6cdebcf-d2e3-4b56-8443-e6eca8ac9873",
+      "01c171be-e0db-443c-830d-578873c27792"
+    ],
+    "aliases": [
+      "creature removal"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "b1544f21-7e98-461b-aed5-e748b0168c52",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "34515b16-c9a4-4f98-8c77-416a7a523407",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "6bda5d89-d8fb-4d99-a217-9142fee8ae3f",
+    "label": "removal-destroy",
+    "slug": "removal-destroy",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-destroy",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "7735eeba-693b-47e2-bd51-414379cf1016",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "34515b16-c9a4-4f98-8c77-416a7a523407",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "ecee5d4b-f573-4ec8-b918-ad134873005e",
+    "label": "removal-enchantment",
+    "slug": "removal-enchantment",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-enchantment",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "89d7c9d3-f820-4b16-8507-75977dba8d39",
+      "f6cdebcf-d2e3-4b56-8443-e6eca8ac9873"
+    ],
+    "aliases": [
+      "enchantment removal"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "70a43edc-86e9-4ad9-abf8-7feefee35d5d",
+    "label": "removal-equipment",
+    "slug": "removal-equipment",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-equipment",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "89d7c9d3-f820-4b16-8507-75977dba8d39",
+      "f6cdebcf-d2e3-4b56-8443-e6eca8ac9873"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "4dbace62-9708-4c6e-975a-c09fae7bb7e7",
+    "label": "removal-exile",
+    "slug": "removal-exile",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-exile",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "b1544f21-7e98-461b-aed5-e748b0168c52",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "d2a563f5-66f7-442c-91cd-3e8b6c0fc0c5",
+    "label": "removal-land",
+    "slug": "removal-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-land",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "f6cdebcf-d2e3-4b56-8443-e6eca8ac9873"
+    ],
+    "aliases": [
+      "land removal"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "89d7c9d3-f820-4b16-8507-75977dba8d39",
+    "label": "removal-nonland",
+    "slug": "removal-nonland",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-nonland",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9",
+      "ea1ae714-3500-481b-9bdd-f33c57db8678",
+      "ecee5d4b-f573-4ec8-b918-ad134873005e",
+      "d91e421d-ff87-4aad-a4bf-5aefc51252b6",
+      "591fb358-e9d7-490e-8c15-24aecbbe697e",
+      "43a67a5e-2053-4c00-8d73-f56751ad6a01",
+      "70a43edc-86e9-4ad9-abf8-7feefee35d5d",
+      "e8aefad7-dea9-4c48-80a2-8a4ef5996dea",
+      "f79b019e-fdf5-48e0-a3af-bc0e4c8d8c95",
+      "9d6ce7cd-6fb8-4273-b663-d44ec6b16483"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "f6cdebcf-d2e3-4b56-8443-e6eca8ac9873",
+    "label": "removal-permanent",
+    "slug": "removal-permanent",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-permanent",
+    "description": null,
+    "parent_ids": [
+      "ea1ae714-3500-481b-9bdd-f33c57db8678",
+      "ecee5d4b-f573-4ec8-b918-ad134873005e",
+      "591fb358-e9d7-490e-8c15-24aecbbe697e",
+      "d2a563f5-66f7-442c-91cd-3e8b6c0fc0c5",
+      "d91e421d-ff87-4aad-a4bf-5aefc51252b6",
+      "43a67a5e-2053-4c00-8d73-f56751ad6a01",
+      "f79b019e-fdf5-48e0-a3af-bc0e4c8d8c95",
+      "9d6ce7cd-6fb8-4273-b663-d44ec6b16483",
+      "e8aefad7-dea9-4c48-80a2-8a4ef5996dea",
+      "70a43edc-86e9-4ad9-abf8-7feefee35d5d"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "7735eeba-693b-47e2-bd51-414379cf1016",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "591fb358-e9d7-490e-8c15-24aecbbe697e",
+    "label": "removal-planeswalker",
+    "slug": "removal-planeswalker",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-planeswalker",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "89d7c9d3-f820-4b16-8507-75977dba8d39",
+      "f6cdebcf-d2e3-4b56-8443-e6eca8ac9873",
+      "9b437740-9a6c-40cd-90db-a2b057df8e3f"
+    ],
+    "aliases": [
+      "planeswalker removal"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "f79b019e-fdf5-48e0-a3af-bc0e4c8d8c95",
+    "label": "removal-spacecraft",
+    "slug": "removal-spacecraft",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-spacecraft",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "89d7c9d3-f820-4b16-8507-75977dba8d39",
+      "f6cdebcf-d2e3-4b56-8443-e6eca8ac9873"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "9d6ce7cd-6fb8-4273-b663-d44ec6b16483",
+    "label": "removal-vehicle",
+    "slug": "removal-vehicle",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/removal-vehicle",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "89d7c9d3-f820-4b16-8507-75977dba8d39",
+      "f6cdebcf-d2e3-4b56-8443-e6eca8ac9873"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "47ff9fb8-2df7-4f49-a04f-b1f31ba932ee",
+    "label": "repeatable artifact tokens",
+    "slug": "repeatable-artifact-tokens",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-artifact-tokens",
+    "description": null,
+    "parent_ids": [
+      "a9657a5d-e7f8-4000-a795-7a78b5fb8923"
+    ],
+    "child_ids": [
+      "77f8c103-b6fb-4f74-9048-51ca6f6ccfc0",
+      "3f016b55-b431-4660-ba5e-ced1b344b3e7"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "8cb1bab7-38db-4f6b-bee4-15d5c26a879d",
+    "label": "repeatable card advantage",
+    "slug": "repeatable-card-advantage",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-card-advantage",
+    "description": "Things that give you access to more cards, repeatably.",
+    "parent_ids": [
+      "a9b682a7-47ed-4d0d-8a2f-30e9d075525f"
+    ],
+    "child_ids": [
+      "544b4fd6-abf7-4ae3-846f-d8d1e134054c",
+      "12cc0718-e08e-485c-85ee-3331f688fd54",
+      "eae7fdc3-18a2-4bfc-b6b7-6e69011fdfeb"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "77f8c103-b6fb-4f74-9048-51ca6f6ccfc0",
+    "label": "repeatable clues",
+    "slug": "repeatable-clues",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-clues",
+    "description": null,
+    "parent_ids": [
+      "ed2002a7-fa4a-4008-ae37-8ae3ff960ce7",
+      "0e87cf9c-591e-4f2a-b4fd-675021f120ae",
+      "47ff9fb8-2df7-4f49-a04f-b1f31ba932ee",
+      "524845ed-ea82-4a60-8b54-8a38ab06a503"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "ce1f9c34-7191-49e5-bdfe-f4eeae2ad0c2",
+    "label": "repeatable creature tokens",
+    "slug": "repeatable-creature-tokens",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-creature-tokens",
+    "description": "Repeatable ways to create creature tokens",
+    "parent_ids": [
+      "a9657a5d-e7f8-4000-a795-7a78b5fb8923"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "repeatable creature token"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "68418069-f615-40ef-ae0d-764192acae00",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "5a314bf9-8038-4acd-8cab-6b683caeb35f",
+    "label": "repeatable crime",
+    "slug": "repeatable-crime",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-crime",
+    "description": "Repeatable ways to commit crimes by targeting an opponent or something they control.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "544b4fd6-abf7-4ae3-846f-d8d1e134054c",
+    "label": "repeatable draw",
+    "slug": "repeatable-draw",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-draw",
+    "description": "Draw cards repeatedly, no matter if you go up on cards or not.",
+    "parent_ids": [
+      "b6448c45-ce65-4848-aa98-2151e4e07437",
+      "8cb1bab7-38db-4f6b-bee4-15d5c26a879d"
+    ],
+    "child_ids": [
+      "524845ed-ea82-4a60-8b54-8a38ab06a503",
+      "0e87cf9c-591e-4f2a-b4fd-675021f120ae"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "12cc0718-e08e-485c-85ee-3331f688fd54",
+    "label": "repeatable impulse",
+    "slug": "repeatable-impulse",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-impulse",
+    "description": null,
+    "parent_ids": [
+      "c05235dd-282d-4799-95a8-44e8b0bd2d30",
+      "8cb1bab7-38db-4f6b-bee4-15d5c26a879d"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "eae7fdc3-18a2-4bfc-b6b7-6e69011fdfeb",
+    "label": "repeatable impulsive draw",
+    "slug": "repeatable-impulsive-draw",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-impulsive-draw",
+    "description": null,
+    "parent_ids": [
+      "78844aa5-9575-4bed-81c1-3330b5c56299",
+      "8cb1bab7-38db-4f6b-bee4-15d5c26a879d"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "2dabdf83-e041-48a4-b0e5-08e1842f008c",
+    "label": "repeatable lifegain",
+    "slug": "repeatable-lifegain",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-lifegain",
+    "description": null,
+    "parent_ids": [
+      "4caab3cc-1d60-44fb-a26a-cc833bc67c97"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "7e6b9b59-cd68-4e3c-827b-38833c92d6eb",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "ed2002a7-fa4a-4008-ae37-8ae3ff960ce7",
+    "label": "repeatable noncreature tokens",
+    "slug": "repeatable-noncreature-tokens",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-noncreature-tokens",
+    "description": "Repeatable ways to create noncreature tokens",
+    "parent_ids": [
+      "a9657a5d-e7f8-4000-a795-7a78b5fb8923"
+    ],
+    "child_ids": [
+      "3f016b55-b431-4660-ba5e-ced1b344b3e7",
+      "77f8c103-b6fb-4f74-9048-51ca6f6ccfc0"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "9a3f1038-140e-447a-ba5d-020893c49977",
+    "label": "repeatable pp counters",
+    "slug": "repeatable-pp-counters",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-pp-counters",
+    "description": "Repeatable ways of putting +1/+1 counters on creatures.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "b7cfc923-3a15-4168-876b-525ce37850c5",
+    "label": "repeatable proliferate",
+    "slug": "repeatable-proliferate",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-proliferate",
+    "description": null,
+    "parent_ids": [
+      "9cbfd4f0-aa13-4d0e-9e57-11d1d482e8a0"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "7e6b9b59-cd68-4e3c-827b-38833c92d6eb",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "524845ed-ea82-4a60-8b54-8a38ab06a503",
+    "label": "repeatable pure draw",
+    "slug": "repeatable-pure-draw",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-pure-draw",
+    "description": "Repeatable ways to draw a card with no additional cost or sacrifice, such as discarding a card",
+    "parent_ids": [
+      "45ae9f00-85ba-47ee-b07f-fa5f2e838124",
+      "544b4fd6-abf7-4ae3-846f-d8d1e134054c"
+    ],
+    "child_ids": [
+      "77f8c103-b6fb-4f74-9048-51ca6f6ccfc0"
+    ],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "53236dd7-845a-444c-96d5-f41ed7325d8f",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "65986c1b-8e51-4604-b685-d82fa7d1263a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "cd7d50fb-4058-4892-9d2b-b395357fd5c2",
+    "label": "repeatable removal",
+    "slug": "repeatable-removal",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-removal",
+    "description": null,
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "decadd90-7c78-42ff-abb5-0a4d258f20de",
+    "label": "repeatable rescue",
+    "slug": "repeatable-rescue",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-rescue",
+    "description": null,
+    "parent_ids": [
+      "07f8788a-acd7-4768-a86f-f63816c5f09d"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "aa908dd5-bf9e-4835-bbbb-77579a1f0e5f",
+    "label": "repeatable sacrifice outlet",
+    "slug": "repeatable-sacrifice-outlet",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-sacrifice-outlet",
+    "description": "Repeatedly sacrifice stuff.",
+    "parent_ids": [
+      "c7bd55a7-1ea0-49da-b25e-0be470fbe8ec"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "repeatable sac outlet"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "a9657a5d-e7f8-4000-a795-7a78b5fb8923",
+    "label": "repeatable token generator",
+    "slug": "repeatable-token-generator",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-token-generator",
+    "description": "Repeatable ways to create tokens",
+    "parent_ids": [],
+    "child_ids": [
+      "ce1f9c34-7191-49e5-bdfe-f4eeae2ad0c2",
+      "ed2002a7-fa4a-4008-ae37-8ae3ff960ce7",
+      "47ff9fb8-2df7-4f49-a04f-b1f31ba932ee"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "3f016b55-b431-4660-ba5e-ced1b344b3e7",
+    "label": "repeatable treasures",
+    "slug": "repeatable-treasures",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/repeatable-treasures",
+    "description": null,
+    "parent_ids": [
+      "ed2002a7-fa4a-4008-ae37-8ae3ff960ce7",
+      "47ff9fb8-2df7-4f49-a04f-b1f31ba932ee"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "153376c9-dffd-458c-8ce3-a4c8269bc4e9",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "07f8788a-acd7-4768-a86f-f63816c5f09d",
+    "label": "rescue",
+    "slug": "rescue",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/rescue",
+    "description": "Bounce something you control.",
+    "parent_ids": [
+      "de1ee67d-74ab-4ffc-8d65-1e5c0d233464"
+    ],
+    "child_ids": [
+      "8ad458bb-ea11-4760-9d02-f72bb8a1fcb0",
+      "decadd90-7c78-42ff-abb5-0a4d258f20de"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "8ad458bb-ea11-4760-9d02-f72bb8a1fcb0",
+    "label": "rescue-creature",
+    "slug": "rescue-creature",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/rescue-creature",
+    "description": null,
+    "parent_ids": [
+      "07f8788a-acd7-4768-a86f-f63816c5f09d"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "e5b6b06a-9d5b-404e-914b-c18c221c565c",
+    "label": "rhystic",
+    "slug": "rhystic",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/rhystic",
+    "description": "Effects that opponents can buy off if they pay mana.",
+    "parent_ids": [
+      "2ffad104-2092-410d-9a71-080c57b2e8c5"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "153376c9-dffd-458c-8ce3-a4c8269bc4e9",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "53236dd7-845a-444c-96d5-f41ed7325d8f",
+        "weight": "very_strong"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "89ac2a80-7d3c-445a-973f-809e61015b77",
+    "label": "saboteur",
+    "slug": "saboteur",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/saboteur",
+    "description": "Effects that trigger when you deal damage to an opponent.",
+    "parent_ids": [],
+    "child_ids": [
+      "8ed438b5-a53c-47e5-b903-7fe97e3d6a82"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "c7bd55a7-1ea0-49da-b25e-0be470fbe8ec",
+    "label": "sacrifice outlet",
+    "slug": "sacrifice-outlet",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/sacrifice-outlet",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [
+      "aa908dd5-bf9e-4835-bbbb-77579a1f0e5f"
+    ],
+    "aliases": [
+      "sac outlet"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "9109865e-2711-48f0-a11f-f55bfd7ecae0",
+    "label": "scales with mana value",
+    "slug": "scales-with-mana-value",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/scales-with-mana-value",
+    "description": null,
+    "parent_ids": [
+      "2bcab7f4-d89b-4f8a-979f-f2f6c3c02346"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "scales with mv"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "84d4490e-341b-40fe-893e-e98e80f25b89",
+    "label": "selective group hug",
+    "slug": "selective-group-hug",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/selective-group-hug",
+    "description": "Group Hug cards that benefit only certain opponents in particular.",
+    "parent_ids": [
+      "a07140be-dadf-4c3b-a68a-3e885028aed1"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "f368227a-25f4-4b58-8eef-0ceb99f9f8d3",
+    "label": "shares name with a mechanic",
+    "slug": "shares-name-with-a-mechanic",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/shares-name-with-a-mechanic",
+    "description": "Regardless of whether it relates to that mechanic.",
+    "parent_ids": [
+      "5a0a0531-5462-477d-add9-886148c4413f"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "422e1869-134f-463d-9fa1-86b66a998b3e",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "1bce3cda-e9a8-461c-925b-73742244d3e6",
+    "label": "single english word name",
+    "slug": "single-english-word-name",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/single-english-word-name",
+    "description": "Cards named with a single word in English. This may be a compound word.",
+    "parent_ids": [
+      "5a0a0531-5462-477d-add9-886148c4413f"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "cc187110-1148-4090-bbb8-e205694a39f5",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "bc71ebf6-2056-41f7-be35-b2e5c34afa99",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "b2c6aa39-2d2a-459c-a555-fb48ba993373",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "ea9709b6-4c37-4d5a-b04d-cd4c42e4f9dd",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "422e1869-134f-463d-9fa1-86b66a998b3e",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "8b755881-a72d-4e21-a369-d2924eb4585a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "1a19fbcd-ec54-417c-baa0-01c53b32388b",
+    "label": "single target instant/sorcery",
+    "slug": "single-target-instant-sorcery",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/single-target-instant-sorcery",
+    "description": "Instant/sorcery spells that may target only one target. This is materially important for some effects that care about single targets. Not mutually exclusive with [multiple targets](/tags/card/multiple-targets).",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [
+      "single target spell"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "b1544f21-7e98-461b-aed5-e748b0168c52",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "7735eeba-693b-47e2-bd51-414379cf1016",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a731e87b-8d99-4b64-8ee3-8e540d652366",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "cc187110-1148-4090-bbb8-e205694a39f5",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "2e5e26a1-4eec-4f7f-ac27-3df3ea9a1571",
+    "label": "sneak",
+    "slug": "sneak",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/sneak",
+    "description": "Put a permanent from your hand onto the battlefield. (With or without a requirement to sacrifice it later.) Not related to the Sneak keyword first seen in TMT.",
+    "parent_ids": [
+      "dd10dded-2973-446e-b078-4240bce90cea"
+    ],
+    "child_ids": [
+      "1fe5ff6b-0c83-419c-afcf-0d7c4f458929",
+      "5828dafb-9627-42d6-9fd7-53b64eb86ed9",
+      "baa61041-7503-436b-8f14-839368b7af60",
+      "0186bf9b-d4b8-42a8-ac50-3740e242ab82"
+    ],
+    "aliases": [
+      "cheat into play"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "baa61041-7503-436b-8f14-839368b7af60",
+    "label": "sneak-creature",
+    "slug": "sneak-creature",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/sneak-creature",
+    "description": null,
+    "parent_ids": [
+      "2e5e26a1-4eec-4f7f-ac27-3df3ea9a1571"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "cb8d80c9-ed58-4f2d-aa8c-c383370c7f1a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "49aa55e9-d7c0-4287-ab76-b06ac6a4bf63",
+    "label": "sneak from command zone",
+    "slug": "sneak-from-command-zone",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/sneak-from-command-zone",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "0186bf9b-d4b8-42a8-ac50-3740e242ab82",
+    "label": "sneak-land",
+    "slug": "sneak-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/sneak-land",
+    "description": "Cards that let you put lands on the battlefield from your hand without playing them.",
+    "parent_ids": [
+      "88e643b3-9fd4-4f46-9f36-cb1a72a7bc3c",
+      "2e5e26a1-4eec-4f7f-ac27-3df3ea9a1571"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "5828dafb-9627-42d6-9fd7-53b64eb86ed9",
+    "label": "sneak-permanent",
+    "slug": "sneak-permanent",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/sneak-permanent",
+    "description": null,
+    "parent_ids": [
+      "2e5e26a1-4eec-4f7f-ac27-3df3ea9a1571"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "sneak-permanent-any"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "1fe5ff6b-0c83-419c-afcf-0d7c4f458929",
+    "label": "sneak-self",
+    "slug": "sneak-self",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/sneak-self",
+    "description": null,
+    "parent_ids": [
+      "2e5e26a1-4eec-4f7f-ac27-3df3ea9a1571"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "cc12d27d-1d0e-4849-9551-71caead74d24",
+    "label": "spot removal",
+    "slug": "spot-removal",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/spot-removal",
+    "description": "Removal for one target specifically.  See also [sweeper](sweeper) and [multi removal](multi-removal).",
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "b1544f21-7e98-461b-aed5-e748b0168c52",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "7735eeba-693b-47e2-bd51-414379cf1016",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "12cc800c-c7be-4811-8207-fd01a99cc892",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "8a7328cb-d21a-436a-a311-f05dc09c2190",
+    "label": "staple with set's mechanic",
+    "slug": "staple-with-set-s-mechanic",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/staple-with-set-s-mechanic",
+    "description": "A common card design that is related to one or more of the main mechanics in a set ",
+    "parent_ids": [],
+    "child_ids": [
+      "8c2afeb7-e6c8-4cbc-9a5e-079f09b1cace",
+      "c6b4d855-398f-4671-b18d-2437e0792c1a"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "6ba18e8c-ca24-4c2e-86e3-304e9096074d",
+    "label": "swap removal",
+    "slug": "swap-removal",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/swap-removal",
+    "description": "Sorry I messed up your stuff. Here's a thing in exchange. (See also [humble](/tags/card/humble).)",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [
+      "beast within",
+      "pongify"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "7735eeba-693b-47e2-bd51-414379cf1016",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "3fb7e4fd-5304-4120-b7c4-8a89f70ad3f0",
+    "label": "sweeper",
+    "slug": "sweeper",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/sweeper",
+    "description": "_o\\ Destroy all the things! See also [spot removal](spot-removal) and [multi removal](multi-removal).",
+    "parent_ids": [
+      "444f824c-f910-4530-9dbe-ede7a84cd7f9"
+    ],
+    "child_ids": [
+      "33b97ce5-f156-4332-9ecc-1e0256702f26"
+    ],
+    "aliases": [
+      "wrath of god",
+      "mass removal",
+      "boardwipe",
+      "wipe"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "7a2484a9-04fd-41a0-8224-610c1c07ed10",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "34515b16-c9a4-4f98-8c77-416a7a523407",
+        "weight": "very_strong"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "e5442780-5df7-4ebe-be78-2b73f20a4ffc",
+    "label": "sweeper-graveyard",
+    "slug": "sweeper-graveyard",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/sweeper-graveyard",
+    "description": "Remove all cards from one or more graveyards",
+    "parent_ids": [
+      "486b89e1-bd1c-4cbc-8aaf-5e9249478650"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "33b97ce5-f156-4332-9ecc-1e0256702f26",
+    "label": "sweeper-one-sided",
+    "slug": "sweeper-one-sided",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/sweeper-one-sided",
+    "description": "Sweepers that are, or have high potential to be, one-sided.",
+    "parent_ids": [
+      "3fb7e4fd-5304-4120-b7c4-8a89f70ad3f0"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "fae61399-d346-4d5b-b304-b2ef0ddf37a0",
+    "label": "symmetrical",
+    "slug": "symmetrical",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/symmetrical",
+    "description": "Cards that affect the whole battlefield/all players in symmetrical, equal manner. ",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "34515b16-c9a4-4f98-8c77-416a7a523407",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "7a2484a9-04fd-41a0-8224-610c1c07ed10",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "4eb813fd-2d5a-4b02-8193-662681ef4e7d",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "a019602c-7853-4f01-a0c6-18a2526b336e",
+    "label": "synergy-clue",
+    "slug": "synergy-clue",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/synergy-clue",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "66bb00c9-7409-4571-ad92-d03f716a64db",
+    "label": "synergy-color-share",
+    "slug": "synergy-color-share",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/synergy-color-share",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "b0a937d3-b81b-47f3-9dbe-4a95ee3615e2",
+    "label": "synergy-commander",
+    "slug": "synergy-commander",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/synergy-commander",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "66cf0e37-bf81-4ef6-9b07-f319f44efe7c",
+    "label": "tapland",
+    "slug": "tapland",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tapland",
+    "description": "Non-basic lands which come into play tapped",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a731e87b-8d99-4b64-8ee3-8e540d652366",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "2ffad104-2092-410d-9a71-080c57b2e8c5",
+    "label": "tax",
+    "slug": "tax",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tax",
+    "description": "Extract resources from your opponents when they try to do stuff, either by making them spend extra resources or by generating them for yourself.",
+    "parent_ids": [],
+    "child_ids": [
+      "e5b6b06a-9d5b-404e-914b-c18c221c565c",
+      "ad4c8156-1a70-4da1-93b6-f59ddd86be8c"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "c251e9e5-b448-4d82-88e0-9790fa66b654",
+    "label": "tax attack",
+    "slug": "tax-attack",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tax-attack",
+    "description": "Cards that prevent players from attacking unless they pay a cost, usually mana",
+    "parent_ids": [
+      "0387216a-0e23-47fb-a71d-7029f36dbf4e"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ea9709b6-4c37-4d5a-b04d-cd4c42e4f9dd",
+        "weight": "very_strong"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "3404c16e-d708-492a-8c0f-27bb388e4cc8",
+    "label": "theft",
+    "slug": "theft",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/theft",
+    "description": "Effects that let you steal cards and resources from your opponent.",
+    "parent_ids": [
+      "f6cb45db-9890-4bbb-a744-c19da0ecefa6"
+    ],
+    "child_ids": [
+      "1910fbb6-7fb7-4c8b-8ed6-7412453439dc"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "1910fbb6-7fb7-4c8b-8ed6-7412453439dc",
+    "label": "theft-nonland",
+    "slug": "theft-nonland",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/theft-nonland",
+    "description": null,
+    "parent_ids": [
+      "3404c16e-d708-492a-8c0f-27bb388e4cc8"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "f85a2d76-cc7a-414b-9151-1288bfdaacd1",
+    "label": "thingfall",
+    "slug": "thingfall",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/thingfall",
+    "description": "Abilities that trigger when something (other than itself) enters the battlefield ",
+    "parent_ids": [],
+    "child_ids": [
+      "3dadc330-1d86-409a-8ce6-d93d1df90f15"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "ddf357c2-aa39-411d-9ac4-a18336d7eefa",
+    "label": "tmp-storyline-in-cards",
+    "slug": "tmp-storyline-in-cards",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tmp-storyline-in-cards",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "ea9709b6-4c37-4d5a-b04d-cd4c42e4f9dd",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "78f49da2-3dac-4c5e-a141-628e61de7c14",
+    "label": "token versions of cards",
+    "slug": "token-versions-of-cards",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/token-versions-of-cards",
+    "description": "Some cards create tokens identical to existing cards (except for CMC). See: [cards creating these tokens](/tags/card/creates-token-of-a-card),  [printed tokens](/tags/card/token-version-of-a-card), and [the cards recreated in token form](/tags/card/has-identical-token).",
+    "parent_ids": [],
+    "child_ids": [
+      "1ac18133-4f7b-41ef-ac84-d367059757a7"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "71109955-3204-48a7-8487-35032fd91620",
+    "label": "top deck manipulation",
+    "slug": "top-deck-manipulation",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/top-deck-manipulation",
+    "description": null,
+    "parent_ids": [
+      "f2486826-9b36-4aba-88bb-c2482e72f9ec"
+    ],
+    "child_ids": [
+      "39687193-57bc-4a73-a837-85e31021d8d4"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "5db159b8-366a-49ec-a169-83e60490c551",
+    "label": "top matters",
+    "slug": "top-matters",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/top-matters",
+    "description": "The top card of your library matters for purposes other than playing it or drawing it.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "3c3c90d3-b93c-46fb-9848-7940a3adebf7",
+    "label": "toughness boost to all",
+    "slug": "toughness-boost-to-all",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/toughness-boost-to-all",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [
+      "b504c445-169d-4145-abc4-65270686c208"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "4d7fc833-e0af-4022-b298-6a9c99a56ac1",
+    "label": "triggered ability",
+    "slug": "triggered-ability",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/triggered-ability",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [
+      "68f9547a-5c51-4d1b-86c4-8c07e654f789",
+      "4539431a-4109-4fee-91fc-caea0fcccb88",
+      "ee03d192-c144-4e8c-88d3-ba7cd68c9474",
+      "3bcd7cdd-61ca-42dd-adc5-1a695eaec2d2"
+    ],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "7e6b9b59-cd68-4e3c-827b-38833c92d6eb",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "153376c9-dffd-458c-8ce3-a4c8269bc4e9",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "c768d2ec-3264-4a90-a98f-bea8467857d3",
+    "label": "tutor",
+    "slug": "tutor",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tutor",
+    "description": "Cards that directly search for a card from your library, and sometimes other locations as well.",
+    "parent_ids": [],
+    "child_ids": [
+      "1c3fd051-4c17-4458-ba48-6171b1c968c2",
+      "f95a613c-8d77-42a9-ae4c-962ee0667f76",
+      "cc2644e4-57c6-46f7-a69c-0cd82dbf2e9d",
+      "882a62e0-06f9-4487-9e4d-e107605b6caa"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "1c3fd051-4c17-4458-ba48-6171b1c968c2",
+    "label": "tutor-artifact",
+    "slug": "tutor-artifact",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tutor-artifact",
+    "description": "Cards that tutor artifact cards.",
+    "parent_ids": [
+      "c768d2ec-3264-4a90-a98f-bea8467857d3"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "422e1869-134f-463d-9fa1-86b66a998b3e",
+        "weight": "very_strong"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "f95a613c-8d77-42a9-ae4c-962ee0667f76",
+    "label": "tutor-card",
+    "slug": "tutor-card",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tutor-card",
+    "description": "Cards that tutor any cards.",
+    "parent_ids": [
+      "c768d2ec-3264-4a90-a98f-bea8467857d3",
+      "d46392d2-3275-4a65-aa6d-0ad03cbc9596"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "tutor-any",
+      "demonic tutor"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "82004860-e589-4e38-8d61-8c0210e4ea39",
+        "weight": "very_strong"
+      },
+      {
+        "oracle_id": "ededbdae-d9dc-4206-9335-d7158f2d7700",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "cc2644e4-57c6-46f7-a69c-0cd82dbf2e9d",
+    "label": "tutor-land",
+    "slug": "tutor-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tutor-land",
+    "description": "Cards that tutor land cards.",
+    "parent_ids": [
+      "c768d2ec-3264-4a90-a98f-bea8467857d3"
+    ],
+    "child_ids": [
+      "ce97c571-5fd7-4e1d-a642-dfee09f4cde3",
+      "f092d281-91b4-4349-bd5a-9274f20f2c20"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "ce97c571-5fd7-4e1d-a642-dfee09f4cde3",
+    "label": "tutor-land-basic",
+    "slug": "tutor-land-basic",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tutor-land-basic",
+    "description": "Cards that tutor basic land cards.",
+    "parent_ids": [
+      "cc2644e4-57c6-46f7-a69c-0cd82dbf2e9d"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "1593ea18-2f2f-4ab4-83fb-6ccc0bec8a90",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "8b755881-a72d-4e21-a369-d2924eb4585a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "00c0543c-2a1f-4425-8283-4062d74a1637",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "f092d281-91b4-4349-bd5a-9274f20f2c20",
+    "label": "tutor-land-to-battlefield",
+    "slug": "tutor-land-to-battlefield",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tutor-land-to-battlefield",
+    "description": null,
+    "parent_ids": [
+      "f5148059-a7ca-4ffd-9936-b6094af9308c",
+      "cc2644e4-57c6-46f7-a69c-0cd82dbf2e9d"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "8b755881-a72d-4e21-a369-d2924eb4585a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "1593ea18-2f2f-4ab4-83fb-6ccc0bec8a90",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "00c0543c-2a1f-4425-8283-4062d74a1637",
+        "weight": "very_strong"
+      },
+      {
+        "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "882a62e0-06f9-4487-9e4d-e107605b6caa",
+    "label": "tutor-to",
+    "slug": "tutor-to",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tutor-to",
+    "description": "Tutor to specific zones.",
+    "parent_ids": [
+      "c768d2ec-3264-4a90-a98f-bea8467857d3"
+    ],
+    "child_ids": [
+      "f5148059-a7ca-4ffd-9936-b6094af9308c",
+      "39687193-57bc-4a73-a837-85e31021d8d4",
+      "ce4076e8-fcfe-4018-a863-c60755359cbe"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "f5148059-a7ca-4ffd-9936-b6094af9308c",
+    "label": "tutor-to-battlefield",
+    "slug": "tutor-to-battlefield",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tutor-to-battlefield",
+    "description": "Cards that tutor something out of the library and straight onto the battlefield.",
+    "parent_ids": [
+      "882a62e0-06f9-4487-9e4d-e107605b6caa"
+    ],
+    "child_ids": [
+      "f092d281-91b4-4349-bd5a-9274f20f2c20"
+    ],
+    "aliases": [
+      "tutor onto battlefield",
+      "tutor-battlefield"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "ce4076e8-fcfe-4018-a863-c60755359cbe",
+    "label": "tutor-to-hand",
+    "slug": "tutor-to-hand",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tutor-to-hand",
+    "description": "Cards that tutor cards to the player's hand.",
+    "parent_ids": [
+      "882a62e0-06f9-4487-9e4d-e107605b6caa"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "tutor-hand"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "82004860-e589-4e38-8d61-8c0210e4ea39",
+        "weight": "very_strong"
+      },
+      {
+        "oracle_id": "422e1869-134f-463d-9fa1-86b66a998b3e",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "8b755881-a72d-4e21-a369-d2924eb4585a",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "1593ea18-2f2f-4ab4-83fb-6ccc0bec8a90",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "39687193-57bc-4a73-a837-85e31021d8d4",
+    "label": "tutor-to-top",
+    "slug": "tutor-to-top",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tutor-to-top",
+    "description": "Cards that tutor something and put it on the top of the library.",
+    "parent_ids": [
+      "882a62e0-06f9-4487-9e4d-e107605b6caa",
+      "71109955-3204-48a7-8487-35032fd91620"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "tutor-totop"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "ededbdae-d9dc-4206-9335-d7158f2d7700",
+        "weight": "very_strong"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "f774ffae-26f8-4a6e-a338-dd430bbda1a5",
+    "label": "tutored by name",
+    "slug": "tutored-by-name",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/tutored-by-name",
+    "description": "These cards are tutored by another specifically by their name. For the cards that tutor them, see [tutors by name](tutors-by-name).",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "883f5110-3773-45fe-8ef7-a3b90a8f77ad",
+    "label": "typal",
+    "slug": "typal",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/typal",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [
+      "8047bd80-db1d-4437-ad82-7e9bca525a79"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "21928865-c466-4e4e-9fbb-5314abf264ea",
+    "label": "typal-angel",
+    "slug": "typal-angel",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/typal-angel",
+    "description": null,
+    "parent_ids": [
+      "8047bd80-db1d-4437-ad82-7e9bca525a79"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "tribal-angel"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "cb8d80c9-ed58-4f2d-aa8c-c383370c7f1a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "753182c1-1be9-4b6a-b12c-4fb359fd528c",
+    "label": "typal coupling",
+    "slug": "typal-coupling",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/typal-coupling",
+    "description": "Cards that care about two or more different creature types.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [
+      "tribal coupling"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "cb8d80c9-ed58-4f2d-aa8c-c383370c7f1a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "8047bd80-db1d-4437-ad82-7e9bca525a79",
+    "label": "typal-creature",
+    "slug": "typal-creature",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/typal-creature",
+    "description": null,
+    "parent_ids": [
+      "883f5110-3773-45fe-8ef7-a3b90a8f77ad"
+    ],
+    "child_ids": [
+      "21928865-c466-4e4e-9fbb-5314abf264ea",
+      "db0b31d8-a6bc-4521-96ab-0a8f345eb0b8",
+      "3e352959-20d4-4029-8865-2769dd01c6f6",
+      "3ad7984c-f7d6-45fc-b65d-ea4fbf272321",
+      "e2b93bc6-2588-4736-b1fa-8338b980a906",
+      "3e3c49bc-57e9-4a6e-a758-925b1e5d75d8",
+      "dc75cad6-0cc5-4ebc-b53f-2afbaf070edc"
+    ],
+    "aliases": [
+      "tribal",
+      "kindred"
+    ],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "db0b31d8-a6bc-4521-96ab-0a8f345eb0b8",
+    "label": "typal-demon",
+    "slug": "typal-demon",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/typal-demon",
+    "description": null,
+    "parent_ids": [
+      "8047bd80-db1d-4437-ad82-7e9bca525a79"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "tribal-demon",
+      "demon synergy"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "cb8d80c9-ed58-4f2d-aa8c-c383370c7f1a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "3e352959-20d4-4029-8865-2769dd01c6f6",
+    "label": "typal-dragon",
+    "slug": "typal-dragon",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/typal-dragon",
+    "description": null,
+    "parent_ids": [
+      "8047bd80-db1d-4437-ad82-7e9bca525a79"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "tribal-dragon",
+      "dragon tribal"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "cb8d80c9-ed58-4f2d-aa8c-c383370c7f1a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "3ad7984c-f7d6-45fc-b65d-ea4fbf272321",
+    "label": "typal-goblin",
+    "slug": "typal-goblin",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/typal-goblin",
+    "description": null,
+    "parent_ids": [
+      "8047bd80-db1d-4437-ad82-7e9bca525a79"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "tribal-goblin",
+      "goblin synergy"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "68418069-f615-40ef-ae0d-764192acae00",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "e2b93bc6-2588-4736-b1fa-8338b980a906",
+    "label": "typal-ninja",
+    "slug": "typal-ninja",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/typal-ninja",
+    "description": null,
+    "parent_ids": [
+      "8047bd80-db1d-4437-ad82-7e9bca525a79"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "tribal-ninja"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "3e3c49bc-57e9-4a6e-a758-925b1e5d75d8",
+    "label": "typal-vampire",
+    "slug": "typal-vampire",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/typal-vampire",
+    "description": null,
+    "parent_ids": [
+      "8047bd80-db1d-4437-ad82-7e9bca525a79"
+    ],
+    "child_ids": [],
+    "aliases": [
+      "tribal-vampire",
+      "vampire lord"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "41e2790d-49f5-4e98-b8d9-04179f47f13a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "a641df3f-67c8-4e92-b7df-6e4fe6680a1e",
+    "label": "type addition from none",
+    "slug": "type-addition-from-none",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/type-addition-from-none",
+    "description": "Some creatures (Commonly artifact creatures) prior to the Grand Creature Type update were printed without Creature Types.",
+    "parent_ids": [
+      "8a8fefac-1e54-4cb8-92c1-b08a154b1be9"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "00c0543c-2a1f-4425-8283-4062d74a1637",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "dc387208-0ac0-4d71-880c-e78ffe2e42dc",
+    "label": "type addition phyrexian",
+    "slug": "type-addition-phyrexian",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/type-addition-phyrexian",
+    "description": "Gained the Phyrexian type, either after it was introduced with the big sweep at Modern Horizons 2 launch, or at a later date.",
+    "parent_ids": [
+      "8a8fefac-1e54-4cb8-92c1-b08a154b1be9"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "7e6b9b59-cd68-4e3c-827b-38833c92d6eb",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "9b9c9dfa-169c-4886-b7ce-91d897e5db7e",
+    "label": "type change",
+    "slug": "type-change",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/type-change",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "a48e9cf5-08eb-466f-9ace-3a66c4c6c69a",
+    "label": "type errata",
+    "slug": "type-errata",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/type-errata",
+    "description": "Cards that were printed with a type-line that has since been updated. For cards whose token generation has changed, see [Token Errata](token-errata). ",
+    "parent_ids": [],
+    "child_ids": [
+      "4dcfb5c5-1fa7-4fd6-b81e-ba85af5269e5",
+      "8a8fefac-1e54-4cb8-92c1-b08a154b1be9"
+    ],
+    "aliases": [
+      "creature type erratum"
+    ],
+    "taggings": [
+      {
+        "oracle_id": "68954295-54e3-4303-a6bc-fc4547a4e3a3",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "8a8fefac-1e54-4cb8-92c1-b08a154b1be9",
+    "label": "type errata addition",
+    "slug": "type-errata-addition",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/type-errata-addition",
+    "description": "Cards that received a new type because it fit them, or because they were lacking one before.",
+    "parent_ids": [
+      "a48e9cf5-08eb-466f-9ace-3a66c4c6c69a"
+    ],
+    "child_ids": [
+      "a641df3f-67c8-4e92-b7df-6e4fe6680a1e",
+      "dc387208-0ac0-4d71-880c-e78ffe2e42dc"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "4dcfb5c5-1fa7-4fd6-b81e-ba85af5269e5",
+    "label": "type errata genericise",
+    "slug": "type-errata-genericise",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/type-errata-genericise",
+    "description": "Sets of cards that were moved away from their creature type name to a more generic one, to allow them to work in typal decks better.\n\nCephalids, Naga and Viashino live in our hearts forever.",
+    "parent_ids": [
+      "a48e9cf5-08eb-466f-9ace-3a66c4c6c69a"
+    ],
+    "child_ids": [
+      "594274b8-52a7-478e-8bec-890c94468466"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "594274b8-52a7-478e-8bec-890c94468466",
+    "label": "type errata specific",
+    "slug": "type-errata-specific",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/type-errata-specific",
+    "description": "Cards that had a very specific type line that was simplified to a larger group.",
+    "parent_ids": [
+      "4dcfb5c5-1fa7-4fd6-b81e-ba85af5269e5"
+    ],
+    "child_ids": [
+      "8c332f47-84a9-4641-b607-4904f8b51205"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "8c332f47-84a9-4641-b607-4904f8b51205",
+    "label": "type errata specific bird",
+    "slug": "type-errata-specific-bird",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/type-errata-specific-bird",
+    "description": null,
+    "parent_ids": [
+      "594274b8-52a7-478e-8bec-890c94468466"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "d3a0b660-358c-41bd-9cd2-41fbf3491b1a",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "7ef982da-7f7a-4003-8bb9-84fd368f4441",
+    "label": "unexile",
+    "slug": "unexile",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/unexile",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [
+      "330c3d98-c1ed-4eed-82da-63ff282846c0"
+    ],
+    "aliases": [],
+    "taggings": []
+  },
+  {
+    "object": "tag",
+    "id": "f2d4c003-ec6f-42f8-a4e7-19708231d749",
+    "label": "unique cr reference",
+    "slug": "unique-cr-reference",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/unique-cr-reference",
+    "description": "There is an entire rule in the CR just to cover this card and no other card.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median",
+        "annotation": "CR for Commander ninjutsu"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "571f7d0a-3a0a-47f3-81f6-3005ad8f2a34",
+    "label": "unique keyword",
+    "slug": "unique-keyword",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/unique-keyword",
+    "description": "This card uses a keyword action, ability, or variant thereof that's found on no other cards.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a7043fbd-1dfd-42cf-be4b-cc343d0949e5",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "c9a63005-e834-46ec-a8ed-285fabca97eb",
+    "label": "unique mana cost",
+    "slug": "unique-mana-cost",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/unique-mana-cost",
+    "description": "This card's mana cost isn't found on any other card.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "87b22b09-4f6d-4bc5-9cfc-663e4c7c6981",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "32600fa3-0c49-439d-8ff0-900829cbfebc",
+    "label": "unique type line",
+    "slug": "unique-type-line",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/unique-type-line",
+    "description": "No other card has this same type line. Acorn, playtest, and rebalanced cards may count as unique, but they don't make non-acorn, non-playtest, non-rebalanced cards stop counting as unique.",
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "7e6b9b59-cd68-4e3c-827b-38833c92d6eb",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "0ee06ed0-717a-4bfa-b634-d00e013c1f16",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "b2c6aa39-2d2a-459c-a555-fb48ba993373",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "bc71ebf6-2056-41f7-be35-b2e5c34afa99",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "5e708c4d-9992-431e-afe1-fb5af05b2ea3",
+    "label": "utility land",
+    "slug": "utility-land",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/utility-land",
+    "description": null,
+    "parent_ids": [],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "a731e87b-8d99-4b64-8ee3-8e540d652366",
+        "weight": "median"
+      },
+      {
+        "oracle_id": "c23e5b80-08d2-4e24-9908-fe2aa4f30f6f",
+        "weight": "median"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "36f3801c-18c7-4cbd-828d-5cc7642edea2",
+    "label": "virtual legendary",
+    "slug": "virtual-legendary",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/virtual-legendary",
+    "description": "This card represents a one-of-a-kind creature or object (and is named accordingly), and could conceivably have been legendary. Usually cards are in this category because they were printed before legendary existed or have a mechanical need to not be legendary.",
+    "parent_ids": [
+      "5a0a0531-5462-477d-add9-886148c4413f"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+        "weight": "median",
+        "annotation": "Flavor name version"
+      }
+    ]
+  },
+  {
+    "object": "tag",
+    "id": "e181b762-73f6-4a38-91fd-2d54b6a210ec",
+    "label": "virtual vanilla",
+    "slug": "virtual-vanilla",
+    "type": "oracle",
+    "uri": "https://tagger.scryfall.com/tags/card/virtual-vanilla",
+    "description": "These creatures are effectively just vanilla after entering the battlefield. They may have an enters-the-battlefield or on-cast trigger.",
+    "parent_ids": [
+      "e894517d-c9cc-48ea-bc05-7cd257c15155"
+    ],
+    "child_ids": [],
+    "aliases": [],
+    "taggings": [
+      {
+        "oracle_id": "30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c",
+        "weight": "very_strong"
+      }
+    ]
+  }
+]

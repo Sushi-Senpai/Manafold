@@ -17,9 +17,11 @@ import (
 // real Scryfall cards — the same way `cmd/cardsync` does when CARDSYNC_SEED_PATH
 // is set, and checks it ingests cleanly with searchable, image-bearing data
 // (plus the intended imageless and double-faced cases). This is what gives a
-// local run and CI card data to search against.
+// local run and CI card data to search against. Its companion
+// backend/seed/oracle_tags.json feeds the tag pass, so tag queries work offline
+// too.
 //
-// @spec CARD-040
+// @spec CARD-040, CARD-066
 func TestRun_DevSeed(t *testing.T) {
 	_ = godotenv.Load("../../.env")
 	dbURL := os.Getenv("DATABASE_URL")
@@ -38,6 +40,7 @@ func TestRun_DevSeed(t *testing.T) {
 	res, err := cardsync.Run(ctx, pool, cardsync.Options{
 		OracleCardsPath:  seed,
 		DefaultCardsPath: seed,
+		OracleTagsPath:   "../../seed/oracle_tags.json",
 	})
 	if err != nil {
 		t.Fatalf("cardsync.Run(dev seed): %v", err)
@@ -47,6 +50,9 @@ func TestRun_DevSeed(t *testing.T) {
 	}
 	if res.PrintsUpserted != res.OracleUpserted {
 		t.Fatalf("PrintsUpserted = %d, want one per card (%d)", res.PrintsUpserted, res.OracleUpserted)
+	}
+	if res.TaggingsUpserted == 0 || res.TaggingsSkipped != 0 {
+		t.Fatalf("seed tags: TaggingsUpserted = %d, TaggingsSkipped = %d; want every seed tagging to land", res.TaggingsUpserted, res.TaggingsSkipped)
 	}
 
 	q := db.New(pool)
@@ -99,6 +105,37 @@ func TestRun_DevSeed(t *testing.T) {
 	}
 	if !strings.Contains(card.TypeLine, "Legendary") {
 		t.Errorf("Atraxa type_line = %q", card.TypeLine)
+	}
+
+	// The seed's real Scryfall tags resolve through the oracle_tag_reach walk: Sol Ring is a
+	// mana rock, and "ramp" (a parent tag) reaches it and the mana dorks.
+	solRing, err := q.GetCardByScryfallOracleID(ctx, mustUUID(t, oracleIDOf(t, pool, "Sol Ring")))
+	if err != nil {
+		t.Fatalf("load Sol Ring: %v", err)
+	}
+	tags, err := q.ListOracleTagsForCard(ctx, solRing.ID)
+	if err != nil {
+		t.Fatalf("Sol Ring tags: %v", err)
+	}
+	var isRock bool
+	for _, tg := range tags {
+		isRock = isRock || tg.Slug == "mana-rock"
+	}
+	if !isRock {
+		t.Errorf("Sol Ring tags = %+v, want mana-rock among them", tags)
+	}
+	ramp, err := q.ListCardsByOracleTag(ctx, db.ListCardsByOracleTagParams{Slug: "ramp", Identity: []string{}, Lim: 100})
+	if err != nil {
+		t.Fatalf("cards by ramp: %v", err)
+	}
+	rampNames := map[string]bool{}
+	for _, c := range ramp {
+		rampNames[c.Name] = true
+	}
+	for _, want := range []string{"Sol Ring", "Llanowar Elves", "Cultivate"} {
+		if !rampNames[want] {
+			t.Errorf("cards by ramp missing %q (got %d cards)", want, len(ramp))
+		}
 	}
 }
 

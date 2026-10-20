@@ -25,7 +25,10 @@ import (
 // regression the merged app hit: the old download_uri + JSON-array reader left
 // find() returning "" and the mirror empty, so search returned nothing.
 //
-// @spec CARD-001, CARD-012, CARD-020
+// The oracle_tags export rides the same manifest → spool → gunzip path and
+// lands after the card passes (CARD-010).
+//
+// @spec CARD-001, CARD-010, CARD-012, CARD-020
 func TestRun_EndToEnd_ScryfallShapedGzipManifest(t *testing.T) {
 	_ = godotenv.Load("../../.env")
 	dbURL := os.Getenv("DATABASE_URL")
@@ -42,6 +45,7 @@ func TestRun_EndToEnd_ScryfallShapedGzipManifest(t *testing.T) {
 
 	oracleJSONL := mustReadFile(t, "testdata/oracle_cards.jsonl")
 	defaultJSONL := mustReadFile(t, "testdata/default_cards.jsonl")
+	tagsJSONL := mustReadFile(t, "testdata/oracle_tags.jsonl")
 
 	mux := http.NewServeMux()
 	var base string
@@ -51,7 +55,9 @@ func TestRun_EndToEnd_ScryfallShapedGzipManifest(t *testing.T) {
 			{"type":"oracle_cards","updated_at":"2026-09-06T09:01:54.221+00:00",
 			 "jsonl_download_uri":"` + base + `/oracle-cards.jsonl.gz"},
 			{"type":"default_cards","updated_at":"2026-09-06T09:05:27.982+00:00",
-			 "jsonl_download_uri":"` + base + `/default-cards.jsonl.gz"}
+			 "jsonl_download_uri":"` + base + `/default-cards.jsonl.gz"},
+			{"type":"oracle_tags","updated_at":"2026-09-06T09:00:33+00:00",
+			 "jsonl_download_uri":"` + base + `/oracle-tags.jsonl.gz"}
 		]}`))
 	})
 	serveGz := func(payload []byte) http.HandlerFunc {
@@ -66,6 +72,7 @@ func TestRun_EndToEnd_ScryfallShapedGzipManifest(t *testing.T) {
 	}
 	mux.HandleFunc("/oracle-cards.jsonl.gz", serveGz(oracleJSONL))
 	mux.HandleFunc("/default-cards.jsonl.gz", serveGz(defaultJSONL))
+	mux.HandleFunc("/oracle-tags.jsonl.gz", serveGz(tagsJSONL))
 
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -93,6 +100,9 @@ func TestRun_EndToEnd_ScryfallShapedGzipManifest(t *testing.T) {
 	if res.OracleUpserted != 4 || res.PrintsUpserted != 2 || res.PrintsSkipped != 1 {
 		t.Fatalf("Run result = %+v, want {OracleUpserted:4 PrintsUpserted:2 PrintsSkipped:1}", res)
 	}
+	if res.TagsErr != nil || res.TagsUpserted != 9 || res.TaggingsUpserted != 6 || res.TaggingsSkipped != 2 {
+		t.Fatalf("Run result = %+v, want {TagsUpserted:9 TaggingsUpserted:6 TaggingsSkipped:2} and no TagsErr", res)
+	}
 
 	q := db.New(pool)
 
@@ -114,6 +124,87 @@ func TestRun_EndToEnd_ScryfallShapedGzipManifest(t *testing.T) {
 	}
 	if oracleRun.Status != "succeeded" {
 		t.Fatalf("oracle_cards sync run status = %q, want succeeded", oracleRun.Status)
+	}
+
+	tagsRun, err := q.LatestSyncRun(ctx, "oracle_tags")
+	if err != nil {
+		t.Fatalf("latest oracle_tags sync run: %v", err)
+	}
+	if tagsRun.Status != "succeeded" || !tagsRun.ScryfallUpdatedAt.Valid {
+		t.Fatalf("oracle_tags sync run = {status %q, updated_at valid %v}, want succeeded with the manifest's updated_at",
+			tagsRun.Status, tagsRun.ScryfallUpdatedAt.Valid)
+	}
+}
+
+// TestRun_EndToEnd_TagFetchFailureKeepsCardSync: a manifest with no
+// oracle_tags entry must not cost the run its card data — both card passes
+// still land, Run returns no error, and the tag failure is reported in
+// Result.TagsErr and recorded as a failed oracle_tags sync_runs row.
+//
+// @spec CARD-010, CARD-067
+func TestRun_EndToEnd_TagFetchFailureKeepsCardSync(t *testing.T) {
+	ctx, pool := tagTestPool(t)
+
+	oracleJSONL := mustReadFile(t, "testdata/oracle_cards.jsonl")
+	defaultJSONL := mustReadFile(t, "testdata/default_cards.jsonl")
+
+	mux := http.NewServeMux()
+	var base string
+	mux.HandleFunc("/bulk-data", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"object":"list","data":[
+			{"type":"oracle_cards","updated_at":"2026-09-06T09:01:54.221+00:00",
+			 "jsonl_download_uri":"` + base + `/oracle-cards.jsonl.gz"},
+			{"type":"default_cards","updated_at":"2026-09-06T09:05:27.982+00:00",
+			 "jsonl_download_uri":"` + base + `/default-cards.jsonl.gz"}
+		]}`))
+	})
+	serveGz := func(payload []byte) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/gzip")
+			zw := gzip.NewWriter(w)
+			_, _ = zw.Write(payload)
+			_ = zw.Close()
+		}
+	}
+	mux.HandleFunc("/oracle-cards.jsonl.gz", serveGz(oracleJSONL))
+	mux.HandleFunc("/default-cards.jsonl.gz", serveGz(defaultJSONL))
+
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	base = srv.URL
+
+	res, err := cardsync.Run(ctx, pool, cardsync.Options{
+		BaseURL:    srv.URL,
+		HTTPClient: srv.Client(),
+	})
+	if err != nil {
+		t.Fatalf("cardsync.Run with no oracle_tags manifest entry: %v, want the card passes to succeed", err)
+	}
+	if res.OracleUpserted != 4 || res.PrintsUpserted != 2 {
+		t.Fatalf("Run result = %+v, want 4 cards and 2 prints written", res)
+	}
+	if res.TagsErr == nil {
+		t.Fatalf("Result.TagsErr = nil with no oracle_tags manifest entry, want the tag-pass error")
+	}
+
+	q := db.New(pool)
+	for _, bulkType := range []string{"oracle_cards", "default_cards"} {
+		run, err := q.LatestSyncRun(ctx, bulkType)
+		if err != nil {
+			t.Fatalf("latest %s sync run: %v", bulkType, err)
+		}
+		if run.Status != "succeeded" {
+			t.Errorf("%s sync run status = %q, want succeeded", bulkType, run.Status)
+		}
+	}
+	tagsRun, err := q.LatestSyncRun(ctx, "oracle_tags")
+	if err != nil {
+		t.Fatalf("latest oracle_tags sync run: %v", err)
+	}
+	if tagsRun.Status != "failed" || !tagsRun.Error.Valid || !tagsRun.FinishedAt.Valid {
+		t.Errorf("oracle_tags sync run = {status %q, error %v, finished %v}, want failed with error text and finished_at",
+			tagsRun.Status, tagsRun.Error.Valid, tagsRun.FinishedAt.Valid)
 	}
 }
 

@@ -505,3 +505,25 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   "Deck vs. target" panel with archetype and bracket pickers. Deferred:
   fast-mana-aware relaxation (pending role tags), a Scryfall-tag classifier (`CARD-010`), the
   wizard.
+- **2026-10-19** — Scryfall oracle tags in the card mirror (groundwork for the
+  interactive deck-building wizard). The captain wants a wizard that builds a
+  deck *with* the user — asking which land types they accept (some avoid
+  expensive duals), building the mana base and utility lands with them, then
+  surfacing synergy picks while respecting bracket rules (B2: no game changers
+  or crazy infinites; B3: up to three game changers, no fast combos; B4: fast
+  mana and game changers as needed). That needs functional card roles, so
+  `cmd/cardsync` now also ingests Scryfall's daily `oracle_tags` bulk export
+  (Tagger's community tags: `ramp`, `mana-rock`, `fetchland`, `utility-land`,
+  `tutor`, `mass-land-denial`, `extra-turn`, …) into `oracle_tags` /
+  `card_oracle_tags`, with the parent/child hierarchy walked at read time by
+  `oracle_tag_reach` because parent tags like `ramp` or `removal` carry few or
+  no direct taggings (`CARD-010`, `CARD-060..063`). Each sync replaces the tag
+  snapshot in one transaction, after both card passes commit; a failed tag pass
+  is recorded but never fails the card sync (`CARD-067`). A Manafold-owned
+  `disabled` flag lets a bad community tag be switched off; tag-or-descendant
+  reads walk only through enabled tags (`oracle_tag_reach`). Reads: sqlc queries for a card's tags, cards by
+  tag (optionally within a colour identity), and role counting over a card-id
+  set (`CARD-065`), plus `otag:` in card search (`CARD-064`).
+  `backend/seed/oracle_tags.json` keeps seed runs offline (`CARD-066`). Synergy
+  data will come from public Archidekt decklists (EDHREC has no open API) — a
+  separate piece of groundwork.
