@@ -1,0 +1,131 @@
+=== RUN   TestDeriveSingletonLimit
+=== RUN   TestDeriveSingletonLimit/any_number_clause
+=== RUN   TestDeriveSingletonLimit/up_to_spelled_number
+=== RUN   TestDeriveSingletonLimit/up_to_numeric
+=== RUN   TestDeriveSingletonLimit/plain_singleton_card
+=== RUN   TestDeriveSingletonLimit/up_to_N_but_not_deck-limit_wording
+=== RUN   TestDeriveSingletonLimit/empty_oracle_text
+--- PASS: TestDeriveSingletonLimit (0.00s)
+    --- PASS: TestDeriveSingletonLimit/any_number_clause (0.00s)
+    --- PASS: TestDeriveSingletonLimit/up_to_spelled_number (0.00s)
+    --- PASS: TestDeriveSingletonLimit/up_to_numeric (0.00s)
+    --- PASS: TestDeriveSingletonLimit/plain_singleton_card (0.00s)
+    --- PASS: TestDeriveSingletonLimit/up_to_N_but_not_deck-limit_wording (0.00s)
+    --- PASS: TestDeriveSingletonLimit/empty_oracle_text (0.00s)
+=== RUN   TestDeriveCanBeCommander
+=== RUN   TestDeriveCanBeCommander/legendary_creature
+=== RUN   TestDeriveCanBeCommander/planeswalker_granted_by_text
+=== RUN   TestDeriveCanBeCommander/plain_planeswalker
+=== RUN   TestDeriveCanBeCommander/non-legendary_creature
+=== RUN   TestDeriveCanBeCommander/legendary_but_not_creature
+=== RUN   TestDeriveCanBeCommander/qualifying_back_face
+=== RUN   TestDeriveCanBeCommander/concatenated_type_line,_no_face_is_a_legendary_creature
+=== RUN   TestDeriveCanBeCommander/front_face_is_a_legendary_creature_on_a_split_card
+--- PASS: TestDeriveCanBeCommander (0.00s)
+    --- PASS: TestDeriveCanBeCommander/legendary_creature (0.00s)
+    --- PASS: TestDeriveCanBeCommander/planeswalker_granted_by_text (0.00s)
+    --- PASS: TestDeriveCanBeCommander/plain_planeswalker (0.00s)
+    --- PASS: TestDeriveCanBeCommander/non-legendary_creature (0.00s)
+    --- PASS: TestDeriveCanBeCommander/legendary_but_not_creature (0.00s)
+    --- PASS: TestDeriveCanBeCommander/qualifying_back_face (0.00s)
+    --- PASS: TestDeriveCanBeCommander/concatenated_type_line,_no_face_is_a_legendary_creature (0.00s)
+    --- PASS: TestDeriveCanBeCommander/front_face_is_a_legendary_creature_on_a_split_card (0.00s)
+=== RUN   TestBulkDownload_SpoolDecouplesIngestFromTheConnection
+    download_test.go:50: pre-fix pattern failed as expected: unexpected EOF
+--- PASS: TestBulkDownload_SpoolDecouplesIngestFromTheConnection (5.54s)
+=== RUN   TestDownloadToTemp_IdleConnectionFailsAndCleansUp
+--- PASS: TestDownloadToTemp_IdleConnectionFailsAndCleansUp (0.15s)
+=== RUN   TestDownloadToTemp_TotalDeadlineFailsSlowTrickleAndCleansUp
+--- PASS: TestDownloadToTemp_TotalDeadlineFailsSlowTrickleAndCleansUp (0.25s)
+=== RUN   TestDownloadToTemp_RoundTripsGzipBody
+--- PASS: TestDownloadToTemp_RoundTripsGzipBody (0.00s)
+=== RUN   TestFetcher_SendsEtiquetteHeadersAndRetriesOn429
+--- PASS: TestFetcher_SendsEtiquetteHeadersAndRetriesOn429 (0.02s)
+=== RUN   TestFetcher_NonRetryableStatusIsAnError
+--- PASS: TestFetcher_NonRetryableStatusIsAnError (0.00s)
+=== RUN   TestManifest_ResolvesJSONLDownloadURI
+--- PASS: TestManifest_ResolvesJSONLDownloadURI (0.00s)
+=== RUN   TestOpenBulkFile_InflatesGzippedJSONL
+--- PASS: TestOpenBulkFile_InflatesGzippedJSONL (0.00s)
+=== RUN   TestOpenBulkFile_NonGzipIsAnError
+--- PASS: TestOpenBulkFile_NonGzipIsAnError (0.00s)
+=== RUN   TestStreamJSONObjects_DecodesNewlineDelimited
+--- PASS: TestStreamJSONObjects_DecodesNewlineDelimited (0.00s)
+=== RUN   TestStreamJSONObjects_DecodesTopLevelArray
+--- PASS: TestStreamJSONObjects_DecodesTopLevelArray (0.00s)
+=== RUN   TestRun_IngestsFixture_DerivesFields
+--- PASS: TestRun_IngestsFixture_DerivesFields (0.07s)
+=== RUN   TestRun_EndToEnd_ScryfallShapedGzipManifest
+    endtoend_test.go:104: Run result = {OracleUpserted:4 PrintsUpserted:2 PrintsSkipped:1 TagsUpserted:0 TaggingsUpserted:0 TaggingsSkipped:0 TagsErr:oracle_tags ingest: delete absent tags: ERROR: relation "oracle_tags" does not exist (SQLSTATE 42P01)}, want {TagsUpserted:9 TaggingsUpserted:6 TaggingsSkipped:2} and no TagsErr
+--- FAIL: TestRun_EndToEnd_ScryfallShapedGzipManifest (0.05s)
+=== RUN   TestRun_EndToEnd_TagFetchFailureKeepsCardSync
+--- PASS: TestRun_EndToEnd_TagFetchFailureKeepsCardSync (0.05s)
+=== RUN   TestRun_IngestsOracleTags
+    oracletags_test.go:51: TagsErr = oracle_tags ingest: delete absent tags: ERROR: relation "oracle_tags" does not exist (SQLSTATE 42P01), want nil
+--- FAIL: TestRun_IngestsOracleTags (0.06s)
+=== RUN   TestRun_OracleTagsReplaceSnapshotAndKeepDisabled
+    oracletags_test.go:148: count tag tables: ERROR: relation "oracle_tags" does not exist (SQLSTATE 42P01)
+--- FAIL: TestRun_OracleTagsReplaceSnapshotAndKeepDisabled (0.03s)
+=== RUN   TestRun_FixtureCardsWithoutTagFileSkipsTagPass
+--- PASS: TestRun_FixtureCardsWithoutTagFileSkipsTagPass (0.03s)
+=== RUN   TestRun_OracleTagsBrokenExportFailsAndKeepsSnapshot
+    oracletags_test.go:262: count tag tables: ERROR: relation "oracle_tags" does not exist (SQLSTATE 42P01)
+--- FAIL: TestRun_OracleTagsBrokenExportFailsAndKeepsSnapshot (0.04s)
+=== RUN   TestRun_DevSeed
+    seed_test.go:55: seed tags: TaggingsUpserted = 0, TaggingsSkipped = 0; want every seed tagging to land
+--- FAIL: TestRun_DevSeed (0.29s)
+FAIL
+FAIL	manafold-backend/internal/cardsync	6.597s
+=== RUN   TestParse_Predicates
+=== RUN   TestParse_Predicates/bare_words_become_full_text
+=== RUN   TestParse_Predicates/color_identity_subset_via_id:
+=== RUN   TestParse_Predicates/color_identity_subset_via_id<=
+=== RUN   TestParse_Predicates/color_identity_exact_via_id=
+=== RUN   TestParse_Predicates/colourless_id:c_yields_empty_colours
+=== RUN   TestParse_Predicates/type_and_cmc
+=== RUN   TestParse_Predicates/cmc_colon_means_equals
+=== RUN   TestParse_Predicates/oracle_phrase
+=== RUN   TestParse_Predicates/is:commander
+=== RUN   TestParse_Predicates/combined
+--- PASS: TestParse_Predicates (0.00s)
+    --- PASS: TestParse_Predicates/bare_words_become_full_text (0.00s)
+    --- PASS: TestParse_Predicates/color_identity_subset_via_id: (0.00s)
+    --- PASS: TestParse_Predicates/color_identity_subset_via_id<= (0.00s)
+    --- PASS: TestParse_Predicates/color_identity_exact_via_id= (0.00s)
+    --- PASS: TestParse_Predicates/colourless_id:c_yields_empty_colours (0.00s)
+    --- PASS: TestParse_Predicates/type_and_cmc (0.00s)
+    --- PASS: TestParse_Predicates/cmc_colon_means_equals (0.00s)
+    --- PASS: TestParse_Predicates/oracle_phrase (0.00s)
+    --- PASS: TestParse_Predicates/is:commander (0.00s)
+    --- PASS: TestParse_Predicates/combined (0.00s)
+=== RUN   TestParse_UnparseableTokenErrorsWithToken
+=== RUN   TestParse_UnparseableTokenErrorsWithToken/power:5
+=== RUN   TestParse_UnparseableTokenErrorsWithToken/id:xyz
+=== RUN   TestParse_UnparseableTokenErrorsWithToken/cmc<=lots
+=== RUN   TestParse_UnparseableTokenErrorsWithToken/is:banned
+=== RUN   TestParse_UnparseableTokenErrorsWithToken/id>b
+--- PASS: TestParse_UnparseableTokenErrorsWithToken (0.00s)
+    --- PASS: TestParse_UnparseableTokenErrorsWithToken/power:5 (0.00s)
+    --- PASS: TestParse_UnparseableTokenErrorsWithToken/id:xyz (0.00s)
+    --- PASS: TestParse_UnparseableTokenErrorsWithToken/cmc<=lots (0.00s)
+    --- PASS: TestParse_UnparseableTokenErrorsWithToken/is:banned (0.00s)
+    --- PASS: TestParse_UnparseableTokenErrorsWithToken/id>b (0.00s)
+=== RUN   TestWhereSQL_RendersPlaceholdersAndArgs
+--- PASS: TestWhereSQL_RendersPlaceholdersAndArgs (0.00s)
+=== RUN   TestParse_OracleTag
+--- PASS: TestParse_OracleTag (0.00s)
+=== RUN   TestWhereSQL_OracleTagUsesReachWalk
+--- PASS: TestWhereSQL_OracleTagUsesReachWalk (0.00s)
+=== RUN   TestWhereSQL_EmptyQueryIsTrue
+--- PASS: TestWhereSQL_EmptyQueryIsTrue (0.00s)
+PASS
+ok  	manafold-backend/internal/cardsearch	0.003s
+=== RUN   TestMigrate_FromEmptySchema_ReachesLatestVersion
+--- PASS: TestMigrate_FromEmptySchema_ReachesLatestVersion (0.50s)
+PASS
+ok  	manafold-backend/internal/db	0.501s
+=== RUN   TestSeedOptions_TagFile
+--- PASS: TestSeedOptions_TagFile (0.00s)
+PASS
+ok  	manafold-backend/cmd/cardsync	0.004s
+FAIL
