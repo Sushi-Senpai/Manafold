@@ -1,0 +1,18 @@
+11:21:12
+ensure1:
+{"status":"gathering","reason":null,"sample":null}
+ [200]
+ensure2:
+{"status":"gathering","reason":null,"sample":null}
+ [200]
+random:
+{"error":"card not found"}
+ [404]
+get-before:
+{"status":"gathering","reason":null,"commander":{"card_id":"6d3a4bac-14f8-4ec2-ba9e-81c244310174","name":"Kenrith, the Returned King","color_identity":"WUBRG"},"sample":null,"cards":[],"attribution":{
+11:21:32
+get-final:
+{"status":"ready","reason":null,"commander":{"card_id":"6d3a4bac-14f8-4ec2-ba9e-81c244310174","name":"Kenrith, the Returned King","color_identity":"WUBRG"},"sample":{"deck_count":3,"duplicates_skipped":0,"fetched_at":"2026-10-20T11:21:30.791833-05:00","baseline_deck_count":2,"baseline_fetched_at":"2026-10-20T11:17:33.357651-05:00"},"cards":[{"card":{"id":"24dc0653-1135-4446-903e-3d8aad857231","name":"Armageddon","mana_cost":"{3}{W}","mana_value":4,"type_line":"Sorcery","oracle_text":"Destroy all
+ensure3:
+{"status":"ready","reason":null,"sample":{"deck_count":3,"duplicates_skipped":0,"fetched_at":"2026-10-20T11:21:30.791833-05:00","baseline_deck_count":2,"baseline_fetched_at":"2026-10-20T11:17:33.357651-05:00"}}
+ [200]
