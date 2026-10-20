@@ -155,6 +155,8 @@ SELECT
     c.can_be_commander,
     c.card_faces,
     COALESCE(c.legalities ->> 'commander', '')::text AS legalities_commander,
+    c.scryfall_oracle_id,
+    c.is_game_changer,
     newest.image_uris,
     newest.prices,
     COALESCE(newest.set_code, '')::text AS set_code,

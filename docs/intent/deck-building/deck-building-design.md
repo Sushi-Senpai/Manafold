@@ -13,9 +13,10 @@ optionally a second/partner commander). Commander legality — colour identity,
 singleton, the 100-card count, the banlist, and commander shape — is validated by
 the system every time the deck changes and surfaced as a live report, never left
 to the user. This segment owns `decks`, `deck_cards`, the pure validator
-`internal/deckrules`, the deterministic analyser `internal/deckstats`, deck
-CRUD, the archetype templates (`internal/decktemplates`) with their role
-classifier (`internal/deckroles`), and the read-only public deck view.
+`internal/deckrules`, the deterministic analyser `internal/deckstats`, the
+deterministic bracket check `internal/bracket`, deck CRUD, the archetype
+templates (`internal/decktemplates`) with their role classifier
+(`internal/deckroles`), and the read-only public deck view.
 
 Ownership is enforced **in the SQL**, not by a per-handler check: every deck
 query scopes to the caller's *owner key* — their user ID when authenticated, or
@@ -50,7 +51,7 @@ Migration `create_decks` creates `decks` and `deck_cards`.
 | `commander_card_id` | uuid null fk → cards | |
 | `partner_card_id` | uuid null fk → cards | second commander (partner / background / friends-forever) |
 | `format` | text not null default `'commander'` | leaves room for Brawl/Oathbreaker later |
-| `bracket` | int null | self-assigned 1–5 |
+| `bracket` | int null | the owner's chosen bracket, 1–5; `NULL` = not chosen. The bracket check reads it as the target (`DECK-125`) |
 | `archetype` | text null | a `decktemplates` template key (added by migration `add_deck_archetype`); `NULL` = no archetype chosen. Validated against the template set by the handler, not a DB constraint, so a new template needs no migration |
 | `power_estimate` | numeric null | Manafold's computed estimate (later) |
 | `is_public` | bool not null default false | read-only share URL |
@@ -302,6 +303,100 @@ conservative — a miss is preferred over a false positive:
 - Type rows inherit `deckstats`' primary-type reading, which looks at the whole
   type line: a modal double-faced "Instant // Land" counts as a land.
 
+## `internal/bracket` — the bracket check
+
+A pure package, sibling to `deckrules` and `deckstats`: `Check(input Input)
+Report`, no DB and no AI. It estimates which Commander Bracket a deck plays at
+and compares that with the bracket the owner chose (`decks.bracket`), so the
+builder — and later the deck wizard — can keep a deck inside its bracket. The
+handler assembles the input from already-loaded rows plus three lookups against
+`card-data`'s mirror: `cards.is_game_changer`, the `combos` whose every card is
+in the deck, and `spellbook_card_flags`.
+
+### The rules it encodes
+
+The official Wizards bracket rules (brackets are in beta) set **one hard number:
+Game Changers** — 0 in Brackets 1–2, up to 3 in Bracket 3, unlimited in 4–5.
+`cards.is_game_changer` (Scryfall's flag, refreshed daily) is the list; it is
+never hard-coded. Everything else — two-card combos, mass land denial, extra
+turns — Wizards now expresses as how many turns a game should last (B1 ≥ 9,
+B2 ≥ 8, B3 ≥ 6, B4 ≥ 4), so the check surfaces those as **warnings the user
+decides on**, never as blocks. Nothing in this package rejects a mutation; it
+only reports.
+
+The estimate is a Go port of Commander Spellbook's MIT-licensed
+`estimate_bracket` classifier (`backend/spellbook/models/variant.py`,
+attributed in the package doc), which tags a deck with one of Spellbook's
+bracket tags. The port is faithful except where Spellbook's export lacks an
+input (see *Decisions*).
+
+**Input.** `Cards` — the deck's `main` + `command` cards, each with oracle id,
+name, quantity, `GameChanger`, `MassLandDenial`, `ExtraTurn`; `Commanders` —
+the oracle ids on the command board; `Combos` — candidate combos (every card
+ingredient's oracle id is in the deck) with their ingredients, produced
+features, `ManaValueNeeded`, and `HasNotablePrerequisites`; `TargetBracket`
+(nil when unset).
+
+**Matching.** A candidate combo counts only when the deck holds at least each
+ingredient's quantity (main + command).
+
+**Per-combo classification.**
+
+- *relevant* — it produces a standalone (`S`) feature; *borderline relevant* —
+  a standalone or contextual (`C`) one.
+- *card count* — ingredients starting in the library are not counted;
+  ingredients that are one of the deck's commanders are not counted (always
+  available); every other ingredient counts its quantity as a *sure* card.
+  Notable prerequisites add one *arguable* card, and so does not being
+  borderline relevant. *Definitely two-card*: sure + arguable ≤ 2. *Arguably
+  two-card*: sure ≤ 2 and sure + arguable ≤ 3.
+- *speed* (5 fastest) from `ManaValueNeeded`: 0 → 5, ≤ 4 → 4, ≤ 6 → 3, ≤ 8 →
+  2, otherwise 1.
+- *mass land denial* — a feature named like "mass land destruction / denial /
+  removal"; *extra turn* — a feature naming (near-)infinite (extra) turns, not
+  for an opponent; *lock* — a feature name containing "lock"; *skip turns*,
+  *control all opponents*, *control some opponents* — Spellbook's feature-name
+  patterns.
+
+**Deck tag** — the first rule that matches, in order:
+
+| Tag | Spellbook name | When |
+|---|---|---|
+| `R` | Ruthless | > 3 Game Changers; ≥ 2 extra-turn cards; any mass-land-denial card; any combo with extra turns, mass land denial, or control of all opponents; any relevant, definitely-two-card combo of speed ≥ 4 |
+| `S` | Spicy | any combo of speed ≥ 4 that is relevant and arguably two-card, or borderline relevant and definitely two-card; any lock, skip-turns, or control-some-opponents combo |
+| `P` | Powerful | any relevant, definitely-two-card combo of speed ≥ 3; any Game Changer |
+| `O` | Oddball | any borderline-relevant, arguably-two-card combo of speed ≥ 3 |
+| `C` | Core | any extra-turn card; any relevant, definitely-two-card combo of speed ≥ 2 |
+| `E` | Exhibition | otherwise |
+
+Banned cards play no part: legality is `deckrules`' report, and an estimate is
+still useful for a deck that currently holds a banned card.
+
+**Tag → bracket.** Each tag is a *minimum*: `E` → 1, `C` → 2, `O` → 2
+(borderline: may read as 3), `P` → 3, `S` → 3 (borderline: may read as 4),
+`R` → 4. The estimate never says 5 — cEDH is a metagame, not a card list.
+
+**Per-item tags.** Every matched combo is tagged by running the same cascade
+over that combo alone; that tag and its minimum bracket are what the builder
+shows beside the combo.
+
+**Findings against the chosen bracket** (only when `TargetBracket` is set):
+
+- *violation* — the Game Changer count exceeds the target's limit. The only
+  hard rule; still reported, never enforced.
+- *warning* — a combo whose minimum bracket is above the target; mass-land-
+  denial cards in a deck targeting below 4; extra-turn cards in a deck
+  targeting 1; two or more extra-turn cards in a deck targeting below 4.
+- *notice* — a borderline combo (`O`, `S`) whose minimum bracket equals the
+  target.
+
+`Report` carries the deck tag, estimated bracket, and borderline flag; the
+target; the Game Changer count, its limit (nil = unlimited, and nil while no
+target is set), and their names; the mass-land-denial and extra-turn card
+names; every matched combo (id, card names, produced standalone / contextual
+feature names, mana needed, speed, the two-card and relevance flags, its tag
+and minimum bracket); and the findings.
+
 ## HTTP API
 
 All under the protected `/api` group (M1: `DevAuth`). Registered via
@@ -318,9 +413,10 @@ All under the protected `/api` group (M1: `DevAuth`). Registered via
 | `/api/decks/{id}/cards/{cardId}` | DELETE | — | `204` / `404` | scoped through `decks.user_id`; `204` only when a row was deleted, `404` when none matched |
 | `/api/decks/{id}/validation` | GET | — | `ValidationReport` | |
 | `/api/decks/{id}/stats` | GET | — | `Stats` + `category_targets` | deterministic; curve / pips / sources / category roll-up over `main` + `command` (`DECK-051`, `DECK-052`) |
-| `/api/decks/{id}` | PATCH | `{ name?, description?, is_public?, bracket?, archetype? }` | `Deck` | `archetype` must be a known template key (else `400`, nothing stored); `""` clears it (`DECK-103`) |
+| `/api/decks/{id}` | PATCH | `{ name?, description?, is_public?, bracket?, archetype? }` | `Deck` | `archetype` must be a known template key (else `400`, nothing stored); `""` clears it (`DECK-103`). `bracket` must be an integer 1–5, or `null` to clear it; anything else is `400` (`DECK-128`) |
 | `/api/deck-templates` | GET | — | `{ version, templates }` | the authoritative template data, verbatim (`DECK-100`) |
 | `/api/decks/{id}/template-fit` | GET | — | `{ archetype, template_version, bracket, rows }` | the deck's counts against its archetype's template; `archetype: null` and no rows when none is chosen (`DECK-104`) |
+| `/api/decks/{id}/bracket` | GET | — | bracket `Report` + `combo_data_available` | deterministic (`internal/bracket`), over `main` + `command`; `combo_data_available` is false while the combo mirror is empty, so the builder can say combos were not checked (`DECK-126`) |
 | `/public/decks/{id}` | GET | — | `DeckDetail` (read-only) | mounted at the router root, outside the `/api` auth group; unauthenticated; `404` (never `401`) unless `is_public` |
 
 Adding a card **records the entry and returns it flagged** when the card is
@@ -335,8 +431,8 @@ outside colour identity — it does not silently reject or silently accept
   `page.tsx` loads the deck + validation report, mounts the active-card
   provider, and arranges three columns above a narrow-viewport breakpoint,
   collapsing to one column below it:
-  - **left column (sticky)** — the card-image panel (`DECK-070`) above a
-    collapsible deck-stats section (the legality summary is not in this column —
+  - **left column (sticky)** — the card-image panel (`DECK-070`) above the
+    collapsible deck-stats and bracket sections (the legality summary is not in this column —
     it is pinned under the deck header, `DECK-096`);
   - **center column** — the type-grouped decklist;
   - **right column** — AI suggestions at the top (prominent — `ai-assist`), card
@@ -420,6 +516,16 @@ outside colour identity — it does not silently reject or silently accept
     non-land / average MV, a bar-chart mana curve, colour pips vs sources, and
     category counts against the rules-of-thumb bands. Refetched when the deck's
     cards or commander change.
+  - **Bracket** — a collapsible left-column section beside the stats, reading
+    `/bracket` (`DECK-127`). Its header shows the estimate, the target, and the
+    Game Changer count against the target's limit at a glance. Open, it has a
+    target-bracket selector (1–5 or not set, `PATCH`ing `bracket`), the
+    findings (violation / warning / notice tones), the Game Changer, mass
+    land denial, and extra-turn card lists, and each matched combo — its
+    cards, what it produces, its speed, its tag and minimum bracket — linking
+    to the combo's Commander Spellbook page. It credits Commander Spellbook as
+    the combo source, and says so plainly when combo data has not been loaded.
+    Refetched when the deck's cards, commander, or target change.
   - **Import / export dialog** — see `import-export`; reached from the header
     Tools menu (`DECK-095`).
 
@@ -432,7 +538,8 @@ outside colour identity — it does not silently reject or silently accept
   trigger), `CommanderPicker`, `CardSearch` / `SearchResultList` /
   `SearchResultRow`, `ManaSymbols` (`ManaCost` / `ColorIdentity` chips),
   `Decklist` / `DecklistRow` / `QuantityStepper`, `CardActionMenu`,
-  `ToolsMenu` + `ImportExportDialog`. `Decklist` owns the single
+  `ToolsMenu` + `ImportExportDialog`, `BracketPanel` (the bracket section,
+  `DECK-127`). `Decklist` owns the single
   `openMenuEntryId` and also renders the AI "Explain fit" control
   (`explainFitLabel` from `lib/deck.ts`) through `DecklistRow`'s `footer` slot
   on the main / command boards — see `ai-assist`. Each is `"use client"`; the
@@ -458,6 +565,9 @@ outside colour identity — it does not silently reject or silently accept
   payload: `fitTone` (status → green / amber) and `formatFitRow`.
 - `frontend/src/components/builder/TemplateFitPanel.tsx` — the "deck vs.
   target" panel.
+- `frontend/src/lib/bracket.ts` — pure view helpers over the bracket payload:
+  `bracketHeadline` (estimate / target / Game Changer budget), `tagLabel`,
+  `findingTone`, `comboUrl`, `parseBracketChoice`.
 
 ## Decisions & Alternatives
 
@@ -481,6 +591,11 @@ outside colour identity — it does not silently reject or silently accept
 | Template role counting | A `deckroles.Classifier` interface with a conservative, deterministic Oracle-text default | Count the free-text `category` field; ingest Scryfall `oracle_tags` now; ask the LLM | `category` is empty for most entries, so it would read "under" everywhere. Tag ingestion is `CARD-010` and its own piece of work; the interface lets it drop in later. An LLM call per panel refresh is slow, costly, and nondeterministic. Conservative rules mean a deck reads slightly "under" rather than falsely "ok". |
 | Archetype storage | Nullable `decks.archetype` text holding a template key, validated in the handler | A Postgres enum or CHECK listing the keys; a separate `deck_templates` FK | Templates live in code; a DB-side key list would be a second copy needing a migration per new template. |
 | Bracket 4 land relaxation | `relaxed_at_bracket: 4` + `relaxed_floor: 32` on the land row in the template data, keyed on the deck's self-assigned `bracket`, Bracket 4 only | Relax at Bracket 4 and above; no floor; detect fast mana from the decklist now; widen every land range | The captain's call: the relaxation is for a Bracket 4 deck with heavy fast mana, with 32 as the floor. Bracket 5 decks are not assumed to run lean. Without a floor a 0-land deck would read green. Fast-mana counting needs role tags (`CARD-010`) or the M6 Game Changer work, so the bracket claim stands in until then; the data shape stays the same when the check is added. |
+| Bracket estimate | A pure Go port of Commander Spellbook's MIT `estimate_bracket` classifier over the local combo mirror | Call Spellbook's `POST /estimate-bracket` per request; ask the language model to judge the bracket | The live call is an external dependency on every check and every future wizard turn; a model judgement is not deterministic and breaks *statistics and rules decide*. Porting keeps one well-tested community rule set, runnable offline and in tests. |
+| What the bracket check enforces | Report only: Game Changers over the limit are a *violation*, combos / MLD / extra turns are *warnings* or *notices*; no mutation is ever rejected | Reject adds that break the target bracket | Wizards' only hard number is the Game Changer count; the rest is now phrased as turn expectations the pod agrees on. Players add cards mid-build that they will cut later, exactly like the colour-identity flag (`DECK-004`). |
+| Mana-figure accuracy in the speed heuristic | Treat every combo's mana figure as an accurate minimum | Assume all are inaccurate (+1 speed) | Spellbook's live classifier adds one speed step when an editor marked the figure inaccurate, but its export does not carry that flag. Accurate is Spellbook's own default; the cost is that a few combos read one speed step slower than Spellbook's live estimate. |
+| Banned cards in the estimate | Ignored by the estimate (Spellbook tags such a deck `B`) | Report no estimate while a banned card is present | Legality is `deckrules`' job and already shown; an estimate stays useful for a deck that is mid-fix. |
+| Bracket 5 | Never estimated; a target of 5 produces no findings | Treat 4+ decks as 5 | cEDH is defined by its metagame, not by detectable cards; Game Changers are unlimited there as in 4. |
 | Import/export placement | Behind a "Tools" menu on the deck header, opening a dismissible dialog | Keep it as an always-on inline panel | It is used once or twice per session; an always-on panel was pure vertical bloat on a page the captain already found too long. |
 
 ## Open Questions & Future Decisions
@@ -558,8 +673,9 @@ outside colour identity — it does not silently reject or silently accept
 
 - Code: `backend/internal/deckrules/`, `backend/internal/deckstats/`,
   `backend/internal/decktemplates/`, `backend/internal/deckroles/`,
-  `backend/internal/api/decks.go`, `backend/internal/api/stats.go`,
-  `backend/internal/api/templates.go`,
+  `backend/internal/bracket/`, `backend/internal/api/decks.go`,
+  `backend/internal/api/stats.go`, `backend/internal/api/templates.go`,
+  `backend/internal/api/bracket.go`,
   `backend/internal/db/migrations/000006_add_deck_archetype.up.sql`,
   `backend/internal/db/migrations/000003_create_decks.up.sql`,
   `backend/internal/db/queries/decks.sql`
@@ -567,8 +683,10 @@ outside colour identity — it does not silently reject or silently accept
   `backend/internal/deckstats/deckstats_test.go`,
   `backend/internal/decktemplates/decktemplates_test.go`,
   `backend/internal/deckroles/deckroles_test.go`,
+  `backend/internal/bracket/bracket_test.go`,
   `backend/internal/api/templates_test.go`,
-  `backend/internal/api/decks_test.go`, `backend/internal/api/stats_test.go`
+  `backend/internal/api/decks_test.go`, `backend/internal/api/stats_test.go`,
+  `backend/internal/api/bracket_test.go`
 - Frontend: `frontend/src/app/(app)/decks/page.tsx`,
   `frontend/src/app/(app)/decks/[id]/page.tsx`,
   `frontend/src/components/builder/` (active-card provider, sticky card-image
@@ -578,11 +696,14 @@ outside colour identity — it does not silently reject or silently accept
   `frontend/src/lib/cardPreview.ts`, `frontend/src/lib/menuPlacement.ts`,
   `frontend/src/lib/searchNav.ts`, `frontend/src/lib/cardActions.ts`,
   `frontend/src/lib/deck.ts`, `frontend/src/lib/deckstats.ts`,
-  `frontend/src/lib/templateFit.ts`
+  `frontend/src/lib/templateFit.ts`, `frontend/src/lib/bracket.ts`
 - Frontend tests: `frontend/src/lib/templateFit.test.ts`, `frontend/src/lib/cardPreview.test.ts`,
   `frontend/src/lib/menuPlacement.test.ts`, `frontend/src/lib/deck.test.ts`,
-  `frontend/src/lib/searchNav.test.ts`, `frontend/src/lib/cardActions.test.ts`
-- Cross-segment: reads `card-data` (`cards`, `card_prints`, `banlist_overrides`);
+  `frontend/src/lib/searchNav.test.ts`, `frontend/src/lib/cardActions.test.ts`,
+  `frontend/src/lib/bracket.test.ts`
+- Cross-segment: reads `card-data` (`cards`, `card_prints`, `banlist_overrides`,
+  and the Commander Spellbook mirror `combos` / `combo_cards` /
+  `spellbook_card_flags`);
   `user_id` / `anon_token` ownership comes from `account-access` (M1: the
   `DevAuth` user). `ai-assist` reuses `internal/deckrules` to gate model output.
   `import-export` writes `deck_cards` in bulk from a parsed decklist.

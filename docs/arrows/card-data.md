@@ -13,7 +13,8 @@ sync hardened to download-then-ingest with a temp-file spool and a `COPY`-based
 batched `card_prints` upsert so the full Default Cards export lands (CARD-013 /
 CARD-014 / CARD-015, 2026-09-09); Scryfall oracle tags ingested with a
 read-time hierarchy walk, tag queries, `otag:` search, and a seed tag file
-(CARD-010, CARD-060..067, 2026-10-19).
+(CARD-010, CARD-060..067, 2026-10-19); Commander Spellbook combo mirror and
+its sync pass (CARD-050..056, 2026-10-19).
 
 ## References
 
@@ -24,7 +25,7 @@ read-time hierarchy walk, tag queries, `otag:` search, and a seed tag file
 - docs/intent/card-data/card-data-design.md
 
 ### EARS
-- docs/intent/card-data/card-data-specs.md (CARD-001..015, CARD-020..024, CARD-030, CARD-040, CARD-060..067)
+- docs/intent/card-data/card-data-specs.md (CARD-001..015, CARD-020..024, CARD-030, CARD-040, CARD-050..056, CARD-060..067)
 
 ### Tests
 - backend/internal/cardsync/cardsync_test.go (`TestRun_IngestsFixture_DerivesFields`) — CARD-001, CARD-002 (verbatim color_identity), CARD-003, CARD-004, CARD-005, CARD-007, CARD-014 (the `COPY`-merged `card_prints` rows carry the same `set_code` / `finishes` / `image_uris` / `prices` the per-row path wrote, and the orphan printing has no row); reads the checked-in `.jsonl` fixtures
@@ -39,6 +40,7 @@ read-time hierarchy walk, tag queries, `otag:` search, and a seed tag file
 - backend/cmd/cardsync/main_test.go (`TestSeedOptions_TagFile`) — CARD-066
 - backend/internal/db/migrate_test.go — the oracle-tag tables and `oracle_tag_reach` exist after Migrate
 - backend/internal/cardsearch/cardsearch_test.go — CARD-022, CARD-023, CARD-064
+- backend/internal/cardsync/spellbook_test.go (`TestRunSpellbook_DevSeed`, `TestRunSpellbook_Eligibility`, `TestRunSpellbook_DownloadsVariants`, `TestRunSpellbook_CardFlagCrawl`) — CARD-050 (eligible variants stored with ingredients, features, tag), CARD-051 (idempotent full replace; empty or truncated export fails and keeps the previous combos), CARD-052 (etiquette headers, spool removed on success and failure, size cap), CARD-053 (paged `/cards/` crawl, same-host rule, page cap, empty-crawl guard), CARD-054 (weekly skip), CARD-055 (local-file seed)
 - backend/internal/api/cards_test.go — CARD-020, CARD-021, CARD-023
 - CARD-008 / CARD-024 (no Scryfall call on a client request path) are a negative
   invariant: the `/api/cards/*` handlers depend only on the pool and the
@@ -47,12 +49,14 @@ read-time hierarchy walk, tag queries, `otag:` search, and a seed tag file
 
 ### Code
 - backend/internal/cardsync/ (`Run`, bulk manifest fetch → `jsonl_download_uri`, `downloadToTemp` spool + `idleReader` deadline, `openBulkFile` gzip inflation, `streamJSONObjects` / `jsonObjectStream` incremental JSONL decode, `ingestOracle` per-row upsert, `copyUpsertPrints` `COPY` + set-based merge, derived fields; oracletags.go `ingestOracleTags` / `copyReplaceOracleTags` snapshot replace)
+- backend/internal/cardsync/spellbook.go (`RunSpellbook` — `variants.json` spool + token-streamed `COPY` into a `TEMP` table + transactional full replace; weekly `/cards/` flag crawl)
 - backend/internal/cardsearch/ (`Parse`, predicate → SQL via `Query.WhereSQL`)
 - backend/internal/api/cards.go (`registerCardRoutes`, search + autocomplete handlers)
-- backend/cmd/cardsync/main.go (`seedOptions` — CARDSYNC_SEED_PATH / CARDSYNC_ORACLE_PATH / CARDSYNC_DEFAULT_PATH / CARDSYNC_TAGS_PATH, CARD-040, CARD-066)
-- backend/seed/cards.json (checked-in dev / CI card seed — CARD-040); backend/seed/oracle_tags.json (its oracle tags — CARD-066)
+- backend/cmd/cardsync/main.go (`seedOptions` — CARDSYNC_SEED_PATH / CARDSYNC_ORACLE_PATH / CARDSYNC_DEFAULT_PATH / CARDSYNC_TAGS_PATH, CARD-040, CARD-066; `spellbookOptions` — CARDSYNC_SPELLBOOK_*, CARD-055)
+- backend/seed/cards.json (checked-in dev / CI card seed — CARD-040); backend/seed/oracle_tags.json (its oracle tags — CARD-066); backend/seed/spellbook-variants.json + spellbook-cards.json (combo seed — CARD-055)
 - backend/internal/db/migrations/000007_create_oracle_tags.up.sql / .down.sql (also `oracle_tag_reach`, the enabled-tag walk behind every tag-or-descendant read — CARD-062, CARD-063)
 - backend/internal/db/queries/oracle_tags.sql (CARD-065)
+- backend/internal/db/migrations/000008_create_combos.up.sql / .down.sql; backend/internal/db/queries/combos.sql
 - backend/internal/db/migrations/000001_create_card_data.up.sql / .down.sql
 - backend/internal/db/queries/cards.sql
 
@@ -88,8 +92,9 @@ read-time hierarchy walk, tag queries, `otag:` search, and a seed tag file
 | Search & autocomplete | CARD-020..024 | 5 | 0 | 0 |
 | Banlist overrides | CARD-030 | 1 | 0 | 0 |
 | Dev / CI seed | CARD-040 | 1 | 0 | 0 |
+| Commander Spellbook combos | CARD-050..056 | 7 | 0 | 0 |
 
-**Summary:** 26 of 28 implemented; one gap: CARD-009, the single-printing
+**Summary:** 33 of 35 implemented; one gap: CARD-009, the single-printing
 Scryfall fallback, deferred past M2's import/export (import resolves names
 against the mirror; an unmirrored `(SET) collector#` currently falls through to
 name resolution rather than triggering a live fetch). 1 deferred (CARD-011).

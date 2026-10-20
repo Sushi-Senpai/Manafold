@@ -1,0 +1,175 @@
+{
+  "timestamp": "2026-10-19T19:13:21.926562+00:00",
+  "version": "7.2.0",
+  "variants": [
+    {
+      "id": "742-1295",
+      "status": "OK",
+      "uses": [
+        {
+          "card": {
+            "name": "Demonic Consultation",
+            "oracleId": "9a1412db-45ad-46ea-8f12-a85d203113d8"
+          },
+          "zoneLocations": [
+            "H"
+          ],
+          "mustBeCommander": false,
+          "quantity": 1
+        },
+        {
+          "card": {
+            "name": "Thassa's Oracle",
+            "oracleId": "1de1b591-a73f-4974-b507-8c63e07a0868"
+          },
+          "zoneLocations": [
+            "H"
+          ],
+          "mustBeCommander": false,
+          "quantity": 1
+        }
+      ],
+      "requires": [],
+      "produces": [
+        {
+          "feature": {
+            "name": "Exile your library",
+            "status": "H"
+          },
+          "quantity": 1
+        },
+        {
+          "feature": {
+            "name": "Win the game",
+            "status": "S"
+          },
+          "quantity": 1
+        }
+      ],
+      "identity": "UB",
+      "manaNeeded": "{U}{U}{B}",
+      "manaValueNeeded": 3,
+      "notablePrerequisites": "",
+      "popularity": 149399,
+      "bracketTag": "R",
+      "legalities": {
+        "commander": true
+      }
+    },
+    {
+      "id": "4821-5261",
+      "status": "OK",
+      "uses": [
+        {
+          "card": {
+            "name": "Dramatic Reversal",
+            "oracleId": "da46904c-8fb8-44c2-b2ab-775a1cc12ec3"
+          },
+          "zoneLocations": [
+            "E"
+          ],
+          "mustBeCommander": false,
+          "quantity": 1
+        },
+        {
+          "card": {
+            "name": "Isochron Scepter",
+            "oracleId": "ddd649f4-dbaf-48ec-8ff7-95581257772d"
+          },
+          "zoneLocations": [
+            "B"
+          ],
+          "mustBeCommander": false,
+          "quantity": 1
+        }
+      ],
+      "requires": [],
+      "produces": [
+        {
+          "feature": {
+            "name": "Infinite magecraft triggers",
+            "status": "H"
+          },
+          "quantity": 1
+        },
+        {
+          "feature": {
+            "name": "Infinite mana nonland permanents you control can produce",
+            "status": "S"
+          },
+          "quantity": 1
+        },
+        {
+          "feature": {
+            "name": "Infinite storm count",
+            "status": "H"
+          },
+          "quantity": 1
+        },
+        {
+          "feature": {
+            "name": "Infinite untap of nonland permanents you control",
+            "status": "C"
+          },
+          "quantity": 1
+        }
+      ],
+      "identity": "U",
+      "manaNeeded": "",
+      "manaValueNeeded": 0,
+      "notablePrerequisites": "Nonland permanents you control can tap to produce at least {3}.",
+      "popularity": 106652,
+      "bracketTag": "S",
+      "legalities": {
+        "commander": true
+      }
+    },
+    {
+      "id": "2484-4083",
+      "status": "OK",
+      "uses": [
+        {
+          "card": {
+            "name": "Blasphemous Act",
+            "oracleId": "7a2484a9-04fd-41a0-8224-610c1c07ed10"
+          },
+          "zoneLocations": [
+            "H"
+          ],
+          "mustBeCommander": false,
+          "quantity": 1
+        },
+        {
+          "card": {
+            "name": "Repercussion",
+            "oracleId": "f6069a4f-744e-43e8-9f8b-7c13b8b0187f"
+          },
+          "zoneLocations": [
+            "B"
+          ],
+          "mustBeCommander": false,
+          "quantity": 1
+        }
+      ],
+      "requires": [],
+      "produces": [
+        {
+          "feature": {
+            "name": "Near-infinite damage to all players",
+            "status": "S"
+          },
+          "quantity": 1
+        }
+      ],
+      "identity": "R",
+      "manaNeeded": "{8}{R} at most",
+      "manaValueNeeded": 9,
+      "notablePrerequisites": "",
+      "popularity": 39418,
+      "bracketTag": "C",
+      "legalities": {
+        "commander": true
+      }
+    }
+  ]
+}

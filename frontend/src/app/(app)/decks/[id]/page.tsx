@@ -20,16 +20,18 @@ import { CardSearch } from "@/components/builder/CardSearch";
 import { Decklist } from "@/components/builder/Decklist";
 import { ToolsMenu } from "@/components/builder/ToolsMenu";
 import { TemplateFitPanel } from "@/components/builder/TemplateFitPanel";
+import { BracketPanel } from "@/components/builder/BracketPanel";
 
 // The builder page. It loads the deck + validation report and lays out the
 // three-column workspace (DECK-096): a sticky left column with the card-image
-// panel (DECK-070), the "deck vs. target" panel (DECK-109), and a collapsible
-// stats section; a center column for the type-grouped decklist; and a right
-// column with AI suggestions above card search. A slim legality summary is pinned under the deck header so it stays
-// visible while building. Import/export lives behind the header Tools menu
-// (DECK-095). It collapses to one column below the `xl` breakpoint.
+// panel (DECK-070), the "deck vs. target" panel (DECK-109), and collapsible
+// stats and bracket sections; a center column for the type-grouped decklist;
+// and a right column with AI suggestions above card search. A slim legality
+// summary is pinned under the deck header so it stays visible while building.
+// Import/export lives behind the header Tools menu (DECK-095). It collapses to
+// one column below the `xl` breakpoint.
 //
-// @spec DECK-004, DECK-007, DECK-087, DECK-096, DECK-109
+// @spec DECK-004, DECK-007, DECK-087, DECK-096, DECK-109, DECK-127
 export default function BuilderPage() {
   const { id } = useParams<{ id: string }>();
   const [detail, setDetail] = useState<DeckDetail | null>(null);
@@ -88,6 +90,7 @@ export default function BuilderPage() {
             <CardImagePanel commander={detail.commander} />
             <TemplateFitPanel deckId={id} detail={detail} onChange={reload} />
             <StatsPanel deckId={id} detail={detail} />
+            <BracketPanel deckId={id} detail={detail} onChange={reload} />
           </aside>
 
           <div className="order-2 min-w-0 flex-1">

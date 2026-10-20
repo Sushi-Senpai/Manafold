@@ -1,0 +1,17 @@
+{
+  "next": null,
+  "results": [
+    {
+      "oracleId": "c9ed8b01-959a-47d6-891e-0abbdccf6e4f",
+      "name": "Armageddon",
+      "massLandDenial": true,
+      "extraTurn": false
+    },
+    {
+      "oracleId": "dbd6a94b-62ff-4a10-9d52-bdd90b26e425",
+      "name": "Time Warp",
+      "massLandDenial": false,
+      "extraTurn": true
+    }
+  ]
+}

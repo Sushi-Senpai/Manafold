@@ -8,7 +8,10 @@
 // fixture named by CARDSYNC_SEED_PATH (or the per-pass CARDSYNC_ORACLE_PATH /
 // CARDSYNC_DEFAULT_PATH) and its tag fixture (CARDSYNC_TAGS_PATH, or the
 // oracle_tags.json beside the seed) — see seedOptions, backend/seed/cards.json,
-// and backend/seed/oracle_tags.json (CARD-040, CARD-066).
+// and backend/seed/oracle_tags.json (CARD-040, CARD-066). After the Scryfall
+// passes it mirrors Commander Spellbook's combo data (CARD-050..055); a seed run
+// skips that pass unless CARDSYNC_SPELLBOOK_VARIANTS_PATH /
+// CARDSYNC_SPELLBOOK_CARDS_PATH are set.
 package main
 
 import (
@@ -54,6 +57,18 @@ func seedOptions() cardsync.Options {
 	return cardsync.Options{OracleCardsPath: oracle, DefaultCardsPath: dflt, OracleTagsPath: tags}
 }
 
+// spellbookOptions reads the Commander Spellbook local-file overrides. It
+// reports false for a seed run (CARDSYNC_SEED_PATH set) with neither path set,
+// so a local or CI run makes no Commander Spellbook request (CARD-055).
+func spellbookOptions() (cardsync.SpellbookOptions, bool) {
+	opts := cardsync.SpellbookOptions{
+		VariantsPath: os.Getenv("CARDSYNC_SPELLBOOK_VARIANTS_PATH"),
+		CardsPath:    os.Getenv("CARDSYNC_SPELLBOOK_CARDS_PATH"),
+	}
+	seeded := os.Getenv("CARDSYNC_SEED_PATH") != ""
+	return opts, !seeded || opts.VariantsPath != "" || opts.CardsPath != ""
+}
+
 func main() {
 	cfg, err := config.LoadCardsync()
 	if err != nil {
@@ -79,4 +94,16 @@ func main() {
 	}
 	log.Printf("card sync complete: %d cards, %d prints upserted, %d prints skipped; %d oracle tags, %d taggings upserted, %d taggings skipped",
 		res.OracleUpserted, res.PrintsUpserted, res.PrintsSkipped, res.TagsUpserted, res.TaggingsUpserted, res.TaggingsSkipped)
+
+	sbOpts, runSpellbook := spellbookOptions()
+	if !runSpellbook {
+		log.Printf("spellbook combo pass skipped: seed run without CARDSYNC_SPELLBOOK_* paths")
+		return
+	}
+	sb, err := cardsync.RunSpellbook(ctx, pool, sbOpts)
+	if err != nil {
+		log.Fatalf("spellbook sync: %v", err)
+	}
+	log.Printf("spellbook sync complete: %d combos (%d template-bearing, %d ineligible skipped), %d flagged cards (crawl skipped: %v)",
+		sb.Combos, sb.TemplateSkipped, sb.Ineligible, sb.CardFlags, sb.CardsSkipped)
 }

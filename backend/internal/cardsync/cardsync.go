@@ -565,7 +565,7 @@ func (f *fetcher) get(ctx context.Context, url string) (io.ReadCloser, error) {
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, fmt.Errorf("scryfall GET %s: unexpected status %d", url, resp.StatusCode)
+		return nil, fmt.Errorf("GET %s: unexpected status %d", url, resp.StatusCode)
 	}
 	return resp.Body, nil
 }
@@ -580,6 +580,13 @@ func (f *fetcher) get(ctx context.Context, url string) (io.ReadCloser, error) {
 //
 // @spec CARD-001, CARD-013, CARD-015
 func (f *fetcher) downloadToTemp(ctx context.Context, url string) (string, error) {
+	return f.downloadFile(ctx, url, "cardsync-*.jsonl.gz", 0)
+}
+
+// downloadFile is downloadToTemp for any export: pattern names the spool file
+// and a positive maxBytes fails the download once the body exceeds it, so a
+// runaway response cannot fill the disk (CARD-052).
+func (f *fetcher) downloadFile(ctx context.Context, url, pattern string, maxBytes int64) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, downloadTotalTimeout)
 	defer cancel()
 
@@ -589,7 +596,7 @@ func (f *fetcher) downloadToTemp(ctx context.Context, url string) (string, error
 	}
 	defer body.Close()
 
-	tmp, err := os.CreateTemp(tempFileDir, "cardsync-*.jsonl.gz")
+	tmp, err := os.CreateTemp(tempFileDir, pattern)
 	if err != nil {
 		return "", err
 	}
@@ -597,10 +604,18 @@ func (f *fetcher) downloadToTemp(ctx context.Context, url string) (string, error
 	idle := newIdleReader(body, downloadIdleTimeout, cancel)
 	defer idle.stop()
 
-	if _, err := io.Copy(tmp, idle); err != nil {
+	var src io.Reader = idle
+	if maxBytes > 0 {
+		src = io.LimitReader(idle, maxBytes+1)
+	}
+	n, err := io.Copy(tmp, src)
+	if err == nil && maxBytes > 0 && n > maxBytes {
+		err = fmt.Errorf("body exceeds the %d-byte limit", maxBytes)
+	}
+	if err != nil {
 		tmp.Close()
 		os.Remove(tmp.Name())
-		return "", fmt.Errorf("scryfall bulk %s: download: %w", url, err)
+		return "", fmt.Errorf("bulk %s: download: %w", url, err)
 	}
 	if err := tmp.Close(); err != nil {
 		os.Remove(tmp.Name())

@@ -7,8 +7,10 @@ prefix: AI
 
 The AI layer is what makes Manafold more than a legality-checking list editor.
 "Suggest & explain" and the single-card fit blurb ship at M4; the deck-health
-report (M5) and bracket estimate (M6) reuse the same machinery and are drafted
-here as future work.
+report (M5) reuses the same machinery and is drafted here as future work. The
+bracket estimate is not a model call: `deck-building` computes it
+deterministically (`DECK-120`..`DECK-126`), and any model prose about a deck's
+bracket (`AI-025`) is explanation layered on that result (`AI-023`).
 
 ## Context and Design Philosophy
 

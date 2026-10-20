@@ -90,6 +90,25 @@ type CardRuling struct {
 	PublishedAt      pgtype.Date `json:"published_at"`
 }
 
+type Combo struct {
+	ID                      string          `json:"id"`
+	Identity                string          `json:"identity"`
+	ManaNeeded              string          `json:"mana_needed"`
+	ManaValueNeeded         int32           `json:"mana_value_needed"`
+	HasNotablePrerequisites bool            `json:"has_notable_prerequisites"`
+	Produces                json.RawMessage `json:"produces"`
+	BracketTag              string          `json:"bracket_tag"`
+	Popularity              pgtype.Int4     `json:"popularity"`
+}
+
+type ComboCard struct {
+	ComboID          string      `json:"combo_id"`
+	ScryfallOracleID pgtype.UUID `json:"scryfall_oracle_id"`
+	Quantity         int32       `json:"quantity"`
+	ZoneLocations    string      `json:"zone_locations"`
+	MustBeCommander  bool        `json:"must_be_commander"`
+}
+
 type Deck struct {
 	ID              pgtype.UUID        `json:"id"`
 	UserID          pgtype.UUID        `json:"user_id"`
@@ -147,6 +166,13 @@ type Session struct {
 	UserID    pgtype.UUID        `json:"user_id"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type SpellbookCardFlag struct {
+	ScryfallOracleID pgtype.UUID `json:"scryfall_oracle_id"`
+	CardName         string      `json:"card_name"`
+	MassLandDenial   bool        `json:"mass_land_denial"`
+	ExtraTurn        bool        `json:"extra_turn"`
 }
 
 type SyncRun struct {
