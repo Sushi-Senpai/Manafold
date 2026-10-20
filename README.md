@@ -39,10 +39,11 @@ CARDSYNC_SEED_PATH=seed/cards.json \
   CARDSYNC_SPELLBOOK_CARDS_PATH=seed/spellbook-cards.json \
   go run ./cmd/cardsync
 
-# Per-commander synergy data from public Archidekt decklists (from backend/,
-# after cardsync). Polite by design: one request per 6 s, bounded per run, and
-# resumable — rerun it (or cron it) to continue. See docs/intent/synergy/.
-go run ./cmd/synergysync
+# Per-commander synergy from public Archidekt decklists is gathered on demand
+# by a background worker in the API when SYNERGY_ENABLED=true (off by default).
+# To gather one commander by hand (from backend/, after cardsync), at the same
+# polite 6 s pace: see docs/intent/synergy/.
+go run ./cmd/synergysync "Krenko, Mob Boss"
 
 # Frontend (from frontend/, after copying .env.example to .env.local)
 yarn dev

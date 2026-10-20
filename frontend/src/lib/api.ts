@@ -234,6 +234,16 @@ export type SessionState = {
   email?: string;
 };
 
+// ---- synergy -----------------------------------------------------------
+
+// Where a commander's synergy data stands: gathered and fresh, being gathered,
+// or neither. `reason` explains a `none` the caller can act on.
+export type SynergyStatus = {
+  status: "none" | "gathering" | "ready";
+  reason: "disabled" | "daily_cap" | "not_a_commander" | null;
+  sample: { deck_count: number; fetched_at: string } | null;
+};
+
 // ---- ai-assist ---------------------------------------------------
 
 // One surviving suggestion: a real card from the mirror that passed the
@@ -444,6 +454,12 @@ export const api = {
   getDeckTemplates: () => request<DeckTemplates>("/api/deck-templates"),
   getTemplateFit: (id: string) => request<TemplateFit>(`/api/decks/${id}/template-fit`),
   getDeckBracket: (id: string) => request<BracketReport>(`/api/decks/${id}/bracket`),
+
+  // ---- synergy ----
+  // Queues gathering for a commander with no fresh synergy data and answers at
+  // once; it never waits on Archidekt (SYN-030).
+  ensureCommanderSynergy: (cardId: string) =>
+    request<SynergyStatus>(`/api/synergy/commanders/${cardId}/ensure`, { method: "POST" }),
 
   // ---- ai-assist ----
   suggestDeck: (id: string) =>

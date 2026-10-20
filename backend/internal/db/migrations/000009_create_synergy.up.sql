@@ -1,5 +1,5 @@
--- Per-commander synergy aggregates computed from public Archidekt decklists by
--- cmd/synergysync (docs/intent/synergy/). Only aggregates live here: no
+-- Per-commander synergy aggregates computed from public Archidekt decklists,
+-- gathered on demand by a background worker (docs/intent/synergy/). Only aggregates live here: no
 -- decklist, deck id, deck name, or owner is ever stored (SYN-020). A target —
 -- one commander sample or one colour-identity baseline — is replaced whole in a
 -- single transaction (SYN-022).
@@ -52,14 +52,21 @@ CREATE TABLE synergy_baseline_cards (
     PRIMARY KEY (color_identity, card_oracle_id)
 );
 
--- One audit row per job run (SYN-032).
-CREATE TABLE synergy_runs (
-    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    status            TEXT NOT NULL CHECK (status IN ('running', 'succeeded', 'failed')),
-    requests_made     INTEGER NOT NULL DEFAULT 0,
-    targets_refreshed INTEGER NOT NULL DEFAULT 0,
-    targets_pending   INTEGER NOT NULL DEFAULT 0,
-    started_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-    finished_at       TIMESTAMPTZ,
-    error             TEXT
+-- The gathering queue and its audit trail (SYN-030..036). A job gathers one
+-- commander; the partial unique index makes "at most one queued or running job
+-- per commander" a database guarantee (SYN-031).
+CREATE TABLE synergy_jobs (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    commander_oracle_id UUID NOT NULL REFERENCES cards(scryfall_oracle_id) ON DELETE CASCADE,
+    status              TEXT NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed')),
+    requested_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    started_at          TIMESTAMPTZ,
+    finished_at         TIMESTAMPTZ,
+    requests_made       INTEGER NOT NULL DEFAULT 0,
+    error               TEXT
 );
+
+CREATE UNIQUE INDEX idx_synergy_jobs_one_active
+    ON synergy_jobs (commander_oracle_id) WHERE status IN ('queued', 'running');
+
+CREATE INDEX idx_synergy_jobs_requested ON synergy_jobs (requested_at);

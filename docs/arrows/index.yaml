@@ -9,7 +9,8 @@ last_updated: 2026-10-19
 #     + search_cards tool + suggest-&-explain + single-card blurb + the
 #     validate-every-returned-card gate + ai_usage quotas + global spend ceiling.
 # 2026-10-19: synergy segment — Archidekt-derived per-commander synergy
-#     aggregates (cmd/synergysync batch job + query endpoint).
+#     aggregates, gathered on demand by a background worker (ensure + query
+#     endpoints; cmd/synergysync is a manual CLI).
 
 taxonomy:
   features:
@@ -104,7 +105,7 @@ arrows:
     blocks: [ai-assist]
     blockedBy: [platform-shell, card-data]
     detail: synergy.md
-    next: "Landed: cmd/synergysync + internal/synergy — paced (6 s) Archidekt client with escalating 429 back-off and an honest User-Agent; commander + colour-identity-baseline sampling; tally excludes maybeboard / commander / deleted / basics; identical-decklist dedup; aggregates-only synergy_* tables replaced per target in one transaction with synergy recomputed per identity; request-budgeted, staleness-resumable runs audited in synergy_runs (SYN-001..032). GET /api/synergy/commanders/{cardId} with Archidekt attribution (SYN-040..042). Deferred: bracket-sliced samples (SYN-050), partner pairs (SYN-051), a deployed cron."
+    next: "Landed: internal/synergy gathers on demand — POST /api/synergy/commanders/{cardId}/ensure queues a synergy_jobs row (one active per commander, 10 new commanders per rolling day, 14-day TTL) and answers without waiting; one advisory-locked background worker drains the queue through a single 6 s-paced Archidekt client (escalating 429 back-off, honest User-Agent, per-job request cap, failure cooldown); commander + colour-identity-baseline sampling (40 decks per commander); tally excludes maybeboard / commander / deleted / basics; identical-decklist dedup; aggregates-only synergy_* tables replaced per target in one transaction with synergy recomputed per identity; GET /api/synergy/commanders/{cardId} returns none / gathering / ready with mirror-only, commander-legal cards and the attribution; the builder calls ensure silently when a deck has a commander; SYNERGY_ENABLED is off by default; cmd/synergysync is a manual CLI over the same worker (SYN-001..044). Deferred: the attribution requirement on a displaying surface (SYN-043, the wizard), bracket-sliced samples (SYN-050), partner pairs (SYN-051)."
     drift: null
 
 unmapped:

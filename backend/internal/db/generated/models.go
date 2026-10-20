@@ -219,15 +219,15 @@ type SynergyCommanderCard struct {
 	Synergy           pgtype.Float8 `json:"synergy"`
 }
 
-type SynergyRun struct {
-	ID               pgtype.UUID        `json:"id"`
-	Status           string             `json:"status"`
-	RequestsMade     int32              `json:"requests_made"`
-	TargetsRefreshed int32              `json:"targets_refreshed"`
-	TargetsPending   int32              `json:"targets_pending"`
-	StartedAt        pgtype.Timestamptz `json:"started_at"`
-	FinishedAt       pgtype.Timestamptz `json:"finished_at"`
-	Error            pgtype.Text        `json:"error"`
+type SynergyJob struct {
+	ID                pgtype.UUID        `json:"id"`
+	CommanderOracleID pgtype.UUID        `json:"commander_oracle_id"`
+	Status            string             `json:"status"`
+	RequestedAt       pgtype.Timestamptz `json:"requested_at"`
+	StartedAt         pgtype.Timestamptz `json:"started_at"`
+	FinishedAt        pgtype.Timestamptz `json:"finished_at"`
+	RequestsMade      int32              `json:"requests_made"`
+	Error             pgtype.Text        `json:"error"`
 }
 
 type User struct {

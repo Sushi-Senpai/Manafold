@@ -37,7 +37,7 @@ var minRequestInterval = 6 * time.Second
 var rateLimitBackoffs = []time.Duration{2 * time.Minute, 4 * time.Minute, 8 * time.Minute}
 
 // requestTimeout bounds one request — response headers and body decode — so a
-// stalled connection cannot hang a cron run. A deck detail is a few hundred
+// stalled connection cannot hang the worker. A deck detail is a few hundred
 // KB. A var so tests can shorten it.
 var requestTimeout = 60 * time.Second
 
@@ -60,9 +60,9 @@ var sleepCtx = func(ctx context.Context, d time.Duration) error {
 	}
 }
 
-// errBudgetExhausted means the run's request budget is spent (SYN-030). It
-// stops the run without failing it; the interrupted target stays pending.
-var errBudgetExhausted = errors.New("archidekt request budget exhausted")
+// errBudgetExhausted means the running job's request cap is spent (SYN-034).
+// The job fails; nothing it had not finished writing is kept.
+var errBudgetExhausted = errors.New("archidekt request cap for this job exhausted")
 
 // statusError is a non-2xx, non-429 Archidekt answer.
 type statusError struct {
@@ -121,8 +121,9 @@ type deckCard struct {
 // archidektClient reads Archidekt's two public deck endpoints (SYN-002) under
 // the etiquette rules: an identifying User-Agent, at least
 // minRequestInterval between request starts, and an escalating back-off on 429
-// (SYN-003, SYN-004). It counts every request it sends, retries included,
-// against maxRequests (SYN-030). It is used by one goroutine.
+// (SYN-003, SYN-004). The worker owns the only one, so the pace holds across
+// every job. It counts every request it sends, retries included, against the
+// current job's cap (SYN-034). It is used by one goroutine.
 type archidektClient struct {
 	baseURL     string
 	http        *http.Client
@@ -144,9 +145,11 @@ func newArchidektClient(baseURL string, hc *http.Client, maxRequests int) *archi
 	return &archidektClient{baseURL: baseURL, http: hc, maxRequests: maxRequests}
 }
 
-// remaining is how many more requests the budget allows.
-func (c *archidektClient) remaining() int {
-	return c.maxRequests - c.requests
+// beginJob starts a new request budget for one job; the pacing clock carries
+// over so the 6 s gap holds between jobs (SYN-003, SYN-034).
+func (c *archidektClient) beginJob(maxRequests int) {
+	c.requests = 0
+	c.maxRequests = maxRequests
 }
 
 // search reads one page of a commander's most recent public Commander decks.
@@ -188,7 +191,7 @@ func (c *archidektClient) deck(ctx context.Context, id int64) (d deckDetail, fou
 // get performs one paced GET and decodes a 2xx JSON body into out. A 429 is
 // retried after each rateLimitBackoffs wait in turn; one more 429 is an error.
 //
-// @spec SYN-003, SYN-004, SYN-030
+// @spec SYN-003, SYN-004, SYN-034
 func (c *archidektClient) get(ctx context.Context, path string, out any) error {
 	full := c.baseURL + path
 	for attempt := 0; ; attempt++ {

@@ -25,12 +25,18 @@ type Querier interface {
 	// number of drafts moved.
 	// @spec DECK-041, ACCT-021
 	ClaimAnonDecks(ctx context.Context, arg ClaimAnonDecksParams) (int64, error)
+	// Take the oldest queued job and mark it running (SYN-033).
+	// @spec SYN-033
+	ClaimNextSynergyJob(ctx context.Context) (ClaimNextSynergyJobRow, error)
 	// @spec DECK-126
 	ComboDataAvailable(ctx context.Context) (bool, error)
 	// Calls this user has already made of one feature today. Wrapped in COALESCE so
 	// a user with no row yet returns 0 rather than no rows.
 	// @spec AI-031
 	CountAIFeatureCallsToday(ctx context.Context, arg CountAIFeatureCallsTodayParams) (int32, error)
+	// Jobs requested since a point in time, for the rolling daily cap (SYN-032).
+	// @spec SYN-032
+	CountSynergyJobsSince(ctx context.Context, requestedAt pgtype.Timestamptz) (int32, error)
 	// Ownership is a polymorphic owner key: an authenticated caller passes user_id
 	// (and a NULL anon_token), an anonymous-draft caller passes anon_token (and a
 	// NULL user_id). Exactly one is non-null (the decks CHECK enforces it); a
@@ -44,8 +50,6 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	// @spec CARD-001, CARD-007
 	CreateSyncRun(ctx context.Context, arg CreateSyncRunParams) (SyncRun, error)
-	// @spec SYN-032
-	CreateSynergyRun(ctx context.Context) (pgtype.UUID, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// @spec CARD-053
 	DeleteAllSpellbookCardFlags(ctx context.Context) error
@@ -58,6 +62,10 @@ type Querier interface {
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
 	DeleteSynergyBaselineCards(ctx context.Context, colorIdentity string) error
 	DeleteSynergyCommanderCards(ctx context.Context, commanderOracleID pgtype.UUID) error
+	// Queue a gathering job for a commander unless one is already queued or
+	// running; no row comes back when one is (SYN-031).
+	// @spec SYN-030, SYN-031
+	EnqueueSynergyJob(ctx context.Context, commanderOracleID pgtype.UUID) (pgtype.UUID, error)
 	FailSyncRun(ctx context.Context, arg FailSyncRunParams) error
 	// The subset of card_ids carrying the tag with this slug or any descendant
 	// reachable through enabled tags — role counting over a deck's cards.
@@ -68,7 +76,8 @@ type Querier interface {
 	// deck bracket check makes over it (deck-building, DECK-122, DECK-124, DECK-126).
 	// @spec CARD-050
 	FinishSyncRunWithSource(ctx context.Context, arg FinishSyncRunWithSourceParams) error
-	FinishSynergyRun(ctx context.Context, arg FinishSynergyRunParams) error
+	// @spec SYN-035
+	FinishSynergyJob(ctx context.Context, arg FinishSynergyJobParams) error
 	GetCardByID(ctx context.Context, id pgtype.UUID) (Card, error)
 	GetCardByScryfallOracleID(ctx context.Context, scryfallOracleID pgtype.UUID) (Card, error)
 	GetCardsByIDs(ctx context.Context, ids []pgtype.UUID) ([]Card, error)
@@ -89,6 +98,16 @@ type Querier interface {
 	// GetSession filters expires_at > now(), so "no rows" covers a missing session
 	// and an expired one in one check.
 	GetSession(ctx context.Context, id pgtype.UUID) (Session, error)
+	// The stored baseline for one colour identity, if any, to decide whether it is
+	// still fresh (SYN-034).
+	// @spec SYN-034
+	GetSynergyBaselineFreshness(ctx context.Context, colorIdentity string) (pgtype.Timestamptz, error)
+	// One card as the synergy trigger sees it: its oracle id, name, colour
+	// identity, and whether it may be gathered — a commander that is legal in
+	// Commander, with banlist_overrides taking precedence exactly as in deck
+	// validation (SYN-030, SYN-042).
+	// @spec SYN-030, SYN-042
+	GetSynergyCommanderCard(ctx context.Context, id pgtype.UUID) (GetSynergyCommanderCardRow, error)
 	// The sample behind one commander's synergy, looked up by the commander's
 	// Manafold card id, with its colour identity's baseline if there is one
 	// (SYN-040, SYN-042).
@@ -96,6 +115,8 @@ type Querier interface {
 	GetSynergySample(ctx context.Context, id pgtype.UUID) (GetSynergySampleRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	// @spec SYN-040
+	HasActiveSynergyJob(ctx context.Context, commanderOracleID pgtype.UUID) (bool, error)
 	// @spec CARD-053
 	InsertSpellbookCardFlag(ctx context.Context, arg InsertSpellbookCardFlagParams) error
 	InsertSynergyBaselineCards(ctx context.Context, arg []InsertSynergyBaselineCardsParams) (int64, error)
@@ -107,7 +128,8 @@ type Querier interface {
 	ListBanlistOverrides(ctx context.Context) ([]ListBanlistOverridesRow, error)
 	// The baseline commanders for one colour identity: the highest-ranked
 	// commander-legal cards that can be a commander with exactly that commander
-	// colour identity, excluding every configured commander (SYN-011).
+	// colour identity, excluding the commander being gathered and every commander
+	// that already has a stored sample (SYN-011).
 	// @spec SYN-011
 	ListBaselineCommanders(ctx context.Context, arg ListBaselineCommandersParams) ([]ListBaselineCommandersRow, error)
 	// Cards carrying the tag with this slug or any descendant reachable through
@@ -141,11 +163,6 @@ type Querier interface {
 	// The language model curates this pool; it never enumerates cards itself.
 	// @spec AI-011
 	ListSuggestionCandidates(ctx context.Context, arg ListSuggestionCandidatesParams) ([]Card, error)
-	ListSynergyBaselineFetchedAt(ctx context.Context) ([]ListSynergyBaselineFetchedAtRow, error)
-	// Last sample time of every stored commander / baseline, for the staleness
-	// plan (SYN-031).
-	// @spec SYN-031
-	ListSynergyCommanderFetchedAt(ctx context.Context) ([]ListSynergyCommanderFetchedAtRow, error)
 	// One commander's top synergy cards, each joined to its mirror row and newest
 	// printing. Only commander-legal cards are returned, with a banlist_overrides
 	// row taking precedence exactly as in deck validation; a card the mirror does
@@ -173,6 +190,9 @@ type Querier interface {
 	RecomputeSynergyForIdentity(ctx context.Context, colorIdentity string) error
 	// @spec AI-030, AI-034
 	RecordAIUsage(ctx context.Context, arg RecordAIUsageParams) error
+	// Jobs a dead process left running go back to the queue (SYN-035).
+	// @spec SYN-035
+	RequeueRunningSynergyJobs(ctx context.Context) error
 	// Resolve a decklist line's card name to one cards row: an exact
 	// case-insensitive match on the whole name, or a match on one face of a
 	// split / double-faced card ("Fire" for "Fire // Ice"), preferring the exact

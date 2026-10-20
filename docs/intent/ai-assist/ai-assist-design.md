@@ -211,10 +211,12 @@ Reusing `deckrules` here is deliberate — there is exactly one definition of
 2. **High-synergy cards** (captain bonus #2): a commander's high-synergy cards
    as a recommendation input beyond `edhrec_rank`. EDHREC has no open API, so
    the data comes from the `synergy` segment's aggregates over public Archidekt
-   decklists (`MANAFOLD.md` D7). `synergy.TopCards` returns legality-filtered
-   mirror cards with sample sizes. What remains here is ranking them into the
-   candidate pool and carrying the Archidekt attribution into any surface that
-   shows them.
+   decklists (`MANAFOLD.md` D7). `synergy.Service.Commander` returns legality-filtered
+   mirror cards with sample sizes. The data is gathered on demand: the
+   caller asks the synergy segment to *ensure* the commander, uses the open-data
+   pool while the status is `gathering`, and switches to those cards once it is
+   `ready`. What remains here is ranking them into the candidate pool and
+   carrying the Archidekt attribution into any surface that shows them.
 3. **Constrained deck generation beyond brackets** (captain bonus #3) —
    generate/validate against explicit constraints: a budget ceiling
    (`prices.usd` sum), "no infinite combos" (Commander Spellbook match), "no

@@ -11,16 +11,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createSynergyRun = `-- name: CreateSynergyRun :one
-INSERT INTO synergy_runs (status) VALUES ('running') RETURNING id
+const claimNextSynergyJob = `-- name: ClaimNextSynergyJob :one
+UPDATE synergy_jobs
+SET status = 'running', started_at = now()
+WHERE id = (
+    SELECT id FROM synergy_jobs WHERE status = 'queued'
+    ORDER BY requested_at, id
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED
+)
+RETURNING id, commander_oracle_id
 `
 
+type ClaimNextSynergyJobRow struct {
+	ID                pgtype.UUID `json:"id"`
+	CommanderOracleID pgtype.UUID `json:"commander_oracle_id"`
+}
+
+// Take the oldest queued job and mark it running (SYN-033).
+// @spec SYN-033
+func (q *Queries) ClaimNextSynergyJob(ctx context.Context) (ClaimNextSynergyJobRow, error) {
+	row := q.db.QueryRow(ctx, claimNextSynergyJob)
+	var i ClaimNextSynergyJobRow
+	err := row.Scan(&i.ID, &i.CommanderOracleID)
+	return i, err
+}
+
+const countSynergyJobsSince = `-- name: CountSynergyJobsSince :one
+SELECT count(*)::int FROM synergy_jobs WHERE requested_at > $1
+`
+
+// Jobs requested since a point in time, for the rolling daily cap (SYN-032).
 // @spec SYN-032
-func (q *Queries) CreateSynergyRun(ctx context.Context) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, createSynergyRun)
-	var id pgtype.UUID
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) CountSynergyJobsSince(ctx context.Context, requestedAt pgtype.Timestamptz) (int32, error) {
+	row := q.db.QueryRow(ctx, countSynergyJobsSince, requestedAt)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const deleteSynergyBaselineCards = `-- name: DeleteSynergyBaselineCards :exec
@@ -41,32 +68,94 @@ func (q *Queries) DeleteSynergyCommanderCards(ctx context.Context, commanderOrac
 	return err
 }
 
-const finishSynergyRun = `-- name: FinishSynergyRun :exec
-UPDATE synergy_runs
-SET status = $2, requests_made = $3, targets_refreshed = $4, targets_pending = $5,
-    error = $6, finished_at = now()
+const enqueueSynergyJob = `-- name: EnqueueSynergyJob :one
+INSERT INTO synergy_jobs (commander_oracle_id, status)
+VALUES ($1, 'queued')
+ON CONFLICT (commander_oracle_id) WHERE status IN ('queued', 'running') DO NOTHING
+RETURNING id
+`
+
+// Queue a gathering job for a commander unless one is already queued or
+// running; no row comes back when one is (SYN-031).
+// @spec SYN-030, SYN-031
+func (q *Queries) EnqueueSynergyJob(ctx context.Context, commanderOracleID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, enqueueSynergyJob, commanderOracleID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const finishSynergyJob = `-- name: FinishSynergyJob :exec
+UPDATE synergy_jobs
+SET status = $2, requests_made = $3, error = $4, finished_at = now()
 WHERE id = $1
 `
 
-type FinishSynergyRunParams struct {
-	ID               pgtype.UUID `json:"id"`
-	Status           string      `json:"status"`
-	RequestsMade     int32       `json:"requests_made"`
-	TargetsRefreshed int32       `json:"targets_refreshed"`
-	TargetsPending   int32       `json:"targets_pending"`
-	Error            pgtype.Text `json:"error"`
+type FinishSynergyJobParams struct {
+	ID           pgtype.UUID `json:"id"`
+	Status       string      `json:"status"`
+	RequestsMade int32       `json:"requests_made"`
+	Error        pgtype.Text `json:"error"`
 }
 
-func (q *Queries) FinishSynergyRun(ctx context.Context, arg FinishSynergyRunParams) error {
-	_, err := q.db.Exec(ctx, finishSynergyRun,
+// @spec SYN-035
+func (q *Queries) FinishSynergyJob(ctx context.Context, arg FinishSynergyJobParams) error {
+	_, err := q.db.Exec(ctx, finishSynergyJob,
 		arg.ID,
 		arg.Status,
 		arg.RequestsMade,
-		arg.TargetsRefreshed,
-		arg.TargetsPending,
 		arg.Error,
 	)
 	return err
+}
+
+const getSynergyBaselineFreshness = `-- name: GetSynergyBaselineFreshness :one
+SELECT fetched_at FROM synergy_baselines WHERE color_identity = $1
+`
+
+// The stored baseline for one colour identity, if any, to decide whether it is
+// still fresh (SYN-034).
+// @spec SYN-034
+func (q *Queries) GetSynergyBaselineFreshness(ctx context.Context, colorIdentity string) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getSynergyBaselineFreshness, colorIdentity)
+	var fetched_at pgtype.Timestamptz
+	err := row.Scan(&fetched_at)
+	return fetched_at, err
+}
+
+const getSynergyCommanderCard = `-- name: GetSynergyCommanderCard :one
+SELECT c.scryfall_oracle_id, c.name,
+       COALESCE(c.commander_color_identity, c.color_identity)::text[] AS identity,
+       (c.can_be_commander
+        AND CASE WHEN bo.card_name IS NOT NULL THEN NOT bo.banned
+                 ELSE c.legalities->>'commander' = 'legal' END)::boolean AS gatherable
+FROM cards c
+LEFT JOIN banlist_overrides bo ON lower(bo.card_name) = lower(c.name)
+WHERE c.id = $1
+`
+
+type GetSynergyCommanderCardRow struct {
+	ScryfallOracleID pgtype.UUID `json:"scryfall_oracle_id"`
+	Name             string      `json:"name"`
+	Identity         []string    `json:"identity"`
+	Gatherable       bool        `json:"gatherable"`
+}
+
+// One card as the synergy trigger sees it: its oracle id, name, colour
+// identity, and whether it may be gathered — a commander that is legal in
+// Commander, with banlist_overrides taking precedence exactly as in deck
+// validation (SYN-030, SYN-042).
+// @spec SYN-030, SYN-042
+func (q *Queries) GetSynergyCommanderCard(ctx context.Context, id pgtype.UUID) (GetSynergyCommanderCardRow, error) {
+	row := q.db.QueryRow(ctx, getSynergyCommanderCard, id)
+	var i GetSynergyCommanderCardRow
+	err := row.Scan(
+		&i.ScryfallOracleID,
+		&i.Name,
+		&i.Identity,
+		&i.Gatherable,
+	)
+	return i, err
 }
 
 const getSynergySample = `-- name: GetSynergySample :one
@@ -110,6 +199,21 @@ func (q *Queries) GetSynergySample(ctx context.Context, id pgtype.UUID) (GetSyne
 	return i, err
 }
 
+const hasActiveSynergyJob = `-- name: HasActiveSynergyJob :one
+SELECT EXISTS (
+    SELECT 1 FROM synergy_jobs
+    WHERE commander_oracle_id = $1 AND status IN ('queued', 'running')
+)::boolean
+`
+
+// @spec SYN-040
+func (q *Queries) HasActiveSynergyJob(ctx context.Context, commanderOracleID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasActiveSynergyJob, commanderOracleID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 type InsertSynergyBaselineCardsParams struct {
 	ColorIdentity string      `json:"color_identity"`
 	CardOracleID  pgtype.UUID `json:"card_oracle_id"`
@@ -131,15 +235,16 @@ WHERE can_be_commander
   AND legalities->>'commander' = 'legal'
   AND COALESCE(commander_color_identity, color_identity) @> $1::text[]
   AND COALESCE(commander_color_identity, color_identity) <@ $1::text[]
-  AND scryfall_oracle_id <> ALL($2::uuid[])
+  AND scryfall_oracle_id <> $2::uuid
+  AND scryfall_oracle_id NOT IN (SELECT commander_oracle_id FROM synergy_commanders)
 ORDER BY edhrec_rank ASC NULLS LAST, name ASC
 LIMIT $3
 `
 
 type ListBaselineCommandersParams struct {
-	Identity []string      `json:"identity"`
-	Exclude  []pgtype.UUID `json:"exclude"`
-	Lim      int32         `json:"lim"`
+	Identity []string    `json:"identity"`
+	Exclude  pgtype.UUID `json:"exclude"`
+	Lim      int32       `json:"lim"`
 }
 
 type ListBaselineCommandersRow struct {
@@ -149,7 +254,8 @@ type ListBaselineCommandersRow struct {
 
 // The baseline commanders for one colour identity: the highest-ranked
 // commander-legal cards that can be a commander with exactly that commander
-// colour identity, excluding every configured commander (SYN-011).
+// colour identity, excluding the commander being gathered and every commander
+// that already has a stored sample (SYN-011).
 // @spec SYN-011
 func (q *Queries) ListBaselineCommanders(ctx context.Context, arg ListBaselineCommandersParams) ([]ListBaselineCommandersRow, error) {
 	rows, err := q.db.Query(ctx, listBaselineCommanders, arg.Identity, arg.Exclude, arg.Lim)
@@ -161,67 +267,6 @@ func (q *Queries) ListBaselineCommanders(ctx context.Context, arg ListBaselineCo
 	for rows.Next() {
 		var i ListBaselineCommandersRow
 		if err := rows.Scan(&i.ScryfallOracleID, &i.Name); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listSynergyBaselineFetchedAt = `-- name: ListSynergyBaselineFetchedAt :many
-SELECT color_identity, fetched_at FROM synergy_baselines
-`
-
-type ListSynergyBaselineFetchedAtRow struct {
-	ColorIdentity string             `json:"color_identity"`
-	FetchedAt     pgtype.Timestamptz `json:"fetched_at"`
-}
-
-func (q *Queries) ListSynergyBaselineFetchedAt(ctx context.Context) ([]ListSynergyBaselineFetchedAtRow, error) {
-	rows, err := q.db.Query(ctx, listSynergyBaselineFetchedAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListSynergyBaselineFetchedAtRow
-	for rows.Next() {
-		var i ListSynergyBaselineFetchedAtRow
-		if err := rows.Scan(&i.ColorIdentity, &i.FetchedAt); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listSynergyCommanderFetchedAt = `-- name: ListSynergyCommanderFetchedAt :many
-SELECT commander_oracle_id, fetched_at FROM synergy_commanders
-`
-
-type ListSynergyCommanderFetchedAtRow struct {
-	CommanderOracleID pgtype.UUID        `json:"commander_oracle_id"`
-	FetchedAt         pgtype.Timestamptz `json:"fetched_at"`
-}
-
-// Last sample time of every stored commander / baseline, for the staleness
-// plan (SYN-031).
-// @spec SYN-031
-func (q *Queries) ListSynergyCommanderFetchedAt(ctx context.Context) ([]ListSynergyCommanderFetchedAtRow, error) {
-	rows, err := q.db.Query(ctx, listSynergyCommanderFetchedAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListSynergyCommanderFetchedAtRow
-	for rows.Next() {
-		var i ListSynergyCommanderFetchedAtRow
-		if err := rows.Scan(&i.CommanderOracleID, &i.FetchedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -356,6 +401,17 @@ WHERE cc.commander_oracle_id = s.commander_oracle_id
 // @spec SYN-021
 func (q *Queries) RecomputeSynergyForIdentity(ctx context.Context, colorIdentity string) error {
 	_, err := q.db.Exec(ctx, recomputeSynergyForIdentity, colorIdentity)
+	return err
+}
+
+const requeueRunningSynergyJobs = `-- name: RequeueRunningSynergyJobs :exec
+UPDATE synergy_jobs SET status = 'queued', started_at = NULL WHERE status = 'running'
+`
+
+// Jobs a dead process left running go back to the queue (SYN-035).
+// @spec SYN-035
+func (q *Queries) RequeueRunningSynergyJobs(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, requeueRunningSynergyJobs)
 	return err
 }
 

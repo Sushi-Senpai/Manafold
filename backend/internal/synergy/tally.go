@@ -123,9 +123,9 @@ func parseUUID(s string) (pgtype.UUID, bool) {
 	return u, u.Valid
 }
 
-// canonicalIdentity renders a colour identity as WUBRG-ordered letters, "C"
+// CanonicalIdentity renders a colour identity as WUBRG-ordered letters, "C"
 // for colourless — the key a commander and its baseline share.
-func canonicalIdentity(colors []string) string {
+func CanonicalIdentity(colors []string) string {
 	var b strings.Builder
 	for _, c := range "WUBRG" {
 		for _, have := range colors {
@@ -141,7 +141,7 @@ func canonicalIdentity(colors []string) string {
 	return b.String()
 }
 
-// identityArray is the inverse of canonicalIdentity: the text[] the mirror
+// identityArray is the inverse of CanonicalIdentity: the text[] the mirror
 // stores ("C" → empty).
 func identityArray(identity string) []string {
 	out := []string{}

@@ -17,8 +17,11 @@ type archidektFixtureServer struct {
 	mu   sync.Mutex
 	hits []string
 
-	// failDecks makes every deck detail answer HTTP 500.
-	failDecks bool
+	// failDecks makes every deck detail answer HTTP 500. tooManyFirst makes the
+	// first N requests for each distinct URL answer HTTP 429.
+	failDecks    bool
+	tooManyFirst int
+	perURL       map[string]int
 }
 
 // baselineCommanderName is the commander whose search returns the baseline
@@ -27,12 +30,18 @@ const baselineCommanderName = "Synergy Test Baseline Commander"
 
 func newFixtureServer(t *testing.T) *archidektFixtureServer {
 	t.Helper()
-	fs := &archidektFixtureServer{}
+	fs := &archidektFixtureServer{perURL: make(map[string]int)}
 	deckPath := regexp.MustCompile(`^/api/decks/(\d+)/$`)
 	fs.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fs.mu.Lock()
 		fs.hits = append(fs.hits, r.URL.RequestURI())
+		fs.perURL[r.URL.RequestURI()]++
+		limited := fs.perURL[r.URL.RequestURI()] <= fs.tooManyFirst
 		fs.mu.Unlock()
+		if limited {
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
 		switch {
 		case r.URL.Path == "/api/decks/v3/" && r.URL.Query().Get("commanderName") == baselineCommanderName:
 			_, _ = w.Write(fixture(t, "search_baseline.json"))

@@ -198,24 +198,36 @@ func TestClient_DeckGoneIsSkippedOtherErrorsFail(t *testing.T) {
 	}
 }
 
-// @spec SYN-030
-func TestClient_StopsAtTheRequestBudget(t *testing.T) {
+// @spec SYN-034
+func TestClient_StopsAtTheJobRequestCap(t *testing.T) {
 	useFakeClock(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(fixture(t, "search_page2.json"))
 	}))
 	defer srv.Close()
 
-	c := newArchidektClient(srv.URL, nil, 2)
+	c := newArchidektClient(srv.URL, nil, 0)
+	if _, err := c.search(context.Background(), "x", 1); !errors.Is(err, errBudgetExhausted) {
+		t.Errorf("before any job: err = %v, want errBudgetExhausted", err)
+	}
+	c.beginJob(2)
 	for i := 0; i < 2; i++ {
 		if _, err := c.search(context.Background(), "x", 1); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if c.remaining() != 0 {
-		t.Errorf("remaining = %d, want 0", c.remaining())
-	}
 	if _, err := c.search(context.Background(), "x", 1); !errors.Is(err, errBudgetExhausted) {
 		t.Errorf("err = %v, want errBudgetExhausted", err)
+	}
+
+	// A new job gets a fresh cap, and the 6 s gap still holds across the
+	// boundary because the pacing clock carries over.
+	c.beginJob(1)
+	before := c.lastStart
+	if _, err := c.search(context.Background(), "x", 1); err != nil {
+		t.Fatal(err)
+	}
+	if gap := c.lastStart.Sub(before); gap < 6*time.Second {
+		t.Errorf("first request of the next job started %v after the last, want >= 6s", gap)
 	}
 }

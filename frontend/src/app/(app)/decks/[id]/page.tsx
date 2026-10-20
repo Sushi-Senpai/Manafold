@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   api,
@@ -11,6 +11,7 @@ import {
   type ValidationReport,
 } from "@/lib/api";
 import { formatValidationStrip, formatSuggestionsFooter } from "@/lib/deck";
+import { ensureOnce } from "@/lib/synergy";
 import { curveRows, pipRows, categoryRows } from "@/lib/deckstats";
 import { ActiveCardProvider } from "@/components/builder/ActiveCardContext";
 import { CardImagePanel } from "@/components/builder/CardImagePanel";
@@ -31,7 +32,7 @@ import { BracketPanel } from "@/components/builder/BracketPanel";
 // Import/export lives behind the header Tools menu (DECK-095). It collapses to
 // one column below the `xl` breakpoint.
 //
-// @spec DECK-004, DECK-007, DECK-087, DECK-096, DECK-109, DECK-127
+// @spec DECK-004, DECK-007, DECK-087, DECK-096, DECK-109, DECK-127, SYN-044
 export default function BuilderPage() {
   const { id } = useParams<{ id: string }>();
   const [detail, setDetail] = useState<DeckDetail | null>(null);
@@ -63,6 +64,14 @@ export default function BuilderPage() {
       cancelled = true;
     };
   }, [id]);
+
+  // Once the deck has a commander, ask the backend to gather its synergy data
+  // in the background. Nothing is shown from the answer (SYN-044).
+  const commanderId = detail?.commander?.id ?? null;
+  const ensured = useRef(new Set<string>());
+  useEffect(() => {
+    ensureOnce(ensured.current, commanderId, api.ensureCommanderSynergy);
+  }, [commanderId]);
 
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!detail || !report) return <p className="text-sm text-foreground/40">Loading…</p>;

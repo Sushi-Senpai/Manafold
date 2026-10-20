@@ -97,10 +97,10 @@ func TestCanonicalIdentityAndBack(t *testing.T) {
 		"UR":    {"R", "U"},
 	}
 	for want, in := range cases {
-		if got := canonicalIdentity(in); got != want {
-			t.Errorf("canonicalIdentity(%v) = %q, want %q", in, got, want)
+		if got := CanonicalIdentity(in); got != want {
+			t.Errorf("CanonicalIdentity(%v) = %q, want %q", in, got, want)
 		}
-		if got := canonicalIdentity(identityArray(want)); got != want {
+		if got := CanonicalIdentity(identityArray(want)); got != want {
 			t.Errorf("round trip of %q = %q", want, got)
 		}
 	}

@@ -85,9 +85,11 @@ artifact and favours being legible over being clever.
   — responsive web only.
 - Manafold never calls Scryfall's card endpoints on a client-facing request
   path.
-- Manafold never calls Archidekt on a client-facing request path, never
-  crawls it by deck-id enumeration or with authentication, and stores no
-  Archidekt decklists or user data — only synergy aggregates.
+- Manafold never makes a client request wait on Archidekt, never crawls it by
+  deck-id enumeration or with authentication, and stores no Archidekt decklists
+  or user data — only synergy aggregates. A user action can only queue a
+  commander for gathering; one background worker makes every Archidekt request,
+  at one request per 6 s, under a daily cap.
 - Manafold does not recompute colour identity; it stores and trusts Scryfall's.
 - Manafold is not a monetized product and does not paywall Scryfall data.
 - No bring-your-own-key for AI in v1 (a BYOK escape hatch is a possible later
@@ -126,8 +128,8 @@ other segment runs on. `account-access` gates every `/api/*` request.
 `import-export`, `ai-assist`, and `synergy`. `deck-building` owns decks and the
 legality validator and is read by `ai-assist` and `import-export`. `synergy`
 owns the per-commander synergy aggregates computed from public Archidekt
-decklists by a rate-limited batch job, read by `ai-assist` (and the deck
-wizard) and shown in the builder.
+decklists, gathered on demand by one rate-limited background worker when a user
+builds for a commander, and read by `ai-assist` and the deck wizard.
 
 ```mermaid
 flowchart TB
@@ -170,7 +172,7 @@ flowchart TB
     end
 
     subgraph syn["synergy (SYN)"]
-        crawl["cmd/synergysync<br/>public Archidekt decks · 6 s pacing"]
+        crawl["on-demand worker<br/>public Archidekt decks · 6 s pacing"]
         aggs["per-commander inclusion<br/>vs colour-identity baseline"]
     end
 
@@ -264,15 +266,20 @@ Dependency DAG (`docs/arrows/index.yaml` is authoritative):
   ~5 removal / ~3 wipes" Commander deckbuilding).
 
 - **Commander synergy from public Archidekt decklists, computed by Manafold.**
-  A batch job (`cmd/synergysync`) samples recent public Commander decks for a
-  configured list of popular commanders, at most one request every 6 s, and
-  stores only aggregates: per-commander card inclusion rates against a
-  colour-identity baseline. Synergy is commander inclusion minus baseline
+  When a user builds a deck for a commander with no fresh synergy data, the
+  builder asks the backend to *ensure* it; that only queues a job. One
+  background worker samples recent public Commander decks at most one request
+  every 6 s (a per-day cap on newly gathered commanders, a per-commander deck
+  cap, and a freshness TTL bound the total), and stores only aggregates:
+  per-commander card inclusion rates against a colour-identity baseline.
+  Readers see `none` / `gathering` / `ready` and the wizard falls back to
+  open-data picks until `ready`. Synergy is commander inclusion minus baseline
   inclusion. Every display carries "Synergy data from public Archidekt decks"
   with a link. *Alternatives:* EDHREC (no open API; partnership ruled out);
   open data only (`edhrec_rank` + Scryfall oracle tags), which has no
   commander-specific signal. Archidekt's Terms of Use restrict automated
-  queries. The captain accepted that risk for a non-monetised personal tool
+  queries, and user-triggered gathering widens that exposure beyond a fixed
+  batch. The captain accepted that risk for a non-monetised personal tool
   (`MANAFOLD.md` D7). The segment is isolated so a lockdown removes only it.
 
 - **Monorepo, Go + chi + pgx/sqlc backend, Next.js/TypeScript/Tailwind
