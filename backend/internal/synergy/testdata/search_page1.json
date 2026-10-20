@@ -1,0 +1,62 @@
+{
+ "count": 9,
+ "next": "https://archidekt.com/api/decks/v3/?page=2",
+ "results": [
+  {
+   "id": 101,
+   "size": 100,
+   "deckFormat": 3,
+   "private": false,
+   "unlisted": false
+  },
+  {
+   "id": 102,
+   "size": 100,
+   "deckFormat": 3,
+   "private": true,
+   "unlisted": false
+  },
+  {
+   "id": 103,
+   "size": 100,
+   "deckFormat": 3,
+   "private": false,
+   "unlisted": true
+  },
+  {
+   "id": 104,
+   "size": 100,
+   "deckFormat": 1,
+   "private": false,
+   "unlisted": false
+  },
+  {
+   "id": 105,
+   "size": 60,
+   "deckFormat": 3,
+   "private": false,
+   "unlisted": false
+  },
+  {
+   "id": 106,
+   "size": 100,
+   "deckFormat": 3,
+   "private": false,
+   "unlisted": false
+  },
+  {
+   "id": 107,
+   "size": 100,
+   "deckFormat": 3,
+   "private": false,
+   "unlisted": false
+  },
+  {
+   "id": 108,
+   "size": 100,
+   "deckFormat": 3,
+   "private": false,
+   "unlisted": false
+  }
+ ]
+}

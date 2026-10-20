@@ -63,6 +63,20 @@ our own log-ins."
 | D5 | Hosting & pipeline | Vercel (frontend) + Render Docker free tier (Go backend) + Neon serverless Postgres, mirroring Waystone. `.github/workflows/ci.yml` (Postgres service container) and `.no-mistakes.yaml` wired from day one. Card-sync job as a Render cron. GitHub remote `github.com/Sushi-Senpai/Manafold` (public) already exists and is registered. | Matches Waystone's proven topology; retrofitting the arrow/tests discipline later is the expensive path. |
 | D6 | Mobile support | Responsive web only for v1. No mobile-tuned builder, no native app. | The builder is a desktop-first workflow. |
 
+## Deck-wizard groundwork decisions (captain, 2026-10-19)
+
+The captain wants an interactive LLM deck-building wizard. The user names a
+commander, a bracket, and any restrictions, and the model works through the
+build with them: land comfort and the mana base first, including utility
+lands, then synergy picks the user chooses from, staying inside the bracket's
+Game Changer and combo limits. A data-source investigation found EDHREC has no
+open API. Its §7 laid out three options for commander-specific synergy data,
+and the captain chose option 1.
+
+| # | Decision | Choice | Rationale |
+|---|---|---|---|
+| D7 | Commander-synergy data source | **Compute synergy from public Archidekt decklists ("option 1"), low and slow.** **Scope change (captain, 2026-10-20): it is gathered on demand, not from a configured commander list or a weekly batch.** When a user builds a deck for a commander with no fresh synergy data, the builder calls an ensure endpoint that only queues a job; a client request never waits on Archidekt. One background worker drains the queue with one global pace of at most one request every 6 s, backs off on `429`, and sends an honest User-Agent. Load is bounded by a cap of 10 newly gathered commanders per rolling day, about 40 decks per commander, a 14-day freshness TTL, and a switch that is off by default (`SYNERGY_ENABLED`). Readers see `none` / `gathering` / `ready`; the wizard falls back to open-data picks until ready. It stores only aggregates (inclusion rates, a colour-identity baseline, synergy, sample sizes, fetched-at), never decklists or user data. Every display carries "Synergy data from public Archidekt decks" with a link. Design: `docs/intent/synergy/`. | Captain: *"I don't plan to launch this to make money, it's just to help me and some friends build decks quickly so I think option 1 is fine."* **Accepted risk:** Archidekt's Terms of Use (effective 2018-09-07) limit use to "personal, noncommercial use" and forbid "automated searches, requests, or queries" and accessing the site "to build a similar or competitive website". The only permission on the other side is a 2019 forum post by Archidekt's developer: the read API is "open and public", with a request for a link back and a warning that they may lock the API down if traffic becomes a burden. User-triggered requests enlarge that exposure compared with a fixed batch: Archidekt traffic now follows Manafold usage, bounded by the caps above rather than by a short fixed list. Expect an IP block or API lockdown without notice, and endpoint churn; the first sign of either is the cue to turn `SYNERGY_ENABLED` off. The `synergy` segment is isolated so that losing the source removes only it. The rejected alternatives were option 2 (ask Archidekt for written permission first) and option 3 (open data only: `edhrec_rank` + Scryfall oracle tags + Spellbook, with no commander-specific co-occurrence). Option 2 stays the path to remove the ToS conflict if Manafold ever goes public. |
+
 ### Smaller calls adopted as-is (research report §7)
 
 - Show Scryfall USD/EUR prices from the mirror; **no affiliate links** in v1.
@@ -72,12 +86,12 @@ our own log-ins."
   Card Draw, Board Wipe, Land, …) are first-class in the category model and,
   later, the builder UI (captain bonus feature #4).
 - Recommendation engine (later): LLM + functional tags + `edhrec_rank` for v1,
-  extended with **EDHREC high-synergy data** (captain bonus feature #2 — EDHREC
-  has no official public API; the `ai-assist` LLD records the data-access and
-  ToS question as open), and an own public-decklist co-occurrence corpus built
-  over time.
+  extended with **high-synergy data** (captain bonus feature #2). EDHREC has no
+  open API, so per D7 this comes from Manafold's own public-Archidekt-decklist
+  co-occurrence aggregates (`synergy` segment).
 - Third-party data: Scryfall (required) + Commander Spellbook's open combo
-  database for later combo detection; nothing else.
+  database for later combo detection + public Archidekt decklists for synergy
+  aggregates (D7); nothing else.
 - Brand/design: a plain text wordmark is fine for M1 (Waystone shipped that
   way); a real vector logo is a later pass.
 
@@ -89,8 +103,9 @@ the HLD roadmap so the architecture does not preclude them. **Not M1 scope.**
 1. **Deck-bootstrapping wizard** — commander → auto mana base from the colour
    identity → a wizard adding the most powerful/common cards for those colours.
    (`deck-building` + `ai-assist`; related to research milestone M8.)
-2. **EDHREC high-synergy cards** as a recommendation input, not just
-   `edhrec_rank`. (`ai-assist`; data-access + ToS is an open question.)
+2. **High-synergy cards** as a recommendation input, not just
+   `edhrec_rank`. (`ai-assist` + `synergy`. The data source is settled by D7:
+   Archidekt-derived aggregates, not EDHREC.)
 3. **Constrained deck generation beyond brackets** — budget cap, "no infinite
    combos", "no tutors", tribe/theme lock, house rules. (`ai-assist`.)
 4. **Functional-subtype grouping** first-class in the category model and builder
@@ -547,3 +562,29 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   bracket explanation stays deferred (`AI-025`). A small real-record seed
   (`backend/seed/spellbook-*.json`, plus seven cards added to `seed/cards.json`)
   covers local runs and CI.
+
+- **2026-10-19** — Commander synergy data (wizard groundwork, D7). A new
+  `synergy` segment (`SYN`) computes per-commander card synergy from recent
+  public Commander decks on Archidekt. Pacing is one request per 6 s, with an
+  escalating back-off on `429` and an honest User-Agent. Each commander's
+  per-card inclusion is compared against a colour-identity baseline drawn from
+  the mirror's top-ranked *other* commanders in that identity. Maybeboards, the
+  commander, deleted entries, and basic lands are excluded, and identical
+  decklists are deduplicated. Only aggregates land in `synergy_*` tables, each
+  target replaced in one transaction. `GET /api/synergy/commanders/{cardId}`
+  serves the top cards (mirror rows only, commander-legal) with sample sizes
+  and attribution. Tests replay recorded Archidekt-shaped fixtures and never
+  hit the network.
+- **2026-10-20** — Synergy is gathered on demand (captain's scope change to
+  D7). The configured commander list and the weekly batch are gone. `POST
+  /api/synergy/commanders/{cardId}/ensure` queues a `synergy_jobs` row when the
+  commander has no sample fresher than 14 days; the builder calls it when a
+  deck has a commander, and shows nothing from it. One worker, guarded by a
+  Postgres advisory lock, drains the queue through one 6 s-paced Archidekt
+  client. Caps bound the load: 10 newly gathered commanders per rolling 24 h,
+  40 decks per commander (8 each from 5 baseline commanders), a request cap per
+  job, and a 15-minute cooldown after a failed job. The status
+  (`none` / `gathering` / `ready`) is readable on the GET. `SYNERGY_ENABLED`
+  is off by default. `cmd/synergysync "<commander>"` remains as a manual way to
+  gather one commander through the same worker code. The extra Terms-of-Use
+  exposure of user-triggered requests is recorded in D7.

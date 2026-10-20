@@ -21,6 +21,7 @@ import (
 	appdb "manafold-backend/internal/db"
 	db "manafold-backend/internal/db/generated"
 	"manafold-backend/internal/server"
+	"manafold-backend/internal/synergy"
 )
 
 func main() {
@@ -45,10 +46,18 @@ func main() {
 		assistant = ai.NewAnthropic(cfg.AnthropicAPIKey)
 	}
 
+	// Per-commander synergy is gathered on demand by one background worker, only
+	// when SYNERGY_ENABLED=true (SYN-001, SYN-033). A request just queues a job.
+	synergySvc := synergy.NewService(pool, synergy.OptionsFromEnv())
+	workerCtx, stopWorker := context.WithCancel(context.Background())
+	defer stopWorker()
+	go synergySvc.RunWorker(workerCtx)
+
 	handler := server.New(server.Deps{
 		Pool:                pool,
 		Queries:             db.New(pool),
 		AI:                  assistant,
+		Synergy:             synergySvc,
 		DevAuth:             cfg.DevAuth,
 		TrustedProxyCount:   cfg.TrustedProxyCount,
 		AISuggestDailyLimit: cfg.AISuggestDailyLimit,
@@ -73,6 +82,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	<-stop
 
+	stopWorker()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {

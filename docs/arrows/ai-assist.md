@@ -72,7 +72,7 @@ card, never surface an illegal one.
 | Cost control | AI-030..035 | 6 | 0 | 0 |
 | Deck-health | AI-022 | 0 | 0 | 1 (M5) |
 | Bracket | AI-023, AI-025 | 1 | 1 | 0 |
-| EDHREC / constrained gen / cut suggestions / embeddings | AI-040..043 | 0 | 4 | 0 |
+| Synergy input / constrained gen / cut suggestions / embeddings | AI-040..043 | 0 | 4 | 0 |
 
 **Summary:** 18 of 24 implemented; 1 gap (M5); 5 deferred.
 
@@ -84,8 +84,9 @@ card, never surface an illegal one.
    features on silently.
 3. Suggestions have no non-model fallback and return `502` on a provider error;
    the M5 deck-health report is the feature with a real deterministic fallback.
-4. EDHREC high-synergy data (AI-040) is blocked on a Terms-of-Service decision:
-   EDHREC has no official public API. Recorded as an open question in the LLD.
+4. High-synergy input (AI-040) has its data source settled: the `synergy`
+   segment's Archidekt-derived aggregates (`MANAFOLD.md` D7) replace the EDHREC
+   route. Wiring it into the candidate pool is the deferred step.
 
 ## Work Required
 
@@ -95,4 +96,4 @@ card, never surface an illegal one.
 ### Nice to Have
 1. Reserve-then-call quota semantics to close the check-then-act race.
 2. `ai_usage` retention prune.
-3. Resolve EDHREC ToS (AI-040); constrained generation (AI-041).
+3. Feed synergy aggregates into the suggestion pool (AI-040); constrained generation (AI-041).

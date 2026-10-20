@@ -78,9 +78,10 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-// LoadCardsync is the minimal config path for cmd/cardsync, the standalone
-// Scryfall ingestion job (PLATFORM-006). It has no HTTP surface and only needs
-// the database, so it validates DATABASE_URL and deliberately does not require
+// LoadCardsync is the minimal config path for the standalone batch jobs —
+// cmd/cardsync, the Scryfall ingestion job (PLATFORM-006), and cmd/synergysync,
+// the Archidekt synergy job. They have no HTTP surface and only need the
+// database, so it validates DATABASE_URL and deliberately does not require
 // FRONTEND_URL, leaving the PLATFORM-003 fail-fast for the API server's Load.
 func LoadCardsync() (Config, error) {
 	cfg := readEnv()

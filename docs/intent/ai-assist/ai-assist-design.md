@@ -176,7 +176,7 @@ Reusing `deckrules` here is deliberate — there is exactly one definition of
 | Key model | Developer-held key + per-user daily quotas + a global monthly ceiling | Bring-your-own-key | AI is a core feature, not a power-user add-on; a key-entry wall would gut adoption. A BYOK escape hatch may come later. |
 | Enable switch | Explicit `AI_ENABLED`; stub `Assistant` + `503` when unset | Infer "enabled" from the key being present | Dev and CI have no key and must still build and boot; an explicit switch makes AI-002's fail-fast unambiguous and keeps an accidental key in the environment from silently turning paid features on. |
 | Anti-hallucination | Re-validate every model-returned name against the mirror + `deckrules` for the deck's identity; drop failures silently, never substitute | Prompt the model to stay grounded and trust it; a post-hoc "are these real?" model call | Prompting is not enforcement; the deterministic gate is the only thing that makes "never suggests an illegal card" true. Reusing `deckrules` keeps one legality definition. |
-| Candidate pool source | `edhrec_rank` within colour identity, non-banned, not in deck | The model enumerates candidates from memory | The model's parametric card knowledge is stale and unreliable; the pool must come from data. Co-occurrence and EDHREC synergy extend it later. |
+| Candidate pool source | `edhrec_rank` within colour identity, non-banned, not in deck | The model enumerates candidates from memory | The model's parametric card knowledge is stale and unreliable; the pool must come from data. Per-commander synergy from the `synergy` segment extends it later. |
 | Final answer shape | A `submit_suggestions` tool call | Parse a JSON block out of the model's last text message | A tool call has a schema and an unambiguous stop condition; free-text JSON needs a tolerant extractor and still fails on stray prose. |
 | Models per feature | `claude-sonnet-5` for suggest, `claude-haiku-4-5` for explain | One model for both; Opus-tier throughout | The blurb is a short, low-stakes generation where Haiku holds quality at a fraction of the cost; suggestions need Sonnet's judgement over the pool. Opus-tier is reserved for whole-deck generation if it is ever built. |
 | Suggestions on model failure | Return `502` (no fallback list) | Fall back to the raw `edhrec_rank` pool | An unexplained top-`edhrec` dump is not what the user asked for and reads as a broken feature; better to surface the failure. The M5 deck-health report is the case *with* a real deterministic fallback. |
@@ -208,14 +208,15 @@ Reusing `deckrules` here is deliberate — there is exactly one definition of
    target count per functional slot, return ranked candidates within colour
    identity to fill a whole shell rather than top up an existing deck. Shares
    the candidate-pool machinery with suggestions. Roadmap M8.
-2. **EDHREC high-synergy data** (captain bonus #2) — use EDHREC's "high synergy
-   cards" for a commander/theme as a recommendation input beyond `edhrec_rank`.
-   **Open: EDHREC has no official public API.** The data-access approach (scrape
-   with attribution and caching vs. a periodic bulk pull vs. asking EDHREC
-   directly) and its Terms of Service must be settled before this is built — a
-   genuine ask-user/legal question, not an engineering choice. Until then the
-   recommendation engine runs on `edhrec_rank` plus an own co-occurrence corpus
-   only.
+2. **High-synergy cards** (captain bonus #2): a commander's high-synergy cards
+   as a recommendation input beyond `edhrec_rank`. EDHREC has no open API, so
+   the data comes from the `synergy` segment's aggregates over public Archidekt
+   decklists (`MANAFOLD.md` D7). `synergy.Service.Commander` returns legality-filtered
+   mirror cards with sample sizes. The data is gathered on demand: the
+   caller asks the synergy segment to *ensure* the commander, uses the open-data
+   pool while the status is `gathering`, and switches to those cards once it is
+   `ready`. What remains here is ranking them into the candidate pool and
+   carrying the Archidekt attribution into any surface that shows them.
 3. **Constrained deck generation beyond brackets** (captain bonus #3) —
    generate/validate against explicit constraints: a budget ceiling
    (`prices.usd` sum), "no infinite combos" (Commander Spellbook match), "no

@@ -15,6 +15,7 @@ import (
 	"manafold-backend/internal/ai"
 	db "manafold-backend/internal/db/generated"
 	"manafold-backend/internal/ratelimit"
+	"manafold-backend/internal/synergy"
 )
 
 // API carries the dependencies every handler needs. server.New builds it once
@@ -24,6 +25,10 @@ type API struct {
 	Queries      *db.Queries
 	AI           ai.Assistant
 	LoginLimiter *ratelimit.Limiter
+
+	// Synergy gathers and serves per-commander synergy (SYN-030, SYN-040). Nil
+	// answers the synergy endpoints 503.
+	Synergy *synergy.Service
 
 	// TrustedProxyCount is how many reverse proxies in front of the API append
 	// to X-Forwarded-For; clientIP reads the rate-limit key that many hops from

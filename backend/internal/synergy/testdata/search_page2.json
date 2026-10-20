@@ -1,0 +1,20 @@
+{
+ "count": 10,
+ "next": null,
+ "results": [
+  {
+   "id": 106,
+   "size": 100,
+   "deckFormat": 3,
+   "private": false,
+   "unlisted": false
+  },
+  {
+   "id": 109,
+   "size": 100,
+   "deckFormat": 3,
+   "private": false,
+   "unlisted": false
+  }
+ ]
+}

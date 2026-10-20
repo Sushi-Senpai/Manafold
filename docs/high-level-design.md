@@ -47,8 +47,8 @@ and double-faced-card edge cases correctly. Per-card singleton limits and
 
 The AI layer (no code in M1) treats the language model as an explainer and
 curator on top of a deterministic engine. Recommendation *quality* comes from
-decklist statistics (`edhrec_rank` now; a co-occurrence corpus and EDHREC
-synergy data later); *legality* is enforced by re-validating every card the
+decklist statistics (`edhrec_rank`, plus per-commander synergy computed from
+public Archidekt decklists); *legality* is enforced by re-validating every card the
 model returns against the real card table and `internal/deckrules` before it is
 shown, silently dropping anything that fails. The model never invents a card and
 can never surface one outside the deck's colour identity.
@@ -85,6 +85,11 @@ artifact and favours being legible over being clever.
   — responsive web only.
 - Manafold never calls Scryfall's card endpoints on a client-facing request
   path.
+- Manafold never makes a client request wait on Archidekt, never crawls it by
+  deck-id enumeration or with authentication, and stores no Archidekt decklists
+  or user data — only synergy aggregates. A user action can only queue a
+  commander for gathering; one background worker makes every Archidekt request,
+  at one request per 6 s, under a daily cap.
 - Manafold does not recompute colour identity; it stores and trusts Scryfall's.
 - Manafold is not a monetized product and does not paywall Scryfall data.
 - No bring-your-own-key for AI in v1 (a BYOK escape hatch is a possible later
@@ -117,11 +122,14 @@ Ordered so that when two conflict, the higher one wins.
 
 ## System Design
 
-Six segments. `platform-shell` provides the routing/rendering substrate every
+Seven segments. `platform-shell` provides the routing/rendering substrate every
 other segment runs on. `account-access` gates every `/api/*` request.
 `card-data` owns the Scryfall mirror and is read by `deck-building`,
-`import-export`, and `ai-assist`. `deck-building` owns decks and the legality
-validator and is read by `ai-assist` and `import-export`.
+`import-export`, `ai-assist`, and `synergy`. `deck-building` owns decks and the
+legality validator and is read by `ai-assist` and `import-export`. `synergy`
+owns the per-commander synergy aggregates computed from public Archidekt
+decklists, gathered on demand by one rate-limited background worker when a user
+builds for a commander, and read by `ai-assist` and the deck wizard.
 
 ```mermaid
 flowchart TB
@@ -163,6 +171,11 @@ flowchart TB
         parse["plain-text · MTGA · Moxfield · Archidekt<br/>parse / emit + imports audit"]
     end
 
+    subgraph syn["synergy (SYN)"]
+        crawl["on-demand worker<br/>public Archidekt decks · 6 s pacing"]
+        aggs["per-commander inclusion<br/>vs colour-identity baseline"]
+    end
+
     platform -. every request .-> access
     access -. user_id / anon draft .-> deck
     card --> deck
@@ -170,6 +183,8 @@ flowchart TB
     card --> ai
     deck --> ai
     deck --> port
+    card --> syn
+    syn --> ai
 ```
 
 Dependency DAG (`docs/arrows/index.yaml` is authoritative):
@@ -178,10 +193,11 @@ Dependency DAG (`docs/arrows/index.yaml` is authoritative):
 |---|---|---|
 | `platform-shell` | — | `account-access`, `card-data`, `deck-building` |
 | `account-access` | `platform-shell` | `deck-building` |
-| `card-data` | `platform-shell` | `deck-building`, `import-export`, `ai-assist` |
+| `card-data` | `platform-shell` | `deck-building`, `import-export`, `ai-assist`, `synergy` |
 | `deck-building` | `card-data`, `account-access` | `ai-assist`, `import-export` |
 | `import-export` | `card-data`, `deck-building` | — |
-| `ai-assist` | `card-data`, `deck-building` | — |
+| `ai-assist` | `card-data`, `deck-building`, `synergy` | — |
+| `synergy` | `platform-shell`, `card-data` | `ai-assist` |
 
 ## Key Design Decisions
 
@@ -249,6 +265,23 @@ Dependency DAG (`docs/arrows/index.yaml` is authoritative):
   category-first building is materially better for "I want ~10 ramp / ~10 draw /
   ~5 removal / ~3 wipes" Commander deckbuilding).
 
+- **Commander synergy from public Archidekt decklists, computed by Manafold.**
+  When a user builds a deck for a commander with no fresh synergy data, the
+  builder asks the backend to *ensure* it; that only queues a job. One
+  background worker samples recent public Commander decks at most one request
+  every 6 s (a per-day cap on newly gathered commanders, a per-commander deck
+  cap, and a freshness TTL bound the total), and stores only aggregates:
+  per-commander card inclusion rates against a colour-identity baseline.
+  Readers see `none` / `gathering` / `ready` and the wizard falls back to
+  open-data picks until `ready`. Synergy is commander inclusion minus baseline
+  inclusion. Every display carries "Synergy data from public Archidekt decks"
+  with a link. *Alternatives:* EDHREC (no open API; partnership ruled out);
+  open data only (`edhrec_rank` + Scryfall oracle tags), which has no
+  commander-specific signal. Archidekt's Terms of Use restrict automated
+  queries, and user-triggered gathering widens that exposure beyond a fixed
+  batch. The captain accepted that risk for a non-monetised personal tool
+  (`MANAFOLD.md` D7). The segment is isolated so a lockdown removes only it.
+
 - **Monorepo, Go + chi + pgx/sqlc backend, Next.js/TypeScript/Tailwind
   frontend, mirroring the sibling project's proven topology.** Migrations are
   embedded via `//go:embed` and applied by the API binary at startup, before the
@@ -307,9 +340,10 @@ in the owning LLDs' *Open Questions & Future Decisions*):
    panel shows) with the most powerful/common cards for those colours
    (`deck-building` + `ai-assist`; a lighter-weight relative of M8's "build a
    shell").
-2. **EDHREC high-synergy cards** as a recommendation input beyond `edhrec_rank`
-   (`ai-assist`; EDHREC has no official public API — the data-access approach and
-   its Terms of Service are an open question).
+2. **High-synergy cards** as a recommendation input beyond `edhrec_rank`
+   (`ai-assist`). EDHREC has no open API, so the data comes from Manafold's own
+   Archidekt-derived synergy aggregates (`synergy` segment). Wiring them into
+   the AI suggestion pool is the remaining step.
 3. **Constrained deck generation beyond brackets** — budget cap, "no infinite
    combos", "no tutors", tribe/theme lock, house rules (`ai-assist`
    constraint-driven generation).
@@ -344,7 +378,7 @@ Node's built-in test runner.
 ## References
 
 - `MANAFOLD.md` — the project's product-level decision log and status narrative.
-- `docs/intent/` — the six leaf LLDs and their EARS specs; `docs/arrows/` — the
+- `docs/intent/` — the seven leaf LLDs and their EARS specs; `docs/arrows/` — the
   arrow overlay.
 - `README.md` — local development quickstart.
 - Scryfall API and bulk data: <https://scryfall.com/docs/api>,

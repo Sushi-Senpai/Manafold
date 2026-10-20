@@ -15,6 +15,7 @@ import (
 	db "manafold-backend/internal/db/generated"
 	mw "manafold-backend/internal/middleware"
 	"manafold-backend/internal/ratelimit"
+	"manafold-backend/internal/synergy"
 )
 
 // Deps bundles everything the router needs.
@@ -22,6 +23,10 @@ type Deps struct {
 	Pool    *pgxpool.Pool
 	Queries *db.Queries
 	AI      ai.Assistant
+
+	// Synergy gathers and serves per-commander synergy; nil answers the synergy
+	// endpoints 503 (SYN-030, SYN-040).
+	Synergy *synergy.Service
 
 	// DevAuth selects internal/middleware.DevAuth (fixed local-dev user)
 	// instead of session-based auth for every protected /api route — off by
@@ -61,6 +66,7 @@ func New(d Deps) http.Handler {
 		Pool:                 d.Pool,
 		Queries:              d.Queries,
 		AI:                   d.AI,
+		Synergy:              d.Synergy,
 		LoginLimiter:         ratelimit.New(10, 6*time.Second),
 		TrustedProxyCount:    d.TrustedProxyCount,
 		AISuggestDailyLimit:  d.AISuggestDailyLimit,
@@ -86,6 +92,7 @@ func New(d Deps) http.Handler {
 		h.RegisterDeckRoutes(r)
 		h.RegisterImportRoutes(r)
 		h.RegisterAIRoutes(r)
+		h.RegisterSynergyRoutes(r)
 	})
 
 	return r

@@ -8,6 +8,9 @@ last_updated: 2026-10-19
 # M4: AI assist — Anthropic Claude wrapper (sonnet-5 suggest / haiku-4-5 explain)
 #     + search_cards tool + suggest-&-explain + single-card blurb + the
 #     validate-every-returned-card gate + ai_usage quotas + global spend ceiling.
+# 2026-10-19: synergy segment — Archidekt-derived per-commander synergy
+#     aggregates, gathered on demand by a background worker (ensure + query
+#     endpoints; cmd/synergysync is a manual CLI).
 
 taxonomy:
   features:
@@ -15,6 +18,7 @@ taxonomy:
     - deck-building
     - ai-assist
     - import-export
+    - synergy
   platform:
     - platform-shell
     - account-access
@@ -50,7 +54,7 @@ arrows:
     sampled: 2026-09-02
     audited: null
     audited_sha: null
-    blocks: [deck-building, import-export, ai-assist]
+    blocks: [deck-building, import-export, ai-assist, synergy]
     blockedBy: [platform-shell]
     detail: card-data.md
     next: "M1 landed: cards / card_prints / card_rulings / sync_runs / banlist_overrides schema; internal/cardsync ingests the Oracle + Default bulk exports with derived singleton_limit / can_be_commander and color_identity verbatim; GET /api/cards/search + /autocomplete over the mirror. M2: CARD-006 etiquette-header + 429-backoff test closed; ResolveCardByName (exact / DFC face) added for import. M4 PR: bulk download follows the manifest's jsonl_download_uri and gzip-inflates the .jsonl.gz stream, decoding it object-by-object (CARD-001 refined, CARD-012 added); fixtures moved to .jsonl. 2026-09-06: CARD-040 dev/CI card seed — cmd/cardsync seedOptions reads backend/seed/cards.json (real Scryfall cards) when CARDSYNC_SEED_PATH is set. 2026-09-09: sync hardened so the full Default Cards export lands — each export is spooled to a temp file before any DB write and removed on every exit (CARD-013), the download is bounded by an idle deadline rather than a whole-request timeout (CARD-015), and card_prints is bulk-upserted via COPY into a TEMP table + one set-based INSERT ... ON CONFLICT instead of a round trip per printing (CARD-014). 2026-10-19: Scryfall oracle_tags ingested (CARD-010, CARD-060..063) — oracle_tags / card_oracle_tags replaced as one snapshot per sync, hierarchy walked at read time by oracle_tag_reach, a Manafold-owned disabled flag, sqlc tag queries (CARD-065), otag: search (CARD-064), and backend/seed/oracle_tags.json for offline runs (CARD-066). The tag pass runs after both card passes commit, and its failure is recorded but never fails the card sync (CARD-067). Deferred: single-printing fallback (CARD-009, with printing-selection UI). 2026-10-19: Commander Spellbook combo mirror (CARD-050..056) — cardsync.RunSpellbook streams the daily variants.json export into combos / combo_cards and weekly crawls /cards/ flags into spellbook_card_flags."
@@ -87,9 +91,21 @@ arrows:
     audited: null
     audited_sha: null
     blocks: []
-    blockedBy: [card-data, deck-building]
+    blockedBy: [card-data, deck-building, synergy]
     detail: ai-assist.md
-    next: "M4 landed: internal/ai (Assistant interface + anthropic-backed impl with a search_cards / submit_suggestions tool loop on claude-sonnet-5, a claude-haiku-4-5 explain call, a Disabled() stub for AI_ENABLED unset); POST /api/decks/{id}/suggestions + POST /api/decks/{id}/cards/{cardId}/explain behind the validate-every-returned-card gate (reuses internal/deckrules); ai_usage table + per-user daily quotas (429) + global monthly spend ceiling (503) + anon 403, with ownership checked before the quota/ceiling gates so a non-owner cannot probe them (AI-001..035). Gaps: deck-health prose (AI-022, M5), bracket estimate (AI-023, M6). EDHREC synergy data (AI-040) blocked on a ToS decision. 2026-10-19: AI-023 closed by the deterministic deck-building bracket check; model-written explanation (AI-025) deferred."
+    next: "M4 landed: internal/ai (Assistant interface + anthropic-backed impl with a search_cards / submit_suggestions tool loop on claude-sonnet-5, a claude-haiku-4-5 explain call, a Disabled() stub for AI_ENABLED unset); POST /api/decks/{id}/suggestions + POST /api/decks/{id}/cards/{cardId}/explain behind the validate-every-returned-card gate (reuses internal/deckrules); ai_usage table + per-user daily quotas (429) + global monthly spend ceiling (503) + anon 403, with ownership checked before the quota/ceiling gates so a non-owner cannot probe them (AI-001..035). Gaps: deck-health prose (AI-022, M5), bracket estimate (AI-023, M6). Synergy input to suggestions (AI-040) deferred; its data source is now the synergy segment (MANAFOLD.md D7). 2026-10-19: AI-023 closed by the deterministic deck-building bracket check; model-written explanation (AI-025) deferred."
+    drift: null
+
+  synergy:
+    status: MAPPED
+    parent: null
+    sampled: 2026-10-19
+    audited: null
+    audited_sha: null
+    blocks: [ai-assist]
+    blockedBy: [platform-shell, card-data]
+    detail: synergy.md
+    next: "Landed: internal/synergy gathers on demand — POST /api/synergy/commanders/{cardId}/ensure queues a synergy_jobs row (one active per commander, 10 new commanders per rolling day, 14-day TTL) and answers without waiting; one advisory-locked background worker drains the queue through a single 6 s-paced Archidekt client (escalating 429 back-off, honest User-Agent, per-job request cap, failure cooldown); commander + colour-identity-baseline sampling (40 decks per commander); tally excludes maybeboard / commander / deleted / basics; identical-decklist dedup; aggregates-only synergy_* tables replaced per target in one transaction with synergy recomputed per identity; GET /api/synergy/commanders/{cardId} returns none / gathering / ready with mirror-only, commander-legal cards and the attribution; the builder calls ensure silently when a deck has a commander; SYNERGY_ENABLED is off by default; cmd/synergysync is a manual CLI over the same worker (SYN-001..044). Deferred: the attribution requirement on a displaying surface (SYN-043, the wizard), bracket-sliced samples (SYN-050), partner pairs (SYN-051)."
     drift: null
 
 unmapped:
