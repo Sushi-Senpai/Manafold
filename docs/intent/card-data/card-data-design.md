@@ -383,7 +383,7 @@ plausible-but-wrong query silently returns the wrong cards.
 - Code: `backend/internal/cardsync/`, `backend/internal/cardsearch/`,
   `backend/internal/api/cards.go`, `backend/cmd/cardsync/main.go`
   (`seedOptions`), `backend/internal/db/migrations/000001_create_card_data.up.sql`,
-  `backend/internal/db/migrations/000006_create_oracle_tags.up.sql`,
+  `backend/internal/db/migrations/000007_create_oracle_tags.up.sql`,
   `backend/internal/db/queries/cards.sql`, `backend/internal/db/queries/oracle_tags.sql`
 - Seed: `backend/seed/cards.json` (dev / CI card seed, `CARD-040`),
   `backend/seed/oracle_tags.json` (its oracle tags, `CARD-066`)

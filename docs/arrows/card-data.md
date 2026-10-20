@@ -51,7 +51,7 @@ read-time hierarchy walk, tag queries, `otag:` search, and a seed tag file
 - backend/internal/api/cards.go (`registerCardRoutes`, search + autocomplete handlers)
 - backend/cmd/cardsync/main.go (`seedOptions` — CARDSYNC_SEED_PATH / CARDSYNC_ORACLE_PATH / CARDSYNC_DEFAULT_PATH / CARDSYNC_TAGS_PATH, CARD-040, CARD-066)
 - backend/seed/cards.json (checked-in dev / CI card seed — CARD-040); backend/seed/oracle_tags.json (its oracle tags — CARD-066)
-- backend/internal/db/migrations/000006_create_oracle_tags.up.sql / .down.sql (also `oracle_tag_reach`, the enabled-tag walk behind every tag-or-descendant read — CARD-062, CARD-063)
+- backend/internal/db/migrations/000007_create_oracle_tags.up.sql / .down.sql (also `oracle_tag_reach`, the enabled-tag walk behind every tag-or-descendant read — CARD-062, CARD-063)
 - backend/internal/db/queries/oracle_tags.sql (CARD-065)
 - backend/internal/db/migrations/000001_create_card_data.up.sql / .down.sql
 - backend/internal/db/queries/cards.sql
