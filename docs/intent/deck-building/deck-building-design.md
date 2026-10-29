@@ -601,15 +601,13 @@ outside colour identity — it does not silently reject or silently accept
 ## Open Questions & Future Decisions
 
 ### Deferred
-1. **Deck-bootstrapping wizard** (captain bonus #1) — reads its slot targets
-   from `internal/decktemplates` (the same data as the "deck vs. target"
-   panel) once the player picks an archetype. Given a commander,
-   auto-populate a mana base from the colour identity, then walk a wizard adding
-   the most powerful/common cards for those colours. Needs: a "generate mana
-   base" endpoint (basics + staple lands by `edhrec_rank` within identity), a
-   wizard-state model (which slots are filled), and a hand-off to `ai-assist`
-   for the "top cards by colour" step. The `deck_cards` model already supports
-   it — bulk inserts with `category = 'Land'`. Related to roadmap M8.
+1. **Deck-bootstrapping wizard** (captain bonus #1) — the first slice is the
+   `deck-wizard` segment: it reads its land target from `internal/decktemplates`
+   (the same data as the "deck vs. target" panel), the bracket policy from
+   `internal/bracket`, and writes cards only through this segment's add-card
+   endpoint. Filling the template's role slots (ramp / draw / removal / wipes)
+   is that segment's follow-up and reads this segment's tag-backed role
+   classifier (item 15) when it exists. Related to roadmap M8.
 2. **Functional-subtype grouping as first-class** (captain bonus #4) — the
    decklist now groups by primary card *type* (`DECK-087`), which is always
    derivable. Grouping by *functional category* (Removal / Counterspell / Ramp /

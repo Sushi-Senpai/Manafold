@@ -26,6 +26,8 @@ services:
         value: "20"
       - key: AI_EXPLAIN_DAILY_LIMIT
         value: "40"
+      - key: AI_WIZARD_DAILY_LIMIT
+        value: "40"
       - key: AI_MONTHLY_SPEND_USD
         value: "50"
       # True hop count of proxies that append X-Forwarded-For in front of this

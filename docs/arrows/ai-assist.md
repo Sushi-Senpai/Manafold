@@ -26,7 +26,7 @@ explanation of it (AI-025) is deferred.
 - docs/intent/ai-assist/ai-assist-design.md
 
 ### EARS
-- docs/intent/ai-assist/ai-assist-specs.md (AI-001..004, AI-010..013, AI-020..021, AI-024, AI-030..035; deferred AI-022, AI-025, AI-040..043; AI-023 closed by deck-building)
+- docs/intent/ai-assist/ai-assist-specs.md (AI-001..004, AI-010..013, AI-020..021, AI-024, AI-030..036, AI-050..053; deferred AI-022, AI-025, AI-040..043; AI-023 closed by deck-building)
 
 ### Tests
 - backend/internal/ai/ai_test.go — AI-001 (stub returns not-configured), AI-004 (per-feature model ids), cost estimate
@@ -53,7 +53,9 @@ card, never surface an illegal one.
 2. Suggest runs a bounded `Messages.New` tool loop with a `search_cards` tool
    (results pre-filtered to the deck's colour identity and non-banned cards) and
    a `submit_suggestions` tool that ends the loop.
-3. Explain is a single `claude-haiku-4-5` call, no tools.
+3. Explain is a single `claude-haiku-4-5` call, no tools. Curate (the deck
+   wizard's model call) is a single forced-`submit_picks` call over a pool the
+   handler built, on the suggest model.
 4. The anti-hallucination gate — every returned name resolved against `cards`
    and re-validated with `internal/deckrules` for the deck's identity; failures
    dropped silently, never substituted, drop count reported.
@@ -69,12 +71,13 @@ card, never surface an illegal one.
 | Package & config | AI-001..004 | 4 | 0 | 0 |
 | Anti-hallucination gate | AI-010..013 | 4 | 0 | 0 |
 | Features | AI-020..021, AI-024 | 3 | 0 | 0 |
-| Cost control | AI-030..035 | 6 | 0 | 0 |
+| Cost control | AI-030..036 | 7 | 0 | 0 |
+| Curation (deck wizard) | AI-050..053 | 4 | 0 | 0 |
 | Deck-health | AI-022 | 0 | 0 | 1 (M5) |
 | Bracket | AI-023, AI-025 | 1 | 1 | 0 |
 | Synergy input / constrained gen / cut suggestions / embeddings | AI-040..043 | 0 | 4 | 0 |
 
-**Summary:** 18 of 24 implemented; 1 gap (M5); 5 deferred.
+**Summary:** 23 of 29 implemented; 1 gap (M5); 5 deferred.
 
 ## Key Findings
 

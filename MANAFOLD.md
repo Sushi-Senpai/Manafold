@@ -77,6 +77,16 @@ and the captain chose option 1.
 |---|---|---|---|
 | D7 | Commander-synergy data source | **Compute synergy from public Archidekt decklists ("option 1"), low and slow.** **Scope change (captain, 2026-10-20): it is gathered on demand, not from a configured commander list or a weekly batch.** When a user builds a deck for a commander with no fresh synergy data, the builder calls an ensure endpoint that only queues a job; a client request never waits on Archidekt. One background worker drains the queue with one global pace of at most one request every 6 s, backs off on `429`, and sends an honest User-Agent. Load is bounded by a cap of 10 newly gathered commanders per rolling day, about 40 decks per commander, a 14-day freshness TTL, and a switch that is off by default (`SYNERGY_ENABLED`). Readers see `none` / `gathering` / `ready`; the wizard falls back to open-data picks until ready. It stores only aggregates (inclusion rates, a colour-identity baseline, synergy, sample sizes, fetched-at), never decklists or user data. Every display carries "Synergy data from public Archidekt decks" with a link. Design: `docs/intent/synergy/`. | Captain: *"I don't plan to launch this to make money, it's just to help me and some friends build decks quickly so I think option 1 is fine."* **Accepted risk:** Archidekt's Terms of Use (effective 2018-09-07) limit use to "personal, noncommercial use" and forbid "automated searches, requests, or queries" and accessing the site "to build a similar or competitive website". The only permission on the other side is a 2019 forum post by Archidekt's developer: the read API is "open and public", with a request for a link back and a warning that they may lock the API down if traffic becomes a burden. User-triggered requests enlarge that exposure compared with a fixed batch: Archidekt traffic now follows Manafold usage, bounded by the caps above rather than by a short fixed list. Expect an IP block or API lockdown without notice, and endpoint churn; the first sign of either is the cue to turn `SYNERGY_ENABLED` off. The `synergy` segment is isolated so that losing the source removes only it. The rejected alternatives were option 2 (ask Archidekt for written permission first) and option 3 (open data only: `edhrec_rank` + Scryfall oracle tags + Spellbook, with no commander-specific co-occurrence). Option 2 stays the path to remove the ToS conflict if Manafold ever goes public. |
 
+## Deck wizard slice (settled 2026-10-29)
+
+The wizard (`docs/intent/deck-wizard/`) is the first end-to-end build of the
+captain's 2026-10-19 brief. The open items were settled by the worker building it
+and are recorded here for the captain to overrule.
+
+| # | Decision | Choice | Rationale |
+|---|---|---|---|
+| D8 | Wizard slice, placement and spend | **Slice:** setup (commander, bracket 1–4, restrictions) → land preferences, including "basics only" → utility lands → rounds of synergy picks the player accepts or rejects → a deterministic basics plan. **Placement:** a panel in the builder's right column that replaces the AI suggestions panel while open, so the live decklist and image panel stay visible. **Spend:** each propose round is one `claude-sonnet-5` call under a new `wizard` feature, limit 40 per user per day (`AI_WIZARD_DAILY_LIMIT`), sharing the one monthly ceiling. **Rules as filters:** the bracket's Game Changer limit and combo expectations, the price cap, the tutor ban and "no lands in the picks" are filters on the candidate pool, so the model cannot step outside them; what it names also passes the existing validate-every-returned-card gate. The wizard never writes a deck: every card arrives through the player's Accept. Bracket 5 is excluded. **Deferred:** role-filling steps, Bracket 4 fast-mana pass, persisted wizard answers, partner commanders, tapped-land and snow-basics questions, a chat surface. | The captain asked for an interactive wizard, not a generator, and for the model to curate while statistics and rules decide. The smallest path that exercises every data source built so far (oracle tags for utility and fetch lands, Archidekt synergy for picks, the Spellbook-backed bracket check for admission, the templates for the land target) is lands → utility → picks → basics; role-filling needs the tag-backed classifier and is a second slice. |
+
 ### Smaller calls adopted as-is (research report §7)
 
 - Show Scryfall USD/EUR prices from the mirror; **no affiliate links** in v1.
@@ -575,6 +585,19 @@ auth-middleware shape, sessions, CI, same-origin proxy — not the resume produc
   serves the top cards (mirror rows only, commander-legal) with sample sizes
   and attribution. Tests replay recorded Archidekt-shaped fixtures and never
   hit the network.
+- **2026-10-29** — Deck wizard, first slice (own branch / PR; `deck-wizard`
+  segment, `WIZ`). The captain's interactive wizard: a builder panel that asks for
+  the bracket (1–4) and restrictions (no tutors, per-card price cap, strategy
+  notes), whether the player wants dual / fixing lands at all, which utility lands
+  they want, and then rounds of synergy picks they accept or reject, finishing with
+  a basics plan. `internal/deckwizard` holds the bracket policy, land target,
+  basics split and the bracket *admission* check that decides what may be proposed
+  (Game Changer budget, plus any combo / mass-land-denial / extra-turn warning
+  `internal/bracket` would raise). `ai.Assistant.Curate` is one forced-tool call
+  over a pool the backend built; its picks pass the existing gate and are
+  re-admitted cumulatively. Endpoints: `GET /api/decks/{id}/wizard`, `POST
+  …/wizard/propose`, `POST …/wizard/basics`. Also restores the oracle-tag wording
+  in `AGENTS.md`'s card-data row. Design and the deferred list: D8.
 - **2026-10-20** — Synergy is gathered on demand (captain's scope change to
   D7). The configured commander list and the weekly batch are gone. `POST
   /api/synergy/commanders/{cardId}/ensure` queues a `synergy_jobs` row when the

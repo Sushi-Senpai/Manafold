@@ -348,8 +348,9 @@ Wherever synergy data is shown, the surface shall show the line **"Synergy data
 from public Archidekt decks"** linking to `https://archidekt.com`, plus the
 sample size the numbers come from. This is the attribution Archidekt's
 developer asked for. The API response carries the text and link so a surface
-cannot forget them. The builder shows no synergy surface; the wizard is the
-first display and inherits this requirement.
+cannot forget them. The builder's own panels show no synergy data; the deck
+wizard's picks step is the first display (`WIZ-065`) and carries the line and the
+sample's deck count.
 
 ## Decisions & Alternatives
 
@@ -374,10 +375,11 @@ first display and inherits this requirement.
 ## Open Questions & Future Decisions
 
 ### Deferred
-1. **Wizard consumption.** The deck-building wizard calls `ensure`, then reads
-   `Service.Commander` once `ready`, filtered further by bracket and the user's choices,
-   and falls back to open-data picks while `gathering`. That wiring belongs to
-   the wizard's own design.
+1. **Wizard consumption** (landed, `deck-wizard`). The wizard's plan calls
+   `ensure`; its picks step reads `Service.Commander` whenever a sample is stored,
+   filtered by colour identity, bracket admission and the player's restrictions, and
+   falls back to open-data picks while there is none. Bracket-sliced reads remain
+   deferred (item 2).
 2. **Bracket-sliced samples.** Archidekt search filters on `edhBracket`, but
    only about 13% of decks declare one. Per-bracket synergy waits until that
    fill rate makes slices meaningful.

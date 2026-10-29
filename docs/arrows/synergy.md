@@ -10,9 +10,10 @@ the `cmd/synergysync` manual CLI.
 
 **MAPPED** — LLD + specs authored 2026-10-19; reworked 2026-10-20 from a
 configured-list batch job to on-demand gathering (captain's scope change,
-`MANAFOLD.md` D7). SYN-001..042 and SYN-044 landed. Deferred: the attribution
-requirement on a displaying surface (SYN-043, the wizard), bracket-sliced
-samples (SYN-050), and partner pairs (SYN-051).
+`MANAFOLD.md` D7). SYN-001..044 landed; the deck wizard's picks step is the
+first surface to display the data and carries the attribution (SYN-043,
+`WIZ-065`). Deferred: bracket-sliced samples (SYN-050) and partner pairs
+(SYN-051).
 
 ## References
 
@@ -24,7 +25,7 @@ samples (SYN-050), and partner pairs (SYN-051).
 - docs/intent/synergy/synergy-design.md
 
 ### EARS
-- docs/intent/synergy/synergy-specs.md (SYN-001..005, SYN-010..013, SYN-020..022, SYN-030..037, SYN-040..042, SYN-044; SYN-043, SYN-050, SYN-051 deferred)
+- docs/intent/synergy/synergy-specs.md (SYN-001..005, SYN-010..013, SYN-020..022, SYN-030..037, SYN-040..044; SYN-050, SYN-051 deferred)
 
 ### Tests
 - backend/internal/synergy/archidekt_test.go — SYN-002 (public search query, no auth), SYN-003 (identifying User-Agent, `Accept`, 6 s spacing), SYN-004 (2/4/8 min back-off, same request retried, fourth 429 fails), SYN-005 (403/404/410 skipped, other errors and undecodable bodies fail), SYN-034 (client job cap, pacing carried across jobs). Runs against `httptest` with a fake clock — no Archidekt call, no real waits.

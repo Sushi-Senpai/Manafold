@@ -1,5 +1,5 @@
 schema_version: 2
-last_updated: 2026-10-19
+last_updated: 2026-10-29
 # M1: LID bootstrap + Waystone-mirrored skeleton + Commander deck vertical slice.
 # M2: import/export (deckio + parse-then-apply endpoints) + deterministic deck
 #     stats + the Slate & Signet palette wire-in.
@@ -11,6 +11,8 @@ last_updated: 2026-10-19
 # 2026-10-19: synergy segment — Archidekt-derived per-commander synergy
 #     aggregates, gathered on demand by a background worker (ensure + query
 #     endpoints; cmd/synergysync is a manual CLI).
+# 2026-10-29: deck-wizard segment — the interactive wizard (lands, utility lands,
+#     synergy picks, basics) over deckwizard + ai.Curate; adds AI-036 / AI-050..053.
 
 taxonomy:
   features:
@@ -19,6 +21,7 @@ taxonomy:
     - ai-assist
     - import-export
     - synergy
+    - deck-wizard
   platform:
     - platform-shell
     - account-access
@@ -54,7 +57,7 @@ arrows:
     sampled: 2026-09-02
     audited: null
     audited_sha: null
-    blocks: [deck-building, import-export, ai-assist, synergy]
+    blocks: [deck-building, import-export, ai-assist, synergy, deck-wizard]
     blockedBy: [platform-shell]
     detail: card-data.md
     next: "M1 landed: cards / card_prints / card_rulings / sync_runs / banlist_overrides schema; internal/cardsync ingests the Oracle + Default bulk exports with derived singleton_limit / can_be_commander and color_identity verbatim; GET /api/cards/search + /autocomplete over the mirror. M2: CARD-006 etiquette-header + 429-backoff test closed; ResolveCardByName (exact / DFC face) added for import. M4 PR: bulk download follows the manifest's jsonl_download_uri and gzip-inflates the .jsonl.gz stream, decoding it object-by-object (CARD-001 refined, CARD-012 added); fixtures moved to .jsonl. 2026-09-06: CARD-040 dev/CI card seed — cmd/cardsync seedOptions reads backend/seed/cards.json (real Scryfall cards) when CARDSYNC_SEED_PATH is set. 2026-09-09: sync hardened so the full Default Cards export lands — each export is spooled to a temp file before any DB write and removed on every exit (CARD-013), the download is bounded by an idle deadline rather than a whole-request timeout (CARD-015), and card_prints is bulk-upserted via COPY into a TEMP table + one set-based INSERT ... ON CONFLICT instead of a round trip per printing (CARD-014). 2026-10-19: Scryfall oracle_tags ingested (CARD-010, CARD-060..063) — oracle_tags / card_oracle_tags replaced as one snapshot per sync, hierarchy walked at read time by oracle_tag_reach, a Manafold-owned disabled flag, sqlc tag queries (CARD-065), otag: search (CARD-064), and backend/seed/oracle_tags.json for offline runs (CARD-066). The tag pass runs after both card passes commit, and its failure is recorded but never fails the card sync (CARD-067). Deferred: single-printing fallback (CARD-009, with printing-selection UI). 2026-10-19: Commander Spellbook combo mirror (CARD-050..056) — cardsync.RunSpellbook streams the daily variants.json export into combos / combo_cards and weekly crawls /cards/ flags into spellbook_card_flags."
@@ -66,7 +69,7 @@ arrows:
     sampled: 2026-09-02
     audited: null
     audited_sha: null
-    blocks: [ai-assist, import-export]
+    blocks: [ai-assist, import-export, deck-wizard]
     blockedBy: [card-data, account-access]
     detail: deck-building.md
     next: "M1 landed: decks / deck_cards schema; internal/deckrules; deck CRUD + commander assignment + add/remove cards + GET /validation; ownership in-query (404); read-only public deck view; /decks list + /decks/[id] builder. M2 landed: internal/deckstats (curve / pips-vs-sources / category roll-up + CategoryTargets) + GET /decks/{id}/stats + stats panel (DECK-051, DECK-052); DECK-060 bulk import write. M3 landed: deck queries scoped to a polymorphic owner key (user_id OR anon_token); CreateDeck takes either; ClaimAnonDecks reassignment (DECK-040/041). Builder-experience pass (2026-09-06): PATCH /decks/{id}/cards/{cardId} set-quantity + board-move (DECK-012/013); componentised builder (frontend/src/components/builder/) with a shared card hover preview (DECK-070..077), enriched keyboard-navigable search (DECK-080..086), and a hover action menu + Alt+1..4 shortcuts (DECK-090..093); DECK-077 (DFC preview flip) deferred on card-data. Builder UX v2 (2026-09-08, frontend-only): floating preview -> sticky left-column card-image panel (DECK-070..078); action menu opens only from the row control, single-open, closes on scroll/outside/Escape/nav (DECK-090, DECK-094), shortcuts rebind to the pointer-or-focused row (DECK-092); click a search row to add to main (DECK-081); decklist grouped by primary card type with counts (DECK-087, DECK-088); import/export behind a header Tools dialog (DECK-095); three-column workspace with an always-visible legality summary (DECK-096). Deck templates (2026-10-19): internal/decktemplates (ten versioned archetype templates, GET /api/deck-templates) + internal/deckroles (Classifier interface + conservative Oracle-text default) + decks.archetype (migration 000006, PATCH-settable) + GET /decks/{id}/template-fit with the Bracket 4 land relaxation (Bracket 4 only, floor 32) + builder "deck vs. target" panel (DECK-100..109). Deferred: fast-mana-aware land relaxation (pending Scryfall role tags / M6), tag-backed role classifier (CARD-010), the wizard itself; functional-category grouping + auto-categorizer, bootstrapping wizard, swap UX, cut suggestions (M5+). 2026-10-19: deterministic bracket check (DECK-120..128) — internal/bracket (Go port of Spellbook estimate_bracket), GET /decks/{id}/bracket, bracket validation on PATCH, and a Bracket section in the builder; closes AI-023."
@@ -90,7 +93,7 @@ arrows:
     sampled: 2026-09-02
     audited: null
     audited_sha: null
-    blocks: []
+    blocks: [deck-wizard]
     blockedBy: [card-data, deck-building, synergy]
     detail: ai-assist.md
     next: "M4 landed: internal/ai (Assistant interface + anthropic-backed impl with a search_cards / submit_suggestions tool loop on claude-sonnet-5, a claude-haiku-4-5 explain call, a Disabled() stub for AI_ENABLED unset); POST /api/decks/{id}/suggestions + POST /api/decks/{id}/cards/{cardId}/explain behind the validate-every-returned-card gate (reuses internal/deckrules); ai_usage table + per-user daily quotas (429) + global monthly spend ceiling (503) + anon 403, with ownership checked before the quota/ceiling gates so a non-owner cannot probe them (AI-001..035). Gaps: deck-health prose (AI-022, M5), bracket estimate (AI-023, M6). Synergy input to suggestions (AI-040) deferred; its data source is now the synergy segment (MANAFOLD.md D7). 2026-10-19: AI-023 closed by the deterministic deck-building bracket check; model-written explanation (AI-025) deferred."
@@ -102,10 +105,22 @@ arrows:
     sampled: 2026-10-19
     audited: null
     audited_sha: null
-    blocks: [ai-assist]
+    blocks: [ai-assist, deck-wizard]
     blockedBy: [platform-shell, card-data]
     detail: synergy.md
     next: "Landed: internal/synergy gathers on demand — POST /api/synergy/commanders/{cardId}/ensure queues a synergy_jobs row (one active per commander, 10 new commanders per rolling day, 14-day TTL) and answers without waiting; one advisory-locked background worker drains the queue through a single 6 s-paced Archidekt client (escalating 429 back-off, honest User-Agent, per-job request cap, failure cooldown); commander + colour-identity-baseline sampling (40 decks per commander); tally excludes maybeboard / commander / deleted / basics; identical-decklist dedup; aggregates-only synergy_* tables replaced per target in one transaction with synergy recomputed per identity; GET /api/synergy/commanders/{cardId} returns none / gathering / ready with mirror-only, commander-legal cards and the attribution; the builder calls ensure silently when a deck has a commander; SYNERGY_ENABLED is off by default; cmd/synergysync is a manual CLI over the same worker (SYN-001..044). Deferred: the attribution requirement on a displaying surface (SYN-043, the wizard), bracket-sliced samples (SYN-050), partner pairs (SYN-051)."
+    drift: null
+
+  deck-wizard:
+    status: MAPPED
+    parent: null
+    sampled: 2026-10-29
+    audited: null
+    audited_sha: null
+    blocks: []
+    blockedBy: [card-data, deck-building, ai-assist, synergy]
+    detail: deck-wizard.md
+    next: "First slice landed: GET /api/decks/{id}/wizard (plan: readiness, bracket policy and Game Changer budget, land target, synergy status), POST …/wizard/propose (fixing lands, utility lands, synergy picks — one ai.Curate call over a deterministic pool, gated by the existing validate-every-returned-card gate plus pool membership and cumulative bracket admission), POST …/wizard/basics (deterministic basics plan); internal/deckwizard (bracket policy, land target, basics split, admission over internal/bracket); the builder's wizard panel with accept / reject per proposal (WIZ-001..067). Spend: a `wizard` ai_usage feature, AI_WIZARD_DAILY_LIMIT 40, shared monthly ceiling (AI-036). Deferred: role-filling steps, Bracket 4 fast-mana pass, persisted answers, tapped-land / snow questions (WIZ-090..093); Bracket 5 is out of scope."
     drift: null
 
 unmapped:

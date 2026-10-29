@@ -34,6 +34,14 @@ deterministic bracket check owned by `deck-building`.
 - [x] **AI-033**: When an anonymous-draft caller (no authenticated user) calls any AI endpoint, the system shall respond `403`; AI features unlock on sign-in.
 - [x] **AI-034**: The system shall meter a language-model call in `ai_usage` when and only when that call returned token usage: a call that never reached the model (the assistant disabled, or a transport failure before any response) is not counted, while a call that reached the model is counted even if its result is unusable — no parseable suggestions, a truncated payload, empty prose — or a later step fails.
 - [x] **AI-035**: When a caller other than the deck's owner calls an AI endpoint scoped to that deck, the system shall respond `404` before evaluating the per-user daily limit or the global monthly ceiling, so a non-owner cannot probe quota or spend state through the response code.
+- [ ] **AI-036**: While a user has reached `AI_WIZARD_DAILY_LIMIT` (default 40) calls of the `wizard` feature today, the system shall respond `429` to further wizard calls for that user until the calendar day rolls over, and every wizard call shall count toward the global monthly ceiling of `AI-032`.
+
+## Curation (deck wizard)
+
+- [ ] **AI-050**: The `Assistant` interface shall provide a `Curate` method that takes the commander, the deck's colour identity, the bracket and its guidance, the Game Changer budget, the step guidance, the player's notes, the names already in the deck, a candidate pool, and a pick limit, and returns a summary, up to that many `{name, reason}` picks, and the call's usage; the `Disabled()` stub shall return `ErrNotConfigured`.
+- [ ] **AI-051**: The system shall send `Curate` requests to `claude-sonnet-5`, the model assigned to suggestions.
+- [ ] **AI-052**: `Curate` shall make one model call with the `submit_picks` tool forced and no search tool, shall label the player's notes as untrusted preferences in the prompt, shall cap the returned picks at the requested limit and drop blank names, and shall return an error when the model produces no `submit_picks` call.
+- [ ] **AI-053**: `Curate` shall return its accumulated token usage on every return path, including errors, so that the handler can meter a call that reached the model (`AI-034`).
 
 ## Deferred
 
