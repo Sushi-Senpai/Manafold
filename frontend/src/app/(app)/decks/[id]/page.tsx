@@ -22,6 +22,7 @@ import { Decklist } from "@/components/builder/Decklist";
 import { ToolsMenu } from "@/components/builder/ToolsMenu";
 import { TemplateFitPanel } from "@/components/builder/TemplateFitPanel";
 import { BracketPanel } from "@/components/builder/BracketPanel";
+import { WizardPanel } from "@/components/builder/wizard/WizardPanel";
 
 // The builder page. It loads the deck + validation report and lays out the
 // three-column workspace (DECK-096): a sticky left column with the card-image
@@ -30,14 +31,25 @@ import { BracketPanel } from "@/components/builder/BracketPanel";
 // and a right column with AI suggestions above card search. A slim legality
 // summary is pinned under the deck header so it stays visible while building.
 // Import/export lives behind the header Tools menu (DECK-095). It collapses to
-// one column below the `xl` breakpoint.
+// one column below the `xl` breakpoint. The deck wizard opens from the header (or
+// `?wizard=1`) and takes the AI suggestions panel's place in the right column
+// while it is open (WIZ-060).
 //
-// @spec DECK-004, DECK-007, DECK-087, DECK-096, DECK-109, DECK-127, SYN-044
+// @spec DECK-004, DECK-007, DECK-087, DECK-096, DECK-109, DECK-127, SYN-044, WIZ-060
 export default function BuilderPage() {
   const { id } = useParams<{ id: string }>();
   const [detail, setDetail] = useState<DeckDetail | null>(null);
   const [report, setReport] = useState<ValidationReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  // `?wizard=1` opens the wizard on arrival, as "New deck with wizard" does.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("wizard") === "1") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setWizardOpen(true);
+    }
+  }, []);
 
   const reload = useCallback(async () => {
     try {
@@ -87,7 +99,21 @@ export default function BuilderPage() {
               {detail.color_identity.length > 0 ? detail.color_identity.join("") : "—"}
             </span>
           </div>
-          <ToolsMenu deckId={id} onImported={reload} />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setWizardOpen((o) => !o)}
+              aria-pressed={wizardOpen}
+              className={`rounded-md border px-3 py-1.5 text-sm font-medium ${
+                wizardOpen
+                  ? "border-primary bg-primary text-primary-ink"
+                  : "border-primary/40 text-primary hover:bg-primary/5"
+              }`}
+            >
+              Build with wizard
+            </button>
+            <ToolsMenu deckId={id} onImported={reload} />
+          </div>
         </header>
 
         <LegalitySummary report={report} />
@@ -107,7 +133,16 @@ export default function BuilderPage() {
           </div>
 
           <div className="order-1 flex flex-col gap-4 xl:order-3 xl:w-[380px] xl:shrink-0">
-            <SuggestionsPanel deckId={id} detail={detail} onChange={reload} />
+            {wizardOpen ? (
+              <WizardPanel
+                deckId={id}
+                detail={detail}
+                onChange={reload}
+                onClose={() => setWizardOpen(false)}
+              />
+            ) : (
+              <SuggestionsPanel deckId={id} detail={detail} onChange={reload} />
+            )}
             <CardSearch deckId={id} detail={detail} onAdded={reload} />
           </div>
         </div>

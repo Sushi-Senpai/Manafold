@@ -43,6 +43,7 @@ type Deps struct {
 	// disable.
 	AISuggestDailyLimit int
 	AIExplainDailyLimit int
+	AIWizardDailyLimit  int
 	AIMonthlySpendUSD   float64
 }
 
@@ -71,6 +72,7 @@ func New(d Deps) http.Handler {
 		TrustedProxyCount:    d.TrustedProxyCount,
 		AISuggestDailyLimit:  d.AISuggestDailyLimit,
 		AIExplainDailyLimit:  d.AIExplainDailyLimit,
+		AIWizardDailyLimit:   d.AIWizardDailyLimit,
 		AIMonthlySpendMicros: api.AISpendMicros(d.AIMonthlySpendUSD),
 	}
 
@@ -92,6 +94,7 @@ func New(d Deps) http.Handler {
 		h.RegisterDeckRoutes(r)
 		h.RegisterImportRoutes(r)
 		h.RegisterAIRoutes(r)
+		h.RegisterWizardRoutes(r)
 		h.RegisterSynergyRoutes(r)
 	})
 

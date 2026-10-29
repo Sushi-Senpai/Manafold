@@ -8,7 +8,7 @@
 // wired Assistant is Disabled(), whose methods return ErrNotConfigured and whose
 // Enabled() is false, so the app still builds and boots with no key present.
 //
-// @spec AI-001, AI-003, AI-004
+// @spec AI-001, AI-003, AI-004, AI-050
 package ai
 
 import (
@@ -23,6 +23,9 @@ var ErrNotConfigured = errors.New("ai: Anthropic assistant is not configured (se
 const (
 	suggestModel = "claude-sonnet-5"
 	explainModel = "claude-haiku-4-5"
+	// curateModel serves the deck wizard's rounds; it is the suggest model
+	// (AI-051).
+	curateModel = suggestModel
 )
 
 // CardRef is the minimal card shape the assistant reasons over: enough for the
@@ -90,6 +93,53 @@ type ExplainResult struct {
 	Usage Usage
 }
 
+// PoolCard is one candidate the deck wizard offers the model: a card the
+// backend has already proven legal, in-bracket and within the player's
+// restrictions, plus the facts the model needs to choose between candidates.
+type PoolCard struct {
+	CardRef
+	ProducedMana []string
+	GameChanger  bool
+	PriceUSD     *float64
+	// InclusionPct and SynergyPct are set only when the pool came from stored
+	// synergy data: the share of sampled decks playing the card, and that share
+	// minus the colour-identity baseline's, in percentage points.
+	InclusionPct *int
+	SynergyPct   *int
+}
+
+// CurateRequest is one deck-wizard round. Pool is the whole menu: the model may
+// pick only from it, and the handler enforces that (AI-052).
+type CurateRequest struct {
+	Step         string
+	StepGuidance string
+
+	CommanderName string
+	CommanderText string
+	DeckIdentity  []string
+
+	Bracket         int
+	BracketGuidance string
+	// GameChangersLeft is how many more Game Changers the bracket admits; nil
+	// means unlimited.
+	GameChangersLeft *int
+
+	// Notes is the player's free text. It is untrusted and steers curation only.
+	Notes string
+
+	InDeck []string
+	Pool   []PoolCard
+	Want   int
+}
+
+// CurateResult is the model's summary and picks plus usage; the handler runs the
+// gate, pool membership and bracket admission over Picks before responding.
+type CurateResult struct {
+	Summary string
+	Picks   []Suggestion
+	Usage   Usage
+}
+
 // Assistant is the model-facing surface. server.Deps carries one; handlers call
 // it and never construct one.
 type Assistant interface {
@@ -101,6 +151,9 @@ type Assistant interface {
 	Suggest(ctx context.Context, req SuggestRequest) (SuggestResult, error)
 	// Explain returns two or three sentences on why one card fits the deck.
 	Explain(ctx context.Context, req ExplainRequest) (ExplainResult, error)
+	// Curate picks up to req.Want cards from req.Pool for one deck-wizard round,
+	// with a one-sentence reason each and a short summary for the player.
+	Curate(ctx context.Context, req CurateRequest) (CurateResult, error)
 }
 
 // disabled is the no-key Assistant.
@@ -117,4 +170,8 @@ func (disabled) Suggest(context.Context, SuggestRequest) (SuggestResult, error) 
 
 func (disabled) Explain(context.Context, ExplainRequest) (ExplainResult, error) {
 	return ExplainResult{}, ErrNotConfigured
+}
+
+func (disabled) Curate(context.Context, CurateRequest) (CurateResult, error) {
+	return CurateResult{}, ErrNotConfigured
 }

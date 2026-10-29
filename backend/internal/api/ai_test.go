@@ -24,6 +24,7 @@ type fakeAssistant struct {
 	enabled bool
 	suggest func(ai.SuggestRequest) (ai.SuggestResult, error)
 	explain func(ai.ExplainRequest) (ai.ExplainResult, error)
+	curate  func(ai.CurateRequest) (ai.CurateResult, error)
 }
 
 func (f fakeAssistant) Enabled() bool { return f.enabled }
@@ -34,6 +35,10 @@ func (f fakeAssistant) Suggest(_ context.Context, r ai.SuggestRequest) (ai.Sugge
 
 func (f fakeAssistant) Explain(_ context.Context, r ai.ExplainRequest) (ai.ExplainResult, error) {
 	return f.explain(r)
+}
+
+func (f fakeAssistant) Curate(_ context.Context, r ai.CurateRequest) (ai.CurateResult, error) {
+	return f.curate(r)
 }
 
 // aiServe runs one request against the deck + AI routes with an injected
@@ -56,6 +61,7 @@ func aiServe(t *testing.T, a *API, userID pgtype.UUID, anonToken, method, path s
 		})
 		a.RegisterDeckRoutes(r)
 		a.RegisterAIRoutes(r)
+		a.RegisterWizardRoutes(r)
 	})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, newJSONRequest(t, method, path, body))

@@ -346,6 +346,85 @@ export type BracketCombo = {
   borderline: boolean;
 };
 
+// ---- deck-wizard ------------------------------------------------------
+
+export type WizardStep = "fixing" | "utility" | "picks";
+
+export type WizardPlan = {
+  ready: boolean;
+  reason: "no_commander" | "no_bracket" | "bracket_unsupported" | null;
+  ai_enabled: boolean;
+  bracket: number | null;
+  archetype: string | null;
+  policy: {
+    game_changer_limit: number | null;
+    game_changers_in_deck: number;
+    game_changers_left: number | null;
+    guidance: string;
+  } | null;
+  lands: {
+    target: number;
+    in_deck: number;
+    basics_needed: number;
+    fixing_applicable: boolean;
+  };
+  synergy: { status: "none" | "gathering" | "ready"; reason: string | null } | null;
+};
+
+export type WizardRestrictions = {
+  no_tutors?: boolean;
+  max_price_usd?: number;
+  notes?: string;
+};
+
+export type WizardProposeBody = {
+  step: WizardStep;
+  include_fetch?: boolean;
+  land_target?: number;
+  restrictions?: WizardRestrictions;
+  rejected_card_ids?: string[];
+};
+
+export type WizardProposal = {
+  card: CardSummary;
+  reason: string;
+  game_changer: boolean;
+  price_usd: number | null;
+  synergy: { decks: number; inclusion: number; synergy: number | null } | null;
+};
+
+export type WizardGameChangers = { limit: number | null; in_deck: number; left: number | null };
+
+export type WizardEmptyReason = "land_target_met" | "no_fixing_needed" | "deck_full" | "no_candidates";
+
+export type WizardProposeResponse = {
+  step: WizardStep;
+  summary: string;
+  source: "synergy" | "popular" | "lands";
+  proposals: WizardProposal[];
+  dropped: number;
+  pool_size: number;
+  empty_reason: WizardEmptyReason | null;
+  game_changers: WizardGameChangers;
+  combos_checked: boolean;
+  synergy: {
+    status: "none" | "gathering" | "ready";
+    sample: { deck_count: number; fetched_at: string } | null;
+    attribution: { text: string; url: string };
+  } | null;
+  model: string;
+};
+
+export type WizardBasicsRow = { card: CardSummary; quantity: number; in_deck: number };
+
+export type WizardBasics = {
+  land_target: number;
+  lands_in_deck: number;
+  basics_needed: number;
+  rows: WizardBasicsRow[];
+  missing: string[];
+};
+
 export type BracketReport = {
   tag: string;
   tag_label: string;
@@ -460,6 +539,20 @@ export const api = {
   // once; it never waits on Archidekt (SYN-030).
   ensureCommanderSynergy: (cardId: string) =>
     request<SynergyStatus>(`/api/synergy/commanders/${cardId}/ensure`, { method: "POST" }),
+
+  // ---- deck-wizard ----
+  getWizardPlan: (id: string) => request<WizardPlan>(`/api/decks/${id}/wizard`),
+  wizardPropose: (id: string, body: WizardProposeBody) =>
+    request<WizardProposeResponse>(`/api/decks/${id}/wizard/propose`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  // Plans the basic lands the deck still needs; writes nothing (WIZ-053).
+  wizardBasics: (id: string, landTarget?: number) =>
+    request<WizardBasics>(`/api/decks/${id}/wizard/basics`, {
+      method: "POST",
+      body: JSON.stringify(landTarget === undefined ? {} : { land_target: landTarget }),
+    }),
 
   // ---- ai-assist ----
   suggestDeck: (id: string) =>

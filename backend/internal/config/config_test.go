@@ -10,7 +10,7 @@ func clearEnv(t *testing.T) {
 	for _, k := range []string{
 		"PORT", "DATABASE_URL", "FRONTEND_URL", "DEV_AUTH", "ANTHROPIC_API_KEY",
 		"TRUSTED_PROXY_COUNT", "AI_ENABLED", "AI_SUGGEST_DAILY_LIMIT",
-		"AI_EXPLAIN_DAILY_LIMIT", "AI_MONTHLY_SPEND_USD",
+		"AI_EXPLAIN_DAILY_LIMIT", "AI_WIZARD_DAILY_LIMIT", "AI_MONTHLY_SPEND_USD",
 	} {
 		t.Setenv(k, "")
 	}
@@ -188,5 +188,34 @@ func TestLoad_DevAuthAndPortDefault(t *testing.T) {
 	}
 	if cfg.Port != "8080" {
 		t.Fatalf("expected Port to default to 8080, got %q", cfg.Port)
+	}
+}
+
+// @spec AI-036
+func TestLoad_WizardDailyLimitDefaultsAndFailSafe(t *testing.T) {
+	cases := []struct {
+		env  string
+		want int
+	}{
+		{"", 40},
+		{"7", 7},
+		{"0", 40},       // non-positive -> default, never "unlimited"
+		{"-2", 40},      // negative -> default
+		{"garbage", 40}, // unparseable -> default
+	}
+	for _, c := range cases {
+		clearEnv(t)
+		t.Setenv("DATABASE_URL", "postgres://example")
+		t.Setenv("FRONTEND_URL", "http://localhost:3000")
+		if c.env != "" {
+			t.Setenv("AI_WIZARD_DAILY_LIMIT", c.env)
+		}
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load(%q): %v", c.env, err)
+		}
+		if cfg.AIWizardDailyLimit != c.want {
+			t.Errorf("AI_WIZARD_DAILY_LIMIT=%q -> %d, want %d", c.env, cfg.AIWizardDailyLimit, c.want)
+		}
 	}
 }

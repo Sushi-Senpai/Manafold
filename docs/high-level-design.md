@@ -122,7 +122,7 @@ Ordered so that when two conflict, the higher one wins.
 
 ## System Design
 
-Seven segments. `platform-shell` provides the routing/rendering substrate every
+Eight segments. `platform-shell` provides the routing/rendering substrate every
 other segment runs on. `account-access` gates every `/api/*` request.
 `card-data` owns the Scryfall mirror and is read by `deck-building`,
 `import-export`, `ai-assist`, and `synergy`. `deck-building` owns decks and the
@@ -130,6 +130,9 @@ legality validator and is read by `ai-assist` and `import-export`. `synergy`
 owns the per-commander synergy aggregates computed from public Archidekt
 decklists, gathered on demand by one rate-limited background worker when a user
 builds for a commander, and read by `ai-assist` and the deck wizard.
+`deck-wizard` owns the interactive build flow: it reads the mirror, the deck
+rules, the bracket check, the templates, the synergy data and the model, and
+proposes cards the player accepts; it never writes a deck itself.
 
 ```mermaid
 flowchart TB
@@ -176,6 +179,11 @@ flowchart TB
         aggs["per-commander inclusion<br/>vs colour-identity baseline"]
     end
 
+    subgraph wiz["deck-wizard (WIZ)"]
+        policy["internal/deckwizard<br/>bracket policy · land target · basics · admission"]
+        flow["setup → lands → utility lands → picks → basics<br/>the player accepts or rejects every card"]
+    end
+
     platform -. every request .-> access
     access -. user_id / anon draft .-> deck
     card --> deck
@@ -185,6 +193,9 @@ flowchart TB
     deck --> port
     card --> syn
     syn --> ai
+    ai --> wiz
+    deck --> wiz
+    syn --> wiz
 ```
 
 Dependency DAG (`docs/arrows/index.yaml` is authoritative):
@@ -193,11 +204,12 @@ Dependency DAG (`docs/arrows/index.yaml` is authoritative):
 |---|---|---|
 | `platform-shell` | — | `account-access`, `card-data`, `deck-building` |
 | `account-access` | `platform-shell` | `deck-building` |
-| `card-data` | `platform-shell` | `deck-building`, `import-export`, `ai-assist`, `synergy` |
-| `deck-building` | `card-data`, `account-access` | `ai-assist`, `import-export` |
+| `card-data` | `platform-shell` | `deck-building`, `import-export`, `ai-assist`, `synergy`, `deck-wizard` |
+| `deck-building` | `card-data`, `account-access` | `ai-assist`, `import-export`, `deck-wizard` |
 | `import-export` | `card-data`, `deck-building` | — |
-| `ai-assist` | `card-data`, `deck-building`, `synergy` | — |
-| `synergy` | `platform-shell`, `card-data` | `ai-assist` |
+| `ai-assist` | `card-data`, `deck-building`, `synergy` | `deck-wizard` |
+| `synergy` | `platform-shell`, `card-data` | `ai-assist`, `deck-wizard` |
+| `deck-wizard` | `card-data`, `deck-building`, `ai-assist`, `synergy` | — |
 
 ## Key Design Decisions
 
@@ -282,6 +294,23 @@ Dependency DAG (`docs/arrows/index.yaml` is authoritative):
   batch. The captain accepted that risk for a non-monetised personal tool
   (`MANAFOLD.md` D7). The segment is isolated so a lockdown removes only it.
 
+- **The deck wizard is interactive and filter-first: the player accepts every
+  card, the model curates a deterministic pool, and the bracket is a filter.**
+  A player names a commander, a bracket (1–4) and restrictions; the wizard asks
+  which lands they will play (including none of the expensive duals), proposes
+  utility lands, then rounds of synergy picks. Each step's candidate pool is
+  built from the mirror, so colour identity, legality, price cap, tutor ban, the
+  Game Changer limit and the bracket's combo expectations hold by construction;
+  one model call per step picks from that pool and explains, and what it names
+  passes the same gate as "suggest & explain". Nothing enters the deck except by
+  the player's Accept through the existing add-card path. *Alternatives:* an open
+  model loop that proposes freely and is filtered after (rejected — more calls,
+  and the rules become something the model can talk its way around); a
+  whole-deck generator (rejected — the captain wants a conversation, not a
+  result); rejecting over-bracket adds in the deck API (rejected — the bracket
+  check is report-only so manual building is never blocked). Bracket 5 is out of
+  scope. Design: `docs/intent/deck-wizard/`; decision `MANAFOLD.md` D8.
+
 - **Monorepo, Go + chi + pgx/sqlc backend, Next.js/TypeScript/Tailwind
   frontend, mirroring the sibling project's proven topology.** Migrations are
   embedded via `//go:embed` and applied by the API binary at startup, before the
@@ -334,19 +363,22 @@ Milestones after M1 (the segment map does not change; these add specs and code):
 Later features the architecture must not preclude (design notes only, recorded
 in the owning LLDs' *Open Questions & Future Decisions*):
 
-1. **Deck-bootstrapping wizard** — commander → archetype → auto mana base from
-   the colour identity → a wizard filling the archetype template's slots
+1. **Deck-bootstrapping wizard** — commander → bracket → land preferences and
+   mana base → synergy picks. The first slice is the `deck-wizard` segment
+   (`docs/intent/deck-wizard/`); filling the archetype template's role slots
    (`internal/decktemplates`, the same ranges the builder's "deck vs. target"
-   panel shows) with the most powerful/common cards for those colours
-   (`deck-building` + `ai-assist`; a lighter-weight relative of M8's "build a
+   panel shows) is its next step (a lighter-weight relative of M8's "build a
    shell").
 2. **High-synergy cards** as a recommendation input beyond `edhrec_rank`
    (`ai-assist`). EDHREC has no open API, so the data comes from Manafold's own
-   Archidekt-derived synergy aggregates (`synergy` segment). Wiring them into
-   the AI suggestion pool is the remaining step.
+   Archidekt-derived synergy aggregates (`synergy` segment). The wizard's picks
+   step consumes them; wiring them into the plain suggestion pool is the
+   remaining step.
 3. **Constrained deck generation beyond brackets** — budget cap, "no infinite
    combos", "no tutors", tribe/theme lock, house rules (`ai-assist`
-   constraint-driven generation).
+   constraint-driven generation). The wizard already carries a per-card price
+   cap and a tutor ban as pool filters, and free-text strategy notes as model
+   steering.
 4. **Functional-subtype grouping first-class** in the category model and builder
    UI (`deck-building`; reinforces the functional-category decision above).
 5. **Cut suggestions / replacement discussion** — surface underperforming or
@@ -378,7 +410,7 @@ Node's built-in test runner.
 ## References
 
 - `MANAFOLD.md` — the project's product-level decision log and status narrative.
-- `docs/intent/` — the seven leaf LLDs and their EARS specs; `docs/arrows/` — the
+- `docs/intent/` — the eight leaf LLDs and their EARS specs; `docs/arrows/` — the
   arrow overlay.
 - `README.md` — local development quickstart.
 - Scryfall API and bulk data: <https://scryfall.com/docs/api>,

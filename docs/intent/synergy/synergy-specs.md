@@ -40,9 +40,9 @@ Markers: `[x]` implemented, `[ ]` active gap, `[D]` deferred.
 - [x] **SYN-041**: The synergy query shall return only cards that resolve to a `cards` row that is commander-legal and not banned by `banlist_overrides`.
 - [x] **SYN-042**: If `GET /api/synergy/commanders/{cardId}` or the ensure endpoint names a card id that is not in the mirror, then the system shall respond `404`; a commander with no stored sample shall instead return its status with an empty card list and a null sample.
 - [x] **SYN-044**: When the builder loads a deck that has a commander assigned, it shall call the ensure endpoint for that commander once and shall show nothing from the answer.
+- [x] **SYN-043**: Where a surface displays synergy data, the surface shall show the text "Synergy data from public Archidekt decks" linked to `https://archidekt.com`, and the deck count of the sample the numbers come from. (First displayed by the deck wizard's picks step, `WIZ-065`.)
 
 ## Deferred
 
-- [D] **SYN-043**: Where a surface displays synergy data, the surface shall show the text "Synergy data from public Archidekt decks" linked to `https://archidekt.com`, and the deck count of the sample the numbers come from.
 - [D] **SYN-050**: The system shall slice synergy samples by Archidekt's declared `edhBracket` once enough decks declare one for per-bracket samples to be meaningful.
 - [D] **SYN-051**: The system shall sample partner-commander pairs as one commander.

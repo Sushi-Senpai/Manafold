@@ -49,21 +49,24 @@ still builds and boots with no key present.
 Cost is controlled by four mechanisms:
 
 - **Per-user daily call quotas** per feature (`AI_SUGGEST_DAILY_LIMIT`,
-  default 20; `AI_EXPLAIN_DAILY_LIMIT`, default 40). A user at the limit gets
-  `429` until the calendar day rolls over (AI-031).
+  default 20; `AI_EXPLAIN_DAILY_LIMIT`, default 40; `AI_WIZARD_DAILY_LIMIT`,
+  default 40 — one call per wizard round, see `deck-wizard`). A user at the
+  limit gets `429` until the calendar day rolls over (AI-031, AI-036).
 - **A global monthly spend ceiling** (`AI_MONTHLY_SPEND_USD`, default 50; 0
   disables the check). While the month-to-date sum of estimated cost is at or
   above it, every AI endpoint returns `503` (AI-032).
-- **Cheap-tier models per feature** — `claude-sonnet-5` for "suggest & explain",
-  `claude-haiku-4-5` for the single-card blurb (AI-004). Whole-deck generation,
+- **Cheap-tier models per feature** — `claude-sonnet-5` for "suggest & explain"
+  and the wizard's curation, `claude-haiku-4-5` for the single-card blurb
+  (AI-004, AI-051). Whole-deck generation,
   if it is ever built, is the only feature that would justify an Opus-tier
   model.
 - **Anonymous drafts get no AI** — an anonymous-draft caller has no `user_id` to
   meter, so every AI endpoint returns `403` for them; the features unlock on
   sign-in (AI-033).
 
-The `ai_usage` table (`user_id`, `usage_date`, `feature`, `calls`,
-`input_tokens`, `output_tokens`, `cost_micros`, primary key on the first three)
+The `ai_usage` table (`user_id`, `usage_date`, `feature` (`suggest`, `explain`, or
+`wizard`), `calls`, `input_tokens`, `output_tokens`, `cost_micros`, primary key on
+the first three)
 backs both quotas. It is written **whenever a model call comes back with token
 counts** — a call that reached the model has cost money and is metered even when
 its result is unusable (no parseable suggestions, a truncated payload, empty
@@ -81,10 +84,11 @@ type Assistant interface {
     Enabled() bool
     Suggest(ctx context.Context, req SuggestRequest) (SuggestResult, error)
     Explain(ctx context.Context, req ExplainRequest) (ExplainResult, error)
+    Curate(ctx context.Context, req CurateRequest) (CurateResult, error)
 }
 ```
 
-- **`Disabled()`** returns a stub whose `Suggest`/`Explain` return
+- **`Disabled()`** returns a stub whose `Suggest`/`Explain`/`Curate` return
   `ErrNotConfigured` and whose `Enabled()` is false. This is what `server.New`
   gets when `AI_ENABLED` is unset.
 - **`NewAnthropic(apiKey string)`** returns the real assistant: one shared
@@ -125,6 +129,23 @@ handler can meter a call that reached the model regardless of its outcome.
 and the deck's colour identity. One `Messages.New` call to `claude-haiku-4-5`,
 no tools, a system prompt asking for two or three sentences grounded in the
 commander and card text. `ExplainResult` is the prose plus `Usage`.
+
+### Curate — one forced-tool call over a closed pool
+
+`Curate` is the model's part of the deck wizard (`deck-wizard`). Where `Suggest`
+lets the model search, `Curate` gives it the whole menu: `CurateRequest` carries
+the commander (name, Oracle text), the deck's colour identity, the bracket and its
+guidance text, the Game Changer budget left, the step's guidance text, the player's
+free-text notes (labelled untrusted in the prompt), the names already in the deck,
+the pool (`PoolCard`: name, cost, type, trimmed Oracle text, produced mana, price,
+Game Changer flag, and synergy inclusion and synergy points when the pool came from
+stored synergy data) and `Want`. One `Messages.New` call forces the
+`submit_picks` tool, whose input is a two-sentence `summary` for the player and up
+to `Want` `{name, reason}` picks (AI-050, AI-052). It uses the suggest model
+(AI-051), returns its accumulated `Usage` on every path (AI-053), and leaves
+legality, pool membership and bracket admission to the handler's gate. A response
+with no `submit_picks` call is an error; one that picks nothing is a valid empty
+result.
 
 ## Endpoints (M4)
 
@@ -178,7 +199,8 @@ Reusing `deckrules` here is deliberate — there is exactly one definition of
 | Anti-hallucination | Re-validate every model-returned name against the mirror + `deckrules` for the deck's identity; drop failures silently, never substitute | Prompt the model to stay grounded and trust it; a post-hoc "are these real?" model call | Prompting is not enforcement; the deterministic gate is the only thing that makes "never suggests an illegal card" true. Reusing `deckrules` keeps one legality definition. |
 | Candidate pool source | `edhrec_rank` within colour identity, non-banned, not in deck | The model enumerates candidates from memory | The model's parametric card knowledge is stale and unreliable; the pool must come from data. Per-commander synergy from the `synergy` segment extends it later. |
 | Final answer shape | A `submit_suggestions` tool call | Parse a JSON block out of the model's last text message | A tool call has a schema and an unambiguous stop condition; free-text JSON needs a tolerant extractor and still fails on stray prose. |
-| Models per feature | `claude-sonnet-5` for suggest, `claude-haiku-4-5` for explain | One model for both; Opus-tier throughout | The blurb is a short, low-stakes generation where Haiku holds quality at a fraction of the cost; suggestions need Sonnet's judgement over the pool. Opus-tier is reserved for whole-deck generation if it is ever built. |
+| Wizard curation | One `Curate` call with a forced `submit_picks` tool over a pool the handler built | Reuse `Suggest` and its `search_cards` loop; free-form chat turns | The wizard's rules (bracket, price, tutors, lands) are filters on the pool, which only works if the model chooses from the pool and nothing else; a single forced call is also the cheapest shape per step. |
+| Models per feature | `claude-sonnet-5` for suggest and wizard curation, `claude-haiku-4-5` for explain | One model for all; Opus-tier throughout | The blurb is a short, low-stakes generation where Haiku holds quality at a fraction of the cost; suggestions need Sonnet's judgement over the pool. Opus-tier is reserved for whole-deck generation if it is ever built. |
 | Suggestions on model failure | Return `502` (no fallback list) | Fall back to the raw `edhrec_rank` pool | An unexplained top-`edhrec` dump is not what the user asked for and reads as a broken feature; better to surface the failure. The M5 deck-health report is the case *with* a real deterministic fallback. |
 | Usage accounting | The assistant returns its accumulated `Usage` on every path; the handler writes `ai_usage` whenever that `Usage` carries tokens, before it maps any error to a status code | Reserve quota before the call; write only after the whole handler succeeds; meter only the clean success path | A call that never reached the model (assistant disabled, transport error before any response) carries a zero `Usage` and should not cost the user a call, but any call that reached the model has incurred real cost and must be metered regardless of an unusable result or a downstream gate failure — otherwise a deterministically repeatable path (model replies with plain text, `MaxTokens` truncation, a `banlist_overrides` blip) silently under-counts the ceiling. The small risk is a burst of concurrent calls slipping a few over the limit, which is acceptable for v1. |
 | Quota store | A Postgres `ai_usage` table, checked per request | An in-process counter | Quotas must survive a restart and, when the backend scales past one instance, be shared; a table is both. The month-to-date ceiling sum is a single indexed aggregate. |
@@ -204,10 +226,11 @@ Reusing `deckrules` here is deliberate — there is exactly one definition of
 
 ### Deferred
 
-1. **Deck-bootstrapping wizard** (captain bonus #1) — given a commander and a
-   target count per functional slot, return ranked candidates within colour
-   identity to fill a whole shell rather than top up an existing deck. Shares
-   the candidate-pool machinery with suggestions. Roadmap M8.
+1. **Deck-bootstrapping wizard** (captain bonus #1) — the first slice is the
+   `deck-wizard` segment (lands, utility lands, synergy picks, all
+   player-accepted); `Curate` is this segment's part of it. Filling every
+   functional slot of the archetype template stays with that segment's follow-ups.
+   Roadmap M8.
 2. **High-synergy cards** (captain bonus #2): a commander's high-synergy cards
    as a recommendation input beyond `edhrec_rank`. EDHREC has no open API, so
    the data comes from the `synergy` segment's aggregates over public Archidekt

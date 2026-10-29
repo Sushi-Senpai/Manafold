@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError, type Deck } from "@/lib/api";
 
-// @spec DECK-001
+// @spec DECK-001, WIZ-060
 export default function DecksPage() {
   const router = useRouter();
   const [decks, setDecks] = useState<Deck[] | null>(null);
@@ -20,13 +20,14 @@ export default function DecksPage() {
       .catch((e) => setError(e instanceof ApiError ? e.message : "Failed to load decks"));
   }, []);
 
-  async function createDeck(e: React.FormEvent) {
-    e.preventDefault();
+  // withWizard opens the new deck with the deck wizard's panel (WIZ-060).
+  async function createDeck(e: React.FormEvent | null, withWizard = false) {
+    e?.preventDefault();
     setCreating(true);
     setError(null);
     try {
       const deck = await api.createDeck(name.trim() || "Untitled deck");
-      router.push(`/decks/${deck.id}`);
+      router.push(withWizard ? `/decks/${deck.id}?wizard=1` : `/decks/${deck.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to create deck");
       setCreating(false);
@@ -55,6 +56,14 @@ export default function DecksPage() {
           className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-ink transition hover:opacity-90 disabled:opacity-40"
         >
           {creating ? "Creating…" : "New deck"}
+        </button>
+        <button
+          type="button"
+          disabled={creating}
+          onClick={() => createDeck(null, true)}
+          className="rounded-lg border border-primary/40 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/5 disabled:opacity-40"
+        >
+          New deck with wizard
         </button>
       </form>
 

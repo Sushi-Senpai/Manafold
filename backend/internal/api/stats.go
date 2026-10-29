@@ -27,6 +27,18 @@ func (a *API) getDeckStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	writeJSON(w, http.StatusOK, deckStatsJSON{
+		Stats:           deckstats.Analyze(statsInputFor(ld)),
+		CategoryTargets: deckstats.CategoryTargets,
+	})
+}
+
+// statsInputFor lists the cards the stats describe: the commander(s) and the
+// main and command entries. The mana curve, pip demand, and category roll-up
+// describe the deck the player is building, not the maybe / sideboard staging
+// areas, matching what /validation counts. The deck wizard reads the same view
+// for its land and pip numbers.
+func statsInputFor(ld *loadedDeck) []deckstats.CardStat {
 	var stats []deckstats.CardStat
 	if ld.commander != nil {
 		stats = append(stats, cardStatFromCard(*ld.commander, 1, ""))
@@ -35,9 +47,6 @@ func (a *API) getDeckStats(w http.ResponseWriter, r *http.Request) {
 		stats = append(stats, cardStatFromCard(*ld.partner, 1, ""))
 	}
 	for _, e := range ld.entries {
-		// The mana curve, pip demand, and category roll-up describe the deck the
-		// player is building — the main and command boards — not the maybe /
-		// sideboard staging areas, matching what /validation counts.
 		if e.Board != "main" && e.Board != "command" {
 			continue
 		}
@@ -51,11 +60,7 @@ func (a *API) getDeckStats(w http.ResponseWriter, r *http.Request) {
 			Category:     e.Category.String,
 		})
 	}
-
-	writeJSON(w, http.StatusOK, deckStatsJSON{
-		Stats:           deckstats.Analyze(stats),
-		CategoryTargets: deckstats.CategoryTargets,
-	})
+	return stats
 }
 
 func cardStatFromCard(c db.Card, qty int, category string) deckstats.CardStat {

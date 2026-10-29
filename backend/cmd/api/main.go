@@ -62,6 +62,7 @@ func main() {
 		TrustedProxyCount:   cfg.TrustedProxyCount,
 		AISuggestDailyLimit: cfg.AISuggestDailyLimit,
 		AIExplainDailyLimit: cfg.AIExplainDailyLimit,
+		AIWizardDailyLimit:  cfg.AIWizardDailyLimit,
 		AIMonthlySpendUSD:   cfg.AIMonthlySpendUSD,
 	})
 
