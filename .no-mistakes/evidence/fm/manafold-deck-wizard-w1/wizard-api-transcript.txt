@@ -1,0 +1,15 @@
+== bracket 2
+{"ready":true,"reason":null,"ai_enabled":false,"bracket":2,"archetype":null,"policy":{"game_changer_limit":0,"game_changers_in_deck":0,"game_changers_left":0,"guidance":"Bracket 2 (Core): precon-level power. No Game Changers, no infinite combos, no mass land denial; extra turns only if incidental."},"lands":{"target":37,"in_deck":0,"basics_needed":37,"fixing_applicable":false},"synergy":{"status":"none","reason":"disabled"}}
+
+== bracket 3
+{"ready":true,"reason":null,"ai_enabled":false,"bracket":3,"archetype":null,"policy":{"game_changer_limit":3,"game_changers_in_deck":0,"game_changers_left":3,"guidance":"Bracket 3 (Upgraded): stronger than a precon but not optimised. Up to three Game Changers, so spend them sparingly; some combos are fine as long as they cannot win the game quickly; no mass land denial."},"lands":{"target":37,"in_deck":0,"basics_needed":37,"fixing_applicable":false},"synergy":{"status":"none","reason":"disabled"}}
+
+== bracket 4
+{"ready":true,"reason":null,"ai_enabled":false,"bracket":4,"archetype":null,"policy":{"game_changer_limit":null,"game_changers_in_deck":0,"game_changers_left":null,"guidance":"Bracket 4 (Optimized): high power. Game Changers, fast mana, efficient interaction, tutors and strong combos are all expected where they fit the commander's plan."},"lands":{"target":37,"in_deck":0,"basics_needed":37,"fixing_applicable":false},"synergy":{"status":"none","reason":"disabled"}}
+
+== bracket 5
+{"ready":false,"reason":"bracket_unsupported","ai_enabled":false,"bracket":5,"archetype":null,"policy":null,"lands":{"target":37,"in_deck":0,"basics_needed":37,"fixing_applicable":false},"synergy":null}
+
+== propose (AI off)
+{"error":"AI features are not configured"}
+ [503]
