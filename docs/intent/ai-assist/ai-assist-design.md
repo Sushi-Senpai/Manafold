@@ -64,8 +64,9 @@ Cost is controlled by four mechanisms:
   meter, so every AI endpoint returns `403` for them; the features unlock on
   sign-in (AI-033).
 
-The `ai_usage` table (`user_id`, `usage_date`, `feature`, `calls`,
-`input_tokens`, `output_tokens`, `cost_micros`, primary key on the first three)
+The `ai_usage` table (`user_id`, `usage_date`, `feature` (`suggest`, `explain`, or
+`wizard`), `calls`, `input_tokens`, `output_tokens`, `cost_micros`, primary key on
+the first three)
 backs both quotas. It is written **whenever a model call comes back with token
 counts** — a call that reached the model has cost money and is metered even when
 its result is unusable (no parseable suggestions, a truncated payload, empty

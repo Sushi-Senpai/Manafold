@@ -137,6 +137,10 @@ type Querier interface {
 	// means no filter), best (lowest edhrec_rank) first.
 	// @spec CARD-065, CARD-062, CARD-063
 	ListCardsByOracleTag(ctx context.Context, arg ListCardsByOracleTagParams) ([]Card, error)
+	// The lowest known USD price of each card across its non-digital printings; a
+	// card with no priced printing is absent from the result (WIZ-031).
+	// @spec WIZ-031
+	ListCheapestUSD(ctx context.Context, cardIds []pgtype.UUID) ([]ListCheapestUSDRow, error)
 	// @spec DECK-122
 	ListComboCards(ctx context.Context, comboIds []string) ([]ComboCard, error)
 	// Combos every one of whose card ingredients is among the given oracle ids —
@@ -169,6 +173,29 @@ type Querier interface {
 	// not know drops out of the join (SYN-040, SYN-041).
 	// @spec SYN-040, SYN-041
 	ListTopSynergyCards(ctx context.Context, arg ListTopSynergyCardsParams) ([]ListTopSynergyCardsRow, error)
+	// Candidate pools for the deck wizard (WIZ-040, WIZ-041, WIZ-043, WIZ-044).
+	// Every pool is the same legality definition as the rest of the product: inside
+	// the deck's colour identity, commander-legal after banlist_overrides, and not
+	// one of the excluded cards (the deck's own cards and the player's rejections).
+	// "Land" always means the front face: a modal double-faced "Instant // Land" is a
+	// spell here.
+	// Nonbasic lands that make at least two of the deck's colours, plus fetch lands
+	// when include_fetch is set: a land whose Oracle text sacrifices itself to search
+	// the library (which also covers Evolving Wilds-style lands), or one carrying the
+	// fetchland tag or a descendant. The text rule keeps the category alive if the
+	// community tag is renamed or thin.
+	// @spec WIZ-040
+	ListWizardFixingLands(ctx context.Context, arg ListWizardFixingLandsParams) ([]Card, error)
+	// Nonland Game Changers within the identity, best-ranked first.
+	// @spec WIZ-044
+	ListWizardGameChangers(ctx context.Context, arg ListWizardGameChangersParams) ([]Card, error)
+	// Nonland cards by edhrec_rank: the picks pool while a commander has no stored
+	// synergy sample.
+	// @spec WIZ-043
+	ListWizardPopularNonlands(ctx context.Context, arg ListWizardPopularNonlandsParams) ([]Card, error)
+	// Lands carrying the utility-land tag or a descendant.
+	// @spec WIZ-041
+	ListWizardUtilityLands(ctx context.Context, arg ListWizardUtilityLandsParams) ([]Card, error)
 	// The guard is atomic: the UPDATE claims the row only while applied_at is still
 	// null, so two concurrent applies serialize on the row lock and exactly one sees
 	// a row affected. Zero rows affected means the import was already applied and the

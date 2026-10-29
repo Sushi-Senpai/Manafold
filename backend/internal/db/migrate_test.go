@@ -75,6 +75,24 @@ func TestMigrate_FromEmptySchema_ReachesLatestVersion(t *testing.T) {
 		}
 	}
 
+	// The wizard is a metered AI feature, so ai_usage admits it and still
+	// refuses an unknown feature (AI-036).
+	var uid string
+	if err := scopedPool.QueryRow(ctx,
+		`INSERT INTO users (email) VALUES ('migrate-wizard@example.test') RETURNING id`).Scan(&uid); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	for feature, admitted := range map[string]bool{"suggest": true, "explain": true, "wizard": true, "bogus": false} {
+		_, err := scopedPool.Exec(ctx,
+			`INSERT INTO ai_usage (user_id, usage_date, feature) VALUES ($1, CURRENT_DATE, $2)`, uid, feature)
+		if admitted && err != nil {
+			t.Errorf("ai_usage refused feature %q: %v", feature, err)
+		}
+		if !admitted && err == nil {
+			t.Errorf("ai_usage accepted unknown feature %q", feature)
+		}
+	}
+
 	// A second Migrate against an already-current schema must no-op, not error —
 	// the path every redeploy without a new migration takes.
 	if err := Migrate(schemaURL); err != nil {

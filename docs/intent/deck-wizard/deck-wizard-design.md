@@ -155,7 +155,7 @@ rejected set. Every pool is then narrowed by the **restrictions**:
 
 | Step | Source | Ordering | Size |
 |---|---|---|---|
-| fixing | nonbasic lands (front face a Land) with at least two of the deck's colours in `produced_mana`, plus `fetchland`-tagged lands when `include_fetch` | `edhrec_rank`, unranked last | 30 |
+| fixing | nonbasic lands (front face a Land) with at least two of the deck's colours in `produced_mana`, plus, when `include_fetch`, lands that sacrifice themselves to search the library (by Oracle text) or carry the `fetchland` tag | `edhrec_rank`, unranked last | 30 |
 | utility | lands tagged `utility-land` or a descendant | `edhrec_rank`, unranked last | 25 |
 | picks | the commander's stored synergy cards when a sample exists, else nonland cards by `edhrec_rank`; plus up to 10 identity-legal Game Changers when the bracket still allows them | synergy descending (then inclusion) or `edhrec_rank` | 40 |
 
@@ -200,8 +200,9 @@ nothing is a valid, empty result.
 ## Spend
 
 Each propose request that reaches the model is **one call** against the new
-`wizard` feature in `ai_usage`. It shares everything else with the existing AI
-features:
+`wizard` feature in `ai_usage` (migration `add_wizard_ai_feature` widens the
+table's `feature` check to admit it). It shares everything else with the
+existing AI features:
 
 - a per-user daily limit, `AI_WIZARD_DAILY_LIMIT` (default 40), enforced exactly
   like `AI_SUGGEST_DAILY_LIMIT` (`429`);
@@ -271,9 +272,10 @@ commander starts the gathering the picks step will use.
 
 ## Frontend
 
-- `frontend/src/components/builder/wizard/WizardPanel.tsx` — the panel and its
-  step components (`SetupStep`, `LandsStep`, `PicksStep`, `BasicsStep`), one
-  `ProposalList` shared by the three curated steps.
+- `frontend/src/components/builder/wizard/WizardPanel.tsx` — the panel, with the
+  five steps (setup, fixing lands, utility lands, picks, basics) and the round
+  result shared by the three curated steps; `ProposalList.tsx` — one round's
+  cards with Accept and Reject.
 - `frontend/src/lib/wizard.ts` — pure, tested: step order and skipping rules,
   the rejected-set reducer, request-body builders, the Game Changer budget line,
   empty-reason and error-status messages, and the basics apply plan.
@@ -291,7 +293,7 @@ commander starts the gathering the picks step will use.
 | Enforcing the bracket | Admission filters on the pool and the survivors, using `internal/bracket` | Prompt the model with the limits and check afterwards; reject over-limit adds in the decks API | Prompting is not enforcement. Rejecting adds contradicts the bracket check's report-only design (`DECK-125`) and would break manual building. Filtering what the wizard offers gives the guarantee where it is wanted. |
 | Cumulative admission | Survivors admitted in order against a growing working deck | Check each proposal alone | Two cards can be fine alone and together complete a combo or exceed the Game Changer budget; the player may accept both. |
 | Dual-land avoidance | A step the player can skip, plus a price cap | A "no duals" flag threaded through every prompt; a hard-coded cheap/expensive land list | Skipping is exact and free, and a pool with no lands cannot leak one. A price cap uses data the mirror already holds; a hand-kept list of expensive duals would go stale. |
-| Land categories | Structural: produces two or more of the deck's colours, plus tag-backed fetch and utility | Tag everything (`dual-land`, `shockland`, …) | Community tags are incomplete (the mirrored `dual-land` tag has no direct taggings), while `produced_mana` is Scryfall's own field. Tags are used only where there is no structural signal. |
+| Land categories | Structural: produces two or more of the deck's colours; fetch lands by Oracle text or tag; utility lands by tag | Tag everything (`dual-land`, `shockland`, …) | Community tags are incomplete (the mirrored `dual-land` tag has no direct taggings), while `produced_mana` and Oracle text are Scryfall's own fields. A tag is used where there is no structural signal (utility lands) and as a second route for fetch lands, so a renamed tag cannot silently empty the category. |
 | Price | Lowest USD among non-digital printings | Newest printing's price | The player's concern is what they would pay; the cheapest printing is the honest answer for a card with a pricey promo reprint. |
 | Wizard state | Client-held answers, the deck as the only durable state | A `wizard_sessions` table | A session lasts minutes and the deck already holds everything that matters. A table would add a migration, ownership queries and cleanup for no recovered value in this slice. |
 | Spend | A new `wizard` feature sharing the monthly ceiling, limit 40 | Count against `suggest`; unmetered because it is deterministic-heavy | One propose is one Sonnet call, so it is metered like suggest; a separate counter stops a wizard run from exhausting the suggest allowance and vice versa. 40 covers about five full runs a day. |
@@ -340,6 +342,7 @@ commander starts the gathering the picks step will use.
 - Code: `backend/internal/deckwizard/` (policy, land target, basics split,
   admission), `backend/internal/api/wizard.go`, `backend/internal/ai/` (`Curate`),
   `backend/internal/db/queries/wizard.sql`,
+  `backend/internal/db/migrations/000010_add_wizard_ai_feature.up.sql`,
   `frontend/src/components/builder/wizard/`, `frontend/src/lib/wizard.ts`
 - Cross-segment: `deck-building` (`internal/bracket`, `internal/decktemplates`,
   `internal/deckstats`, `internal/deckrules`), `card-data` (oracle tags, price

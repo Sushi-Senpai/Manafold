@@ -49,6 +49,9 @@ type Config struct {
 	// calendar day rolls over.
 	AISuggestDailyLimit int
 	AIExplainDailyLimit int
+	// AIWizardDailyLimit caps the deck wizard's model rounds per user per day
+	// (AI-036); every round is one call.
+	AIWizardDailyLimit int
 
 	// AIMonthlySpendUSD is the global month-to-date estimated-spend ceiling
 	// across all users (AI-032). At or above it, every AI endpoint answers 503.
@@ -109,6 +112,7 @@ func readEnv() Config {
 		AIEnabled:           os.Getenv("AI_ENABLED") == "true",
 		AISuggestDailyLimit: getEnvPosInt("AI_SUGGEST_DAILY_LIMIT", 20),
 		AIExplainDailyLimit: getEnvPosInt("AI_EXPLAIN_DAILY_LIMIT", 40),
+		AIWizardDailyLimit:  getEnvPosInt("AI_WIZARD_DAILY_LIMIT", 40),
 		AIMonthlySpendUSD:   getEnvNonNegFloat("AI_MONTHLY_SPEND_USD", 50),
 		TrustedProxyCount:   getEnvNonNegInt("TRUSTED_PROXY_COUNT", 1),
 	}

@@ -290,6 +290,34 @@ func (a *API) explainCard(w http.ResponseWriter, r *http.Request) {
 //
 // @spec AI-010, AI-013
 func (a *API) gateSuggestions(ctx context.Context, suggestions []ai.Suggestion, ld *loadedDeck) ([]map[string]any, int, error) {
+	gated, dropped, err := a.gateNames(ctx, suggestions, ld)
+	if err != nil {
+		return nil, 0, err
+	}
+	kept := make([]map[string]any, 0, len(gated))
+	for _, g := range gated {
+		kept = append(kept, map[string]any{
+			"card":   cardSummaryFrom(g.card, g.print, g.havePrint),
+			"reason": g.reason,
+		})
+	}
+	return kept, dropped, nil
+}
+
+// gatedCard is a model-named card that survived the gate, with the model's
+// reason for it.
+type gatedCard struct {
+	card      db.Card
+	print     db.CardPrint
+	havePrint bool
+	reason    string
+}
+
+// gateNames is the gate itself, shared by suggest and the deck wizard so there is
+// one definition of "a card the model may name for this deck" (AI-010, WIZ-020).
+//
+// @spec AI-010, AI-013, WIZ-020
+func (a *API) gateNames(ctx context.Context, suggestions []ai.Suggestion, ld *loadedDeck) ([]gatedCard, int, error) {
 	loadOverrides := a.Queries.ListBanlistOverrides
 	if a.overridesLoader != nil {
 		loadOverrides = a.overridesLoader
@@ -318,7 +346,7 @@ func (a *API) gateSuggestions(ctx context.Context, suggestions []ai.Suggestion, 
 	}
 
 	identity := nonNil(ld.deck.ColorIdentity)
-	kept := []map[string]any{}
+	kept := []gatedCard{}
 	seen := map[string]bool{}
 	dropped := 0
 
@@ -353,10 +381,7 @@ func (a *API) gateSuggestions(ctx context.Context, suggestions []ai.Suggestion, 
 		if p, perr := a.Queries.GetNewestPrintForCard(ctx, card.ID); perr == nil {
 			print, havePrint = p, true
 		}
-		kept = append(kept, map[string]any{
-			"card":   cardSummaryFrom(card, print, havePrint),
-			"reason": strings.TrimSpace(s.Reason),
-		})
+		kept = append(kept, gatedCard{card: card, print: print, havePrint: havePrint, reason: strings.TrimSpace(s.Reason)})
 	}
 	return kept, dropped, nil
 }

@@ -40,6 +40,7 @@ type API struct {
 	// month-to-date estimated-spend ceiling in micro-USD (AI-032), 0 to disable.
 	AISuggestDailyLimit  int
 	AIExplainDailyLimit  int
+	AIWizardDailyLimit   int
 	AIMonthlySpendMicros int64
 
 	// overridesLoader loads the manual banlist overrides for the suggestion gate;

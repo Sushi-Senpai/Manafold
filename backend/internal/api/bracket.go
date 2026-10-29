@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -36,47 +37,14 @@ func (a *API) getDeckBracket(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 
-	var cards []bracket.Card
-	var oracleIDs []pgtype.UUID
-	var commanders []string
-	add := func(oracle pgtype.UUID, name string, qty int, gameChanger bool) {
-		cards = append(cards, bracket.Card{
-			OracleID: uuidString(oracle), Name: name, Quantity: qty, GameChanger: gameChanger,
-		})
-		oracleIDs = append(oracleIDs, oracle)
-	}
-	for _, c := range []*db.Card{ld.commander, ld.partner} {
-		if c != nil {
-			add(c.ScryfallOracleID, c.Name, 1, c.IsGameChanger)
-			commanders = append(commanders, uuidString(c.ScryfallOracleID))
-		}
-	}
-	for _, e := range ld.entries {
-		// Like the stats and validation views, the bracket describes the deck the
-		// player is building: the main and command boards.
-		if e.Board != "main" && e.Board != "command" {
-			continue
-		}
-		add(e.ScryfallOracleID, e.Name, int(e.Quantity), e.IsGameChanger)
-		if e.Board == "command" {
-			commanders = append(commanders, uuidString(e.ScryfallOracleID))
-		}
-	}
-
-	flags, err := a.Queries.ListSpellbookCardFlags(ctx, oracleIDs)
+	cards, oracleIDs, commanders := bracketDeckCards(ld)
+	flagged, err := a.spellbookFlags(ctx, oracleIDs)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load bracket data")
 		return
 	}
-	flagged := make(map[string]db.SpellbookCardFlag, len(flags))
-	for _, f := range flags {
-		flagged[uuidString(f.ScryfallOracleID)] = f
-	}
 	for i := range cards {
-		if f, ok := flagged[cards[i].OracleID]; ok {
-			cards[i].MassLandDenial = f.MassLandDenial
-			cards[i].ExtraTurn = f.ExtraTurn
-		}
+		applyFlags(&cards[i], flagged)
 	}
 
 	combos, err := a.loadCombos(r, oracleIDs)
@@ -96,6 +64,56 @@ func (a *API) getDeckBracket(w http.ResponseWriter, r *http.Request) {
 		in.TargetBracket = &b
 	}
 	writeJSON(w, http.StatusOK, deckBracketJSON{Report: bracket.Check(in), ComboDataAvailable: available})
+}
+
+// bracketDeckCards lists the cards the bracket check reads — the commander(s)
+// and the main and command entries, like the stats and validation views — with
+// their oracle ids and the oracle ids of the commanders.
+func bracketDeckCards(ld *loadedDeck) (cards []bracket.Card, oracleIDs []pgtype.UUID, commanders []string) {
+	add := func(oracle pgtype.UUID, name string, qty int, gameChanger bool) {
+		cards = append(cards, bracket.Card{
+			OracleID: uuidString(oracle), Name: name, Quantity: qty, GameChanger: gameChanger,
+		})
+		oracleIDs = append(oracleIDs, oracle)
+	}
+	for _, c := range []*db.Card{ld.commander, ld.partner} {
+		if c != nil {
+			add(c.ScryfallOracleID, c.Name, 1, c.IsGameChanger)
+			commanders = append(commanders, uuidString(c.ScryfallOracleID))
+		}
+	}
+	for _, e := range ld.entries {
+		if e.Board != "main" && e.Board != "command" {
+			continue
+		}
+		add(e.ScryfallOracleID, e.Name, int(e.Quantity), e.IsGameChanger)
+		if e.Board == "command" {
+			commanders = append(commanders, uuidString(e.ScryfallOracleID))
+		}
+	}
+	return cards, oracleIDs, commanders
+}
+
+// spellbookFlags reads Commander Spellbook's mass-land-denial / extra-turn flags
+// for the given oracle ids, keyed by oracle id string.
+func (a *API) spellbookFlags(ctx context.Context, oracleIDs []pgtype.UUID) (map[string]db.SpellbookCardFlag, error) {
+	flags, err := a.Queries.ListSpellbookCardFlags(ctx, oracleIDs)
+	if err != nil {
+		return nil, err
+	}
+	flagged := make(map[string]db.SpellbookCardFlag, len(flags))
+	for _, f := range flags {
+		flagged[uuidString(f.ScryfallOracleID)] = f
+	}
+	return flagged, nil
+}
+
+// applyFlags copies a card's Spellbook flags onto its bracket.Card.
+func applyFlags(c *bracket.Card, flagged map[string]db.SpellbookCardFlag) {
+	if f, ok := flagged[c.OracleID]; ok {
+		c.MassLandDenial = f.MassLandDenial
+		c.ExtraTurn = f.ExtraTurn
+	}
 }
 
 // loadCombos reads the mirrored combos whose card ingredients all lie within

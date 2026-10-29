@@ -69,3 +69,17 @@ func TestCapSuggestions(t *testing.T) {
 		t.Fatalf("capSuggestions = %+v, want [A B]", got)
 	}
 }
+
+// @spec AI-050
+func TestDisabled_CurateReturnsNotConfigured(t *testing.T) {
+	if _, err := Disabled().Curate(context.Background(), CurateRequest{}); !errors.Is(err, ErrNotConfigured) {
+		t.Fatalf("Curate() = %v, want ErrNotConfigured", err)
+	}
+}
+
+// @spec AI-051
+func TestCurateUsesTheSuggestModel(t *testing.T) {
+	if curateModel != suggestModel {
+		t.Fatalf("curateModel = %q, want the suggest model %q", curateModel, suggestModel)
+	}
+}

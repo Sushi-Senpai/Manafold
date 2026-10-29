@@ -28,7 +28,14 @@ type anthropicAssistant struct {
 // request (developer-keyed, so there is a package-level client — unlike a BYOK
 // design).
 func NewAnthropic(apiKey string) Assistant {
-	return &anthropicAssistant{client: anthropic.NewClient(option.WithAPIKey(apiKey))}
+	return newAnthropicAssistant(apiKey)
+}
+
+// newAnthropicAssistant is NewAnthropic with extra client options, so a test can
+// point the client at a local server.
+func newAnthropicAssistant(apiKey string, opts ...option.RequestOption) *anthropicAssistant {
+	opts = append([]option.RequestOption{option.WithAPIKey(apiKey)}, opts...)
+	return &anthropicAssistant{client: anthropic.NewClient(opts...)}
 }
 
 func (a *anthropicAssistant) Enabled() bool { return true }
