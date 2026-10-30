@@ -304,7 +304,7 @@ test("resumeStep reopens at the saved step when the deck can show it", () => {
 
 // @spec WIZ-105
 test("resumeStep falls back to setup when the saved step cannot be shown", () => {
-  assert.equal(resumeStep("fixing", plan({ lands: { target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: false } })), "setup");
+  assert.equal(resumeStep("fixing", plan({ lands: { target: 37, base_target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: false } })), "setup");
   assert.equal(resumeStep("picks", plan({ ready: false, reason: "no_bracket" })), "setup");
   assert.equal(resumeStep("picks", null), "setup");
   assert.equal(resumeStep("setup", plan()), "setup");

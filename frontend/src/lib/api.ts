@@ -419,7 +419,7 @@ export type WizardProposeResponse = {
 
 // The wizard's saved answers (WIZ-092): what the first slice asks, per deck.
 export type WizardSavedState = {
-  step: "setup" | "fixing" | "utility" | "picks" | "basics";
+  step: "setup" | "fixing" | "utility" | "fastmana" | "picks" | "basics";
   restrictions: WizardRestrictions;
   fixing: "include" | "basics";
   include_fetch: boolean;
