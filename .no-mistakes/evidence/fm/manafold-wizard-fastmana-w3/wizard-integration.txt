@@ -1,0 +1,58 @@
+=== RUN   TestWizardPlan_ReadinessReasonsInOrder
+--- PASS: TestWizardPlan_ReadinessReasonsInOrder (0.07s)
+=== RUN   TestWizardPlan_PolicyAndLandNumbers
+--- PASS: TestWizardPlan_PolicyAndLandNumbers (0.15s)
+=== RUN   TestWizardPlan_OwnerOnlyAndNeedsNoAI
+--- PASS: TestWizardPlan_OwnerOnlyAndNeedsNoAI (0.03s)
+=== RUN   TestWizardPlan_EnsuresSynergyForReadyDeck
+--- PASS: TestWizardPlan_EnsuresSynergyForReadyDeck (0.04s)
+=== RUN   TestWizardPropose_GateOrder
+--- PASS: TestWizardPropose_GateOrder (0.05s)
+=== RUN   TestWizardPropose_NotReadyIs422WithoutAModelCall
+--- PASS: TestWizardPropose_NotReadyIs422WithoutAModelCall (0.05s)
+=== RUN   TestWizardPropose_RejectsMalformedBodies
+--- PASS: TestWizardPropose_RejectsMalformedBodies (0.03s)
+=== RUN   TestWizardPropose_EmptyAnswersSkipTheModel
+--- PASS: TestWizardPropose_EmptyAnswersSkipTheModel (0.11s)
+=== RUN   TestWizardPropose_MetersEveryCallThatReachedTheModel
+--- PASS: TestWizardPropose_MetersEveryCallThatReachedTheModel (0.05s)
+=== RUN   TestWizardPropose_CapsProposalsAtTheStepLimit
+--- PASS: TestWizardPropose_CapsProposalsAtTheStepLimit (0.22s)
+=== RUN   TestWizardPropose_GateAndPoolMembershipDropWithoutSubstituting
+--- PASS: TestWizardPropose_GateAndPoolMembershipDropWithoutSubstituting (0.06s)
+=== RUN   TestWizardPropose_PicksPoolRules
+--- PASS: TestWizardPropose_PicksPoolRules (0.12s)
+=== RUN   TestWizardPropose_GameChangerBudget
+--- PASS: TestWizardPropose_GameChangerBudget (0.12s)
+=== RUN   TestWizardAdmission_NeverBlocksADeckMutation
+--- PASS: TestWizardAdmission_NeverBlocksADeckMutation (0.03s)
+=== RUN   TestWizardPropose_ComboAdmission
+--- PASS: TestWizardPropose_ComboAdmission (0.09s)
+=== RUN   TestWizardPropose_CombosCheckedFollowsTheComboMirror
+--- PASS: TestWizardPropose_CombosCheckedFollowsTheComboMirror (0.04s)
+=== RUN   TestWizardPropose_FixingPool
+--- PASS: TestWizardPropose_FixingPool (0.13s)
+=== RUN   TestWizardPropose_UtilityPool
+--- PASS: TestWizardPropose_UtilityPool (0.05s)
+=== RUN   TestWizardPropose_PicksUseStoredSynergyWithAttribution
+--- PASS: TestWizardPropose_PicksUseStoredSynergyWithAttribution (0.14s)
+=== RUN   TestWizardBasics_SplitsByPipsAndWritesNothing
+--- PASS: TestWizardBasics_SplitsByPipsAndWritesNothing (0.06s)
+=== RUN   TestWizardBasics_NeedsNoAINorABracketAndNothingNeededIsEmpty
+--- PASS: TestWizardBasics_NeedsNoAINorABracketAndNothingNeededIsEmpty (0.03s)
+=== RUN   TestWizardBasics_NoCommanderIs422
+--- PASS: TestWizardBasics_NoCommanderIs422 (0.02s)
+=== RUN   TestWizardBasics_ColourlessUsesWastesAndReportsMissing
+--- PASS: TestWizardBasics_ColourlessUsesWastesAndReportsMissing (0.04s)
+=== RUN   TestWizardPropose_FastManaIsBracketFourOnly
+--- PASS: TestWizardPropose_FastManaIsBracketFourOnly (0.15s)
+=== RUN   TestWizardPropose_FastManaPool
+--- PASS: TestWizardPropose_FastManaPool (0.13s)
+=== RUN   TestWizardPropose_FastManaGateEmptyAndMetering
+--- PASS: TestWizardPropose_FastManaGateEmptyAndMetering (0.12s)
+=== RUN   TestWizardPlan_LandTargetFollowsTheFastManaTheDeckRuns
+--- PASS: TestWizardPlan_LandTargetFollowsTheFastManaTheDeckRuns (0.53s)
+=== RUN   TestWizardFastMana_RelaxedTargetReachesLandStepsAndBasics
+--- PASS: TestWizardFastMana_RelaxedTargetReachesLandStepsAndBasics (0.08s)
+PASS
+ok  	manafold-backend/internal/api	2.777s
