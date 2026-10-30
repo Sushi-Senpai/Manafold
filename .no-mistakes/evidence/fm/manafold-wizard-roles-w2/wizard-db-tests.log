@@ -1,0 +1,66 @@
+=== RUN   TestWizardPlan_RolesAgainstTheArchetypeTemplate
+--- PASS: TestWizardPlan_RolesAgainstTheArchetypeTemplate (0.06s)
+=== RUN   TestWizardPropose_RolesNeedAKnownRole
+--- PASS: TestWizardPropose_RolesNeedAKnownRole (0.02s)
+=== RUN   TestWizardPropose_RolesKeepTheAIGates
+--- PASS: TestWizardPropose_RolesKeepTheAIGates (0.04s)
+=== RUN   TestWizardPropose_RolesEmptyAnswersSkipTheModel
+--- PASS: TestWizardPropose_RolesEmptyAnswersSkipTheModel (0.11s)
+=== RUN   TestWizardPropose_RolesPoolHoldsOnlyCardsThatFillTheRole
+--- PASS: TestWizardPropose_RolesPoolHoldsOnlyCardsThatFillTheRole (0.11s)
+=== RUN   TestWizardPropose_RolesAskForNoMoreThanTheRoomLeft
+--- PASS: TestWizardPropose_RolesAskForNoMoreThanTheRoomLeft (0.05s)
+=== RUN   TestWizardPropose_RolesDropWhatTheModelNamesOutsideThePool
+--- PASS: TestWizardPropose_RolesDropWhatTheModelNamesOutsideThePool (0.05s)
+=== RUN   TestWizardPropose_RolesHonourTheTutorBanAndGameChangerBudget
+--- PASS: TestWizardPropose_RolesHonourTheTutorBanAndGameChangerBudget (0.09s)
+=== RUN   TestWizardPropose_RolesPutSynergyCardsFirstWithAttribution
+--- PASS: TestWizardPropose_RolesPutSynergyCardsFirstWithAttribution (0.09s)
+=== RUN   TestWizardPlan_ReadinessReasonsInOrder
+--- PASS: TestWizardPlan_ReadinessReasonsInOrder (0.05s)
+=== RUN   TestWizardPlan_PolicyAndLandNumbers
+--- PASS: TestWizardPlan_PolicyAndLandNumbers (0.08s)
+=== RUN   TestWizardPlan_OwnerOnlyAndNeedsNoAI
+--- PASS: TestWizardPlan_OwnerOnlyAndNeedsNoAI (0.04s)
+=== RUN   TestWizardPlan_EnsuresSynergyForReadyDeck
+--- PASS: TestWizardPlan_EnsuresSynergyForReadyDeck (0.04s)
+=== RUN   TestWizardPropose_GateOrder
+--- PASS: TestWizardPropose_GateOrder (0.04s)
+=== RUN   TestWizardPropose_NotReadyIs422WithoutAModelCall
+--- PASS: TestWizardPropose_NotReadyIs422WithoutAModelCall (0.04s)
+=== RUN   TestWizardPropose_RejectsMalformedBodies
+--- PASS: TestWizardPropose_RejectsMalformedBodies (0.03s)
+=== RUN   TestWizardPropose_EmptyAnswersSkipTheModel
+--- PASS: TestWizardPropose_EmptyAnswersSkipTheModel (0.10s)
+=== RUN   TestWizardPropose_MetersEveryCallThatReachedTheModel
+--- PASS: TestWizardPropose_MetersEveryCallThatReachedTheModel (0.06s)
+=== RUN   TestWizardPropose_CapsProposalsAtTheStepLimit
+--- PASS: TestWizardPropose_CapsProposalsAtTheStepLimit (0.17s)
+=== RUN   TestWizardPropose_GateAndPoolMembershipDropWithoutSubstituting
+--- PASS: TestWizardPropose_GateAndPoolMembershipDropWithoutSubstituting (0.08s)
+=== RUN   TestWizardPropose_PicksPoolRules
+--- PASS: TestWizardPropose_PicksPoolRules (0.11s)
+=== RUN   TestWizardPropose_GameChangerBudget
+--- PASS: TestWizardPropose_GameChangerBudget (0.11s)
+=== RUN   TestWizardAdmission_NeverBlocksADeckMutation
+--- PASS: TestWizardAdmission_NeverBlocksADeckMutation (0.04s)
+=== RUN   TestWizardPropose_ComboAdmission
+--- PASS: TestWizardPropose_ComboAdmission (0.11s)
+=== RUN   TestWizardPropose_CombosCheckedFollowsTheComboMirror
+--- PASS: TestWizardPropose_CombosCheckedFollowsTheComboMirror (0.03s)
+=== RUN   TestWizardPropose_FixingPool
+--- PASS: TestWizardPropose_FixingPool (0.10s)
+=== RUN   TestWizardPropose_UtilityPool
+--- PASS: TestWizardPropose_UtilityPool (0.08s)
+=== RUN   TestWizardPropose_PicksUseStoredSynergyWithAttribution
+--- PASS: TestWizardPropose_PicksUseStoredSynergyWithAttribution (0.09s)
+=== RUN   TestWizardBasics_SplitsByPipsAndWritesNothing
+--- PASS: TestWizardBasics_SplitsByPipsAndWritesNothing (0.04s)
+=== RUN   TestWizardBasics_NeedsNoAINorABracketAndNothingNeededIsEmpty
+--- PASS: TestWizardBasics_NeedsNoAINorABracketAndNothingNeededIsEmpty (0.03s)
+=== RUN   TestWizardBasics_NoCommanderIs422
+--- PASS: TestWizardBasics_NoCommanderIs422 (0.01s)
+=== RUN   TestWizardBasics_ColourlessUsesWastesAndReportsMissing
+--- PASS: TestWizardBasics_ColourlessUsesWastesAndReportsMissing (0.03s)
+PASS
+ok  	manafold-backend/internal/api	2.179s

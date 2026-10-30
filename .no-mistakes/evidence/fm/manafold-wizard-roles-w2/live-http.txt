@@ -1,0 +1,79 @@
+Arcane Signet | {T}: Add one mana of any color in your commander's color identity.
+Blasphemous Act | This spell costs {1} less to cast for each creature on the battlefield
+Command Tower | {T}: Add one mana of any color in your commander's color identity.
+Krenko, Mob Boss | {T}: Create X 1/1 red Goblin creature tokens, where X is the number of
+Lightning Greaves | Equipped creature has haste and shroud. (It can't be the target of spe
+Mountain | ({T}: Add {R}.)
+Reliquary Tower | You have no maximum hand size. {T}: Add {C}.
+Skullclamp | Equipped creature gets +1/-1. Whenever equipped creature dies, draw tw
+Sol Ring | {T}: Add {C}{C}.
+Solemn Simulacrum | When this creature enters, you may search your library for a basic lan
+Chandra, Torch of Defiance | +1: Exile the top card of your library. You may cast that card. If you
+Isochron Scepter | Imprint — When this artifact enters, you may exile an instant card wit
+Repercussion | Whenever a creature is dealt damage, this enchantment deals that much 
+deck 26dbb030-8cc9-4218-92f0-b8359dc0678c
+--- commander + archetype=midrange_value
+{"id":"26dbb030-8cc9-4218-92f0-b8359dc0678c","name":"roles live","description":"","format":"commander","bracket":null,"archetype":null,"is_public":false,"color_identity":[],"commander":null,"partner":null,"boards":{"command":[],"main":[],"maybe":[],"sideboard":[]}}
+ [200]
+{"id":"26dbb030-8cc9-4218-92f0-b8359dc0678c","name":"roles live","description":"","format":"commander","bracket":2,"archetype":"midrange_value","is_public":false,"color_identity":[]}
+ [200]
+--- plan
+{"ready":false,"reason":"no_commander","ai_enabled":false,"bracket":2,"archetype":"midrange_value","policy":{"game_changer_limit":0,"game_changers_in_deck":0,"game_changers_left":0,"guidance":"Bracket 2 (Core): precon-level power. No Game Changers, no infinite combos, no mass land denial; extra turns only if incidental."},"lands":{"target":37,"in_deck":0,"basics_needed":37,"fixing_applicable":false},"roles":[{"role":"ramp","label":"Ramp","count":0,"min":10,"max":12,"status":"under"},{"role":"card_draw","label":"Card draw","count":0,"min":10,"max":12,"status":"under"},{"role":"targeted_removal","label":"Targeted removal","count":0,"min":8,"max":10,"status":"under"},{"role":"board_wipe","label":"Board wipes","count":0,"min":2,"max":4,"status":"under"}],"synergy":null}
+ [200]
+deck 26dbb030-8cc9-4218-92f0-b8359dc0678c
+--- 400/422 before commander
+{"error":"AI features are not configured"}
+ [503]
+ation":false}],"main":[],"maybe":[],"sideboard":[]}}
+ [200]
+lse}
+ [201]
+lse}
+ [201]
+lse}
+ [201]
+lse}
+ [201]
+lse}
+ [201]
+lse}
+ [201]
+--- plan with real cards
+True None
+{'role': 'ramp', 'label': 'Ramp', 'count': 3, 'min': 10, 'max': 12, 'status': 'under'}
+{'role': 'card_draw', 'label': 'Card draw', 'count': 2, 'min': 10, 'max': 12, 'status': 'under'}
+{'role': 'targeted_removal', 'label': 'Targeted removal', 'count': 0, 'min': 8, 'max': 10, 'status': 'under'}
+{'role': 'board_wipe', 'label': 'Board wipes', 'count': 1, 'min': 2, 'max': 4, 'status': 'under'}
+--- propose: missing role
+{"error":"AI features are not configured"}
+ [503]
+--- propose: unknown role
+{"error":"AI features are not configured"}
+ [503]
+--- propose: valid role, AI disabled
+{"error":"AI features are not configured"}
+ [503]
+--- no archetype
+
+ [200]
+{"error":"AI features are not configured"}
+ [503]
+roles with no archetype: []
+=== AI_ENABLED=true with dummy key
+--- no archetype
+{"step":"roles","role":"ramp","summary":"","source":"popular","proposals":[],"dropped":0,"pool_size":0,"empty_reason":"no_archetype","game_changers":{"limit":0,"in_deck":0,"left":0},"combos_checked":false,"synergy":null,"model":""}
+ [200]
+--- missing role
+{"error":"role must be one of ramp, card_draw, targeted_removal, board_wipe"}
+ [400]
+--- unknown role
+{"error":"role must be one of ramp, card_draw, targeted_removal, board_wipe"}
+ [400]
+--- ramp valid (reaches model w/ dummy key)
+{"error":"the wizard could not get picks from the model"}
+ [502]
+--- Sol Ring x12 => ramp at max
+ [204]
+{'role': 'ramp', 'label': 'Ramp', 'count': 14, 'min': 10, 'max': 12, 'status': 'over'}
+{"step":"roles","role":"ramp","summary":"","source":"popular","proposals":[],"dropped":0,"pool_size":0,"empty_reason":"role_filled","game_changers":{"limit":0,"in_deck":0,"left":0},"combos_checked":false,"synergy":null,"model":""}
+ [200]
