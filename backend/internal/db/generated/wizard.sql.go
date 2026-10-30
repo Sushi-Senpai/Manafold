@@ -22,6 +22,39 @@ func (q *Queries) DeleteWizardState(ctx context.Context, deckID pgtype.UUID) err
 	return err
 }
 
+const filterFastManaCardIDs = `-- name: FilterFastManaCardIDs :many
+SELECT c.id FROM cards c
+WHERE c.id = ANY($1::uuid[])
+  AND split_part(c.type_line, ' // ', 1) NOT LIKE '%Land%'
+  AND (c.mana_value <= 2 OR c.is_game_changer)
+  AND EXISTS (
+    SELECT 1 FROM card_oracle_tags ct
+    WHERE ct.card_id = c.id
+      AND ct.tag_id IN (SELECT oracle_tag_reach('mana-rock') UNION SELECT oracle_tag_reach('ritual')))
+`
+
+// The subset of card_ids that are fast mana by the same definition.
+// @spec WIZ-108, WIZ-113
+func (q *Queries) FilterFastManaCardIDs(ctx context.Context, cardIds []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, filterFastManaCardIDs, cardIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getWizardState = `-- name: GetWizardState :one
 SELECT state, updated_at FROM deck_wizard_state WHERE deck_id = $1
 `
@@ -67,6 +100,80 @@ func (q *Queries) ListCheapestUSD(ctx context.Context, cardIds []pgtype.UUID) ([
 	for rows.Next() {
 		var i ListCheapestUSDRow
 		if err := rows.Scan(&i.CardID, &i.Usd); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWizardFastMana = `-- name: ListWizardFastMana :many
+SELECT c.id, c.scryfall_oracle_id, c.name, c.mana_cost, c.mana_value, c.type_line, c.oracle_text, c.colors, c.color_identity, c.produced_mana, c.keywords, c.power, c.toughness, c.loyalty, c.legalities, c.is_game_changer, c.is_reserved, c.layout, c.card_faces, c.singleton_limit, c.can_be_commander, c.commander_color_identity, c.edhrec_rank, c.created_at, c.updated_at FROM cards c
+LEFT JOIN banlist_overrides bo ON lower(bo.card_name) = lower(c.name)
+WHERE split_part(c.type_line, ' // ', 1) NOT LIKE '%Land%'
+  AND (c.mana_value <= 2 OR c.is_game_changer)
+  AND EXISTS (
+    SELECT 1 FROM card_oracle_tags ct
+    WHERE ct.card_id = c.id
+      AND ct.tag_id IN (SELECT oracle_tag_reach('mana-rock') UNION SELECT oracle_tag_reach('ritual')))
+  AND c.color_identity <@ $1::text[]
+  AND c.id <> ALL($2::uuid[])
+  AND CASE WHEN bo.card_name IS NOT NULL THEN NOT bo.banned
+           ELSE c.legalities->>'commander' = 'legal' END
+ORDER BY c.edhrec_rank ASC NULLS LAST, c.name ASC
+LIMIT $3
+`
+
+type ListWizardFastManaParams struct {
+	Identity   []string      `json:"identity"`
+	ExcludeIds []pgtype.UUID `json:"exclude_ids"`
+	Lim        int32         `json:"lim"`
+}
+
+// Fast mana (WIZ-108): a nonland card tagged mana-rock or ritual (or a
+// descendant) that costs two or less or is a Game Changer. The two queries below
+// share this definition: the pool lists candidates inside the deck's identity,
+// the filter picks the fast mana out of a deck's own cards.
+// @spec WIZ-108, WIZ-110
+func (q *Queries) ListWizardFastMana(ctx context.Context, arg ListWizardFastManaParams) ([]Card, error) {
+	rows, err := q.db.Query(ctx, listWizardFastMana, arg.Identity, arg.ExcludeIds, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Card
+	for rows.Next() {
+		var i Card
+		if err := rows.Scan(
+			&i.ID,
+			&i.ScryfallOracleID,
+			&i.Name,
+			&i.ManaCost,
+			&i.ManaValue,
+			&i.TypeLine,
+			&i.OracleText,
+			&i.Colors,
+			&i.ColorIdentity,
+			&i.ProducedMana,
+			&i.Keywords,
+			&i.Power,
+			&i.Toughness,
+			&i.Loyalty,
+			&i.Legalities,
+			&i.IsGameChanger,
+			&i.IsReserved,
+			&i.Layout,
+			&i.CardFaces,
+			&i.SingletonLimit,
+			&i.CanBeCommander,
+			&i.CommanderColorIdentity,
+			&i.EdhrecRank,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

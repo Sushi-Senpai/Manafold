@@ -5,7 +5,7 @@
 // The wizard proposes; the player disposes. Nothing here adds a card — the panel
 // calls the ordinary add-card endpoint only on a click.
 //
-// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067, WIZ-092, WIZ-105
+// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067, WIZ-092, WIZ-105, WIZ-114, WIZ-116
 
 import { ApiError } from "./api.ts";
 import type {
@@ -21,12 +21,13 @@ import type {
   WizardStep,
 } from "./api.ts";
 
-export type WizardStepId = "setup" | "fixing" | "utility" | "picks" | "basics";
+export type WizardStepId = "setup" | "fixing" | "utility" | "fastmana" | "picks" | "basics";
 
 export const STEP_LABELS: Record<WizardStepId, string> = {
   setup: "Setup",
   fixing: "Fixing lands",
   utility: "Utility lands",
+  fastmana: "Fast mana",
   picks: "Picks",
   basics: "Basics",
 };
@@ -65,11 +66,26 @@ export function defaultAnswers(): WizardAnswers {
 }
 
 // visibleSteps is the order the panel walks. A deck with fewer than two colours
-// has nothing to fix, so the fixing step is left out (WIZ-013, WIZ-062).
+// has nothing to fix, so the fixing step is left out (WIZ-013, WIZ-062); the
+// fast-mana step is there only while the plan says it applies, which is Bracket 4
+// alone (WIZ-108).
 export function visibleSteps(plan: WizardPlan | null): WizardStepId[] {
-  const all: WizardStepId[] = ["setup", "fixing", "utility", "picks", "basics"];
-  if (plan && !plan.lands.fixing_applicable) return all.filter((s) => s !== "fixing");
-  return all;
+  return (["setup", "fixing", "utility", "fastmana", "picks", "basics"] as WizardStepId[]).filter((s) => {
+    if (s === "fixing") return !plan || plan.lands.fixing_applicable;
+    if (s === "fastmana") return plan?.fast_mana?.applicable === true;
+    return true;
+  });
+}
+
+// fastManaLine says how the fast mana in the deck has moved the land target, or
+// null away from Bracket 4 (WIZ-108). A single piece moves nothing.
+export function fastManaLine(plan: WizardPlan | null): string | null {
+  if (!plan?.fast_mana?.applicable) return null;
+  const { in_deck: n } = plan.fast_mana;
+  const { target, base_target: base } = plan.lands;
+  const held = n === 1 ? "1 fast mana card" : `${n} fast mana cards`;
+  if (target === base) return `${held} in the deck: land target stays at ${base}. Every two cut a land, down to 32.`;
+  return `${held} in the deck: land target ${target} (${base} before fast mana).`;
 }
 
 // toSavedState is what the panel saves: the answers, the rejected set and the
@@ -138,7 +154,7 @@ function restrictionsOf(a: WizardAnswers): WizardRestrictions {
 export function proposeBody(step: WizardStep, a: WizardAnswers, rejected: string[]): WizardProposeBody {
   const body: WizardProposeBody = { step, restrictions: restrictionsOf(a), rejected_card_ids: rejected };
   if (step === "fixing") body.include_fetch = a.includeFetch;
-  if (step !== "picks" && a.landTarget !== null) body.land_target = a.landTarget;
+  if ((step === "fixing" || step === "utility") && a.landTarget !== null) body.land_target = a.landTarget;
   return body;
 }
 

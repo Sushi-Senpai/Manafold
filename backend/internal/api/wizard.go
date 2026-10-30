@@ -64,9 +64,16 @@ type wizardPolicyJSON struct {
 
 type wizardLandsJSON struct {
 	Target           int  `json:"target"`
+	BaseTarget       int  `json:"base_target"`
 	InDeck           int  `json:"in_deck"`
 	BasicsNeeded     int  `json:"basics_needed"`
 	FixingApplicable bool `json:"fixing_applicable"`
+}
+
+// wizardFastManaJSON is the Bracket 4 fast-mana block of the plan (WIZ-113).
+type wizardFastManaJSON struct {
+	Applicable bool `json:"applicable"`
+	InDeck     int  `json:"in_deck"`
 }
 
 type wizardSynergyStatusJSON struct {
@@ -82,6 +89,7 @@ type wizardPlanResponse struct {
 	Archetype *string                  `json:"archetype"`
 	Policy    *wizardPolicyJSON        `json:"policy"`
 	Lands     wizardLandsJSON          `json:"lands"`
+	FastMana  wizardFastManaJSON       `json:"fast_mana"`
 	Synergy   *wizardSynergyStatusJSON `json:"synergy"`
 }
 
@@ -169,6 +177,9 @@ type wizardView struct {
 	policyOK bool
 	stats    deckstats.Stats
 	gcInDeck int
+	// fastMana is the quantity of fast-mana cards on main and command. It is
+	// loaded only at Bracket 4 and is zero elsewhere (WIZ-113).
+	fastMana int
 	// mainCount is the cards on main and command, commanders included.
 	mainCount int
 	// onDeck holds the id of every card on any board, the commanders included.
@@ -220,11 +231,47 @@ func (v wizardView) notReadyReason() string {
 
 func (v wizardView) archetype() string { return v.ld.deck.Archetype.String }
 
+func (v wizardView) baseLandTarget() int { return deckwizard.LandTarget(v.archetype()) }
+
+// landTarget is the player's override, else the base target relaxed by the fast
+// mana the deck holds at Bracket 4 (WIZ-114).
 func (v wizardView) landTarget(override *int) int {
 	if override != nil {
 		return *override
 	}
-	return deckwizard.LandTarget(v.archetype())
+	return deckwizard.RelaxedLandTarget(v.baseLandTarget(), v.bracket, v.fastMana)
+}
+
+// loadFastMana counts the deck's fast-mana cards, at Bracket 4 only: below it the
+// wizard never looks (WIZ-109, WIZ-113).
+func (a *API) loadFastMana(ctx context.Context, v *wizardView) error {
+	v.fastMana = 0
+	if !deckwizard.StepFastMana.AppliesAtBracket(v.bracket) {
+		return nil
+	}
+	qty := map[string]int{}
+	var ids []pgtype.UUID
+	for _, e := range v.ld.entries {
+		if e.Board != "main" && e.Board != "command" {
+			continue
+		}
+		key := uuidString(e.CardID)
+		if qty[key] == 0 {
+			ids = append(ids, e.CardID)
+		}
+		qty[key] += int(e.Quantity)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	rows, err := a.Queries.FilterFastManaCardIDs(ctx, ids)
+	if err != nil {
+		return err
+	}
+	for _, id := range rows {
+		v.fastMana += qty[uuidString(id)]
+	}
+	return nil
 }
 
 func (v wizardView) gameChangers() wizardGameChangersJSON {
@@ -241,7 +288,7 @@ func (v wizardView) gameChangers() wizardGameChangersJSON {
 // getWizardPlan reports whether the wizard can run on a deck and the numbers it
 // works from. It needs neither a model nor a sign-in (WIZ-004).
 //
-// @spec WIZ-002, WIZ-003, WIZ-004, WIZ-005
+// @spec WIZ-002, WIZ-003, WIZ-004, WIZ-005, WIZ-113, WIZ-114
 func (a *API) getWizardPlan(w http.ResponseWriter, r *http.Request) {
 	deck, ok := a.deckForOwner(w, r)
 	if !ok {
@@ -253,13 +300,22 @@ func (a *API) getWizardPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := newWizardView(ld)
+	if err := a.loadFastMana(r.Context(), &v); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to count the deck's fast mana")
+		return
+	}
 
 	plan := wizardPlanResponse{
 		AIEnabled: a.AI != nil && a.AI.Enabled(),
 		Lands: wizardLandsJSON{
 			Target:           v.landTarget(nil),
+			BaseTarget:       v.baseLandTarget(),
 			InDeck:           v.stats.LandCount,
 			FixingApplicable: len(v.identity) >= 2,
+		},
+		FastMana: wizardFastManaJSON{
+			Applicable: deckwizard.StepFastMana.AppliesAtBracket(v.bracket),
+			InDeck:     v.fastMana,
 		},
 	}
 	plan.Lands.BasicsNeeded = max(0, plan.Lands.Target-plan.Lands.InDeck)
@@ -319,7 +375,7 @@ type wizardPool struct {
 // that pass the validate-every-returned-card gate, belong to the pool, and keep
 // the deck inside its bracket. It writes nothing to the deck.
 //
-// @spec WIZ-010, WIZ-011, WIZ-012, WIZ-013, WIZ-014, WIZ-015, WIZ-020, WIZ-023, WIZ-025, WIZ-032, WIZ-042, WIZ-045
+// @spec WIZ-010, WIZ-011, WIZ-012, WIZ-013, WIZ-014, WIZ-015, WIZ-020, WIZ-023, WIZ-025, WIZ-032, WIZ-042, WIZ-045, WIZ-109, WIZ-111, WIZ-112
 func (a *API) wizardPropose(w http.ResponseWriter, r *http.Request) {
 	uid, ok := a.aiGateCaller(w, r)
 	if !ok {
@@ -352,8 +408,16 @@ func (a *API) wizardPropose(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, wizardReasonText(reason))
 		return
 	}
+	if !step.AppliesAtBracket(v.bracket) {
+		writeError(w, http.StatusUnprocessableEntity, "fast mana is offered at Bracket 4 only")
+		return
+	}
 
 	ctx := r.Context()
+	if err := a.loadFastMana(ctx, &v); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to count the deck's fast mana")
+		return
+	}
 	target := v.landTarget(req.LandTarget)
 	want := step.Want()
 	empty := func(reason string) {
@@ -496,6 +560,9 @@ func sourceFor(step deckwizard.Step, picksSource string) string {
 	if step.IsLandStep() {
 		return "lands"
 	}
+	if step == deckwizard.StepFastMana {
+		return "fast_mana"
+	}
 	if picksSource == "" {
 		return "popular"
 	}
@@ -545,7 +612,7 @@ func parseProposeRequest(r *http.Request) (wizardProposeRequest, deckwizard.Step
 	}
 	step, ok := deckwizard.ParseStep(req.Step)
 	if !ok {
-		return req, "", nil, "step must be one of fixing, utility, picks"
+		return req, "", nil, "step must be one of fixing, utility, fastmana, picks"
 	}
 	if msg := validateWizardAnswers(req.LandTarget, req.Restrictions, req.RejectedCardIDs); msg != "" {
 		return req, "", nil, msg
@@ -616,7 +683,7 @@ func poolCards(entries []wizardCandidate) []ai.PoolCard {
 // every deterministic rule to it: the deck's own cards and the player's
 // rejections, the price cap, the tutor ban, and bracket admission.
 //
-// @spec WIZ-022, WIZ-030, WIZ-031, WIZ-033, WIZ-034, WIZ-040, WIZ-041, WIZ-043, WIZ-044
+// @spec WIZ-022, WIZ-030, WIZ-031, WIZ-033, WIZ-034, WIZ-040, WIZ-041, WIZ-043, WIZ-044, WIZ-110
 func (a *API) buildWizardPool(r *http.Request, v wizardView, step deckwizard.Step, req wizardProposeRequest, rejected []pgtype.UUID) (wizardPool, error) {
 	ctx := r.Context()
 	excludeSet := make(map[string]bool, len(v.onDeck)+len(rejected))
@@ -650,6 +717,14 @@ func (a *API) buildWizardPool(r *http.Request, v wizardView, step deckwizard.Ste
 		main = candidatesOf(rows)
 	case deckwizard.StepUtility:
 		rows, err := a.Queries.ListWizardUtilityLands(ctx, db.ListWizardUtilityLandsParams{
+			Identity: v.identity, ExcludeIds: exclude, Lim: raw,
+		})
+		if err != nil {
+			return pool, err
+		}
+		main = candidatesOf(rows)
+	case deckwizard.StepFastMana:
+		rows, err := a.Queries.ListWizardFastMana(ctx, db.ListWizardFastManaParams{
 			Identity: v.identity, ExcludeIds: exclude, Lim: raw,
 		})
 		if err != nil {
@@ -912,7 +987,7 @@ func (w *wizardAdmission) card(c db.Card) bracket.Card {
 // needs to reach the land target and how they split across its colours. It
 // writes nothing; the client applies the plan on the player's click (WIZ-050).
 //
-// @spec WIZ-004, WIZ-050, WIZ-051, WIZ-052, WIZ-053, WIZ-054
+// @spec WIZ-004, WIZ-050, WIZ-051, WIZ-052, WIZ-053, WIZ-054, WIZ-114
 func (a *API) wizardBasics(w http.ResponseWriter, r *http.Request) {
 	deck, ok := a.deckForOwner(w, r)
 	if !ok {
@@ -941,10 +1016,14 @@ func (a *API) wizardBasics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := newWizardView(ld)
+	ctx := r.Context()
+	if err := a.loadFastMana(ctx, &v); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to count the deck's fast mana")
+		return
+	}
 	target := v.landTarget(req.LandTarget)
 	needed := max(0, target-v.stats.LandCount)
 
-	ctx := r.Context()
 	out := wizardBasicsResponse{
 		LandTarget: target, LandsInDeck: v.stats.LandCount, BasicsNeeded: needed,
 		Rows: []wizardBasicsRow{}, Missing: []string{},
