@@ -10,6 +10,7 @@ import {
   type WizardPlan,
   type WizardProposal,
   type WizardProposeResponse,
+  type WizardRole,
   type WizardStep,
 } from "@/lib/api";
 import {
@@ -17,6 +18,7 @@ import {
   STEP_LABELS,
   afterAccept,
   applyBasicsPlan,
+  canSuggestRole,
   defaultAnswers,
   emptyReasonText,
   fromSavedState,
@@ -27,6 +29,8 @@ import {
   removeProposal,
   resumeStep,
   toSavedState,
+  roleLine,
+  roleStatusText,
   visibleSteps,
   wizardErrorText,
   type WizardAnswers,
@@ -37,7 +41,8 @@ import { ProposalList } from "./ProposalList";
 // The deck wizard: an interactive scaffolder, never a generator. It walks the
 // player through bracket and restrictions, their land comfort (including "basics
 // only"), utility lands, and rounds of synergy picks, finishing with a basics
-// plan. Each round's cards come from a deterministic pool the backend has
+// plan; between the lands and the picks it fills the archetype template's role
+// slots (ramp, card draw, removal, board wipes). Each round's cards come from a deterministic pool the backend has
 // already held to the bracket and the player's rules; the model only picks and
 // explains. Every card enters the deck on the player's Accept, through the
 // builder's own add-card path. It replaces the AI suggestions panel while open
@@ -46,7 +51,7 @@ import { ProposalList } from "./ProposalList";
 // Its answers, rejected cards and step are saved per deck and restored when the
 // panel opens, so a reload resumes where the player left off (WIZ-092).
 //
-// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067, WIZ-092, WIZ-105, WIZ-106, WIZ-107
+// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067, WIZ-077, WIZ-078, WIZ-092, WIZ-105, WIZ-106, WIZ-107
 export function WizardPanel({
   deckId,
   detail,
@@ -68,6 +73,7 @@ export function WizardPanel({
   const [proposals, setProposals] = useState<WizardProposal[]>([]);
   const [gcLeft, setGcLeft] = useState<number | null>(null);
   const [basics, setBasics] = useState<WizardBasics | null>(null);
+  const [askedRole, setAskedRole] = useState<WizardRole | null>(null);
 
   const [busy, setBusy] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -228,11 +234,12 @@ export function WizardPanel({
     }
   }
 
-  async function propose(which: WizardStep) {
+  async function propose(which: WizardStep, role?: WizardRole) {
     setBusy(true);
     setMessage(null);
+    setAskedRole(role ?? null);
     try {
-      const resp = await api.wizardPropose(deckId, proposeBody(which, answers, rejected));
+      const resp = await api.wizardPropose(deckId, proposeBody(which, answers, rejected, role));
       setRound(resp);
       setProposals(resp.proposals);
       setGcLeft(resp.game_changers.left);
@@ -499,6 +506,51 @@ export function WizardPanel({
         </div>
       )}
 
+      {hydrated && step === "roles" && (
+        <div className="mt-3 flex flex-col gap-3 text-sm">
+          <p className="font-medium">Fill the archetype&apos;s role slots</p>
+          {plan && plan.roles.length === 0 && (
+            <p className="text-xs text-muted">
+              {emptyReasonText("no_archetype")} Go back to Setup to pick one, or continue without this step.
+            </p>
+          )}
+          {aiOff && plan && plan.roles.length > 0 && (
+            <p className="text-xs text-muted">AI picks are switched off on this server.</p>
+          )}
+          <ul className="flex flex-col gap-2">
+            {plan?.roles.map((row) => (
+              <li key={row.role} className="flex items-center justify-between gap-2 text-xs">
+                <span>
+                  <span className="font-medium">{roleLine(row)}</span>{" "}
+                  <span className={row.status === "ok" || row.status === "relaxed" ? "text-muted" : "text-warning"}>
+                    · {roleStatusText(row)}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => propose("roles", row.role)}
+                  disabled={busy || aiOff || !canSuggestRole(row)}
+                  className="whitespace-nowrap rounded-md border border-border px-2 py-1 disabled:opacity-40"
+                >
+                  {busy && askedRole === row.role ? "Thinking…" : `Suggest ${row.label.toLowerCase()}`}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {round?.step === "roles" && (
+            <RoundResult
+              round={round}
+              proposals={proposals}
+              pendingId={pendingId}
+              gcLeft={gcLeft}
+              onAccept={accept}
+              onReject={reject}
+            />
+          )}
+          <StepNav onBack={back} onNext={next} nextLabel="Continue" />
+        </div>
+      )}
+
       {hydrated && step === "picks" && (
         <div className="mt-3 flex flex-col gap-3 text-sm">
           <p className="font-medium">Cards that fit {detail.commander?.name ?? "your commander"}</p>
@@ -688,7 +740,7 @@ function RoundResult({
         onReject={onReject}
       />
       {round.dropped > 0 && <p className="mt-2 text-xs text-muted">{round.dropped} suggested cards were filtered out.</p>}
-      {!round.combos_checked && round.step === "picks" && (
+      {!round.combos_checked && (round.step === "picks" || round.step === "roles") && (
         <p className="mt-1 text-xs text-muted">Combo data is not loaded, so combos were not checked.</p>
       )}
       {note?.kind === "synergy" && (

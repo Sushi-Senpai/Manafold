@@ -8,8 +8,9 @@ prefix: WIZ
 The deck wizard is an interactive scaffolder. A player names a commander, a
 Commander Bracket, and any restrictions, and the wizard walks them through the
 build one question at a time: which kinds of lands they will play, which utility
-lands they want, and then a stream of synergy picks they accept or reject, all
-inside the bracket's Game Changer and combo limits. **It never generates a
+lands they want, which ramp, card draw, removal and board wipes the archetype
+calls for, and then a stream of synergy picks they accept or reject, all inside
+the bracket's Game Changer and combo limits. **It never generates a
 whole deck.** Every card enters the deck only because the player clicked
 Accept, through the same add-card endpoint the builder already uses; the wizard's
 backend proposes and never writes a deck.
@@ -48,7 +49,7 @@ a sign-in.
 
 ## The Flow (the first slice)
 
-The wizard ships as the smallest end-to-end path that works. Five steps, in
+The wizard is the smallest end-to-end path that works. Six steps, in
 order; the player can stop after any of them and carry on in the builder.
 
 | # | Step | Player is asked | Candidate pool (deterministic) | Model's job | Who writes the deck |
@@ -56,8 +57,9 @@ order; the player can stop after any of them and carry on in the builder.
 | 0 | **Setup** | commander (already on the deck), bracket 1–4, optional archetype, restrictions (no tutors, price cap per card, free-text strategy notes) | — | none | the existing `PATCH /api/decks/{id}` for bracket and archetype |
 | 1 | **Fixing lands** | "Basics only, or include dual / fixing lands?" and "fetch lands too?" | nonbasic lands that make two or more of the deck's colours, plus fetch lands if allowed | pick up to 10 and explain | Accept → existing add-card |
 | 2 | **Utility lands** | "Any utility lands (man-lands, colourless utility)?" | lands tagged `utility-land` (or a descendant) | pick up to 5 and explain | Accept → existing add-card |
-| 3 | **Picks** | nothing: the player reviews rounds of up to 10 proposals and accepts or rejects each; "more" asks for another round | synergy-ranked cards (Archidekt), or `edhrec_rank`-ranked while synergy is gathering, plus the Game Changers the bracket still allows | pick up to 10 and explain, steered by the strategy notes | Accept → existing add-card |
-| 4 | **Basics** | "Fill the rest with basics?" | the remaining land slots, split by colour-pip demand | none (deterministic) | the player's click → existing add-card |
+| 3 | **Roles** | for each of ramp, card draw, targeted removal and board wipes: how many the deck has against the archetype's target range, and "suggest some?" | nonland cards the role classifier assigns that role, synergy-sample cards first, then `edhrec_rank` | pick up to 8 (never more than the room left under the range's maximum) and explain | Accept → existing add-card |
+| 4 | **Picks** | nothing: the player reviews rounds of up to 10 proposals and accepts or rejects each; "more" asks for another round | synergy-ranked cards (Archidekt), or `edhrec_rank`-ranked while synergy is gathering, plus the Game Changers the bracket still allows | pick up to 10 and explain, steered by the strategy notes | Accept → existing add-card |
+| 5 | **Basics** | "Fill the rest with basics?" | the remaining land slots, split by colour-pip demand | none (deterministic) | the player's click → existing add-card |
 
 **Dual-land avoidance** is a choice, not a filter on the model: a player who
 picks "basics only" makes no step-1 call at all, and no later step ever proposes
@@ -71,8 +73,51 @@ that later rounds exclude. There is no "build it for me" path in the API or the
 UI.
 
 **Deferred past this slice** (listed under *Open Questions & Future Decisions*):
-role-filling steps (ramp, draw, removal, wipes), Bracket 5, partner commanders, a fast-mana-specific pass
+Bracket 5, partner commanders, a fast-mana-specific pass
 for Bracket 4, and a free-form chat with the model.
+
+## Role Steps
+
+The roles step fills the archetype template's four functional rows (`ramp`,
+`card_draw`, `targeted_removal`, `board_wipe`) with cards the player accepts. It
+adds no classifier and no template data: counting and candidate selection both
+use `internal/deckroles` (the `OracleClassifier` behind `roleClassifier`, the same
+instance the deck-vs-target panel uses) and the ranges come from
+`internal/decktemplates`, so the number the wizard shows is the number the
+builder shows.
+
+- **Where the player stands.** The plan (`GET …/wizard`) carries a `roles` list:
+  per role, the count on `main` (by quantity, the commander excluded, as the
+  template-fit endpoint counts), the template's `min` / `max`, and the
+  `decktemplates.Evaluate` status (`ok` / `under` / `over`). A deck with no
+  archetype has no template, so the list is empty and the step asks the player to
+  choose an archetype in setup.
+- **One role per round.** `POST …/wizard/propose` with `step: "roles"` and
+  `role: "ramp" | "card_draw" | "targeted_removal" | "board_wipe"`. The panel's
+  roles step shows the four rows with their counts and lets the player ask for
+  any one of them, so they choose which gaps to fill and in what order.
+- **Room, not just need.** A round asks for `min(8, max − count)` cards. At or
+  past the range's maximum the answer is empty (`role_filled`) with no model call:
+  the template says the deck has enough of that role. Below the minimum or inside
+  the range the player may still ask, up to the maximum.
+- **The pool.** Nonland cards inside the colour identity and commander-legal,
+  not on the deck and not rejected, that the classifier assigns the role, up to 30.
+  Order: cards from the commander's stored synergy sample first (in its order),
+  then `edhrec_rank`. A SQL regex prefilter narrows the mirror to cards whose Oracle
+  text could plausibly carry the role (ramp: mana abilities, land search, Treasure;
+  draw: "draw"; and so on) so the Go classifier sees a few hundred rows, not the
+  whole mirror; the classifier alone decides membership, so a loose prefilter costs
+  rows, never correctness. Every other pool rule applies unchanged: the price cap,
+  the tutor ban, bracket admission on the pool and on the survivors, pool
+  membership and the validate-every-returned-card gate. A role card that is a Game
+  Changer competes under the same budget as in picks and is flagged.
+- **The model's job.** The step guidance names the role, the deck's count and the
+  target range, and asks for the best fits for this commander and strategy,
+  favouring cheap and efficient cards and mixing sub-types (for removal: spot
+  removal against flexible answers; for ramp: rocks against land-fetching).
+- **Roles are not a classifier replacement.** Because the Oracle-text classifier
+  prefers a miss to a false positive, a card the classifier does not recognise is
+  never offered by this step; the picks step still reaches it.
 
 ## Where It Lives in the Builder
 
@@ -194,6 +239,7 @@ rejected set. Every pool is then narrowed by the **restrictions**:
 |---|---|---|---|
 | fixing | nonbasic lands (front face a Land) with at least two of the deck's colours in `produced_mana`, plus, when `include_fetch`, lands that sacrifice themselves to search the library (by Oracle text) or carry the `fetchland` tag | `edhrec_rank`, unranked last | 30 |
 | utility | lands tagged `utility-land` or a descendant | `edhrec_rank`, unranked last | 25 |
+| roles | nonland cards the role classifier assigns the requested role: the commander's stored synergy cards first, then by `edhrec_rank` (see *Role Steps*) | synergy order, then `edhrec_rank` | 30 |
 | picks | the commander's stored synergy cards when a sample exists, else nonland cards by `edhrec_rank`; plus up to 10 identity-legal Game Changers when the bracket still allows them | synergy descending (then inclusion) or `edhrec_rank` | 40 |
 
 The picks pool never contains a land, whatever the source (`WIZ-033`). Land
@@ -250,10 +296,10 @@ existing AI features:
 - the same gate order — disabled → anonymous → not the owner → ceiling → daily
   limit — so ownership is checked first (`AI-035`).
 
-A full run is about eight calls: at most one each for fixing and utility, then a
-round per ten picks. Choosing "basics only", skipping utility lands, a mono-colour
-deck, a met land target, a full deck, an empty pool, the plan and the basics
-split all cost no model call.
+A full run is about twelve calls: at most one each for fixing and utility, one per
+role the player asks for (up to four), then a round per ten picks. Choosing "basics only", skipping utility lands, a mono-colour
+deck, a met land target, a role already at its maximum, a deck with no archetype,
+a full deck, an empty pool, the plan and the basics split all cost no model call.
 
 ## HTTP API
 
@@ -262,7 +308,7 @@ All under the protected `/api` group, registered by `RegisterWizardRoutes`.
 | Endpoint | Method | Gates | Purpose |
 |---|---|---|---|
 | `/api/decks/{id}/wizard` | GET | ownership (`404`) | the plan: readiness, bracket policy and Game Changer budget, land target and counts, synergy status |
-| `/api/decks/{id}/wizard/propose` | POST | AI gates (`503`/`403`/`404`/`503`/`429`) | one curated round for a step |
+| `/api/decks/{id}/wizard/propose` | POST | AI gates (`503`/`403`/`404`/`503`/`429`) | one curated round for a step (`fixing`, `utility`, `roles` with a `role`, `picks`) |
 | `/api/decks/{id}/wizard/basics` | POST | ownership (`404`) | the basic-land plan; writes nothing |
 | `/api/decks/{id}/wizard/state` | GET | ownership (`404`) | the saved answers, or `saved: false` |
 | `/api/decks/{id}/wizard/state` | PUT | ownership (`404`), validation (`400`) | replace the saved answers |
@@ -276,11 +322,14 @@ All under the protected `/api` group, registered by `RegisterWizardRoutes`.
               "game_changers_left": 2, "guidance": "…" },
   "lands": { "target": 37, "in_deck": 12, "basics_needed": 25,
              "fixing_applicable": true },
+  "roles": [ { "role": "ramp", "label": "Ramp", "count": 4, "min": 10, "max": 12,
+               "status": "under" } ],          // [] without an archetype
   "synergy": { "status": "gathering", "reason": null } }
 // reason: "no_commander" | "no_bracket" | "bracket_unsupported" when not ready
 
 // POST propose → body
-{ "step": "picks",                      // "fixing" | "utility" | "picks"
+{ "step": "picks",                      // "fixing" | "utility" | "roles" | "picks"
+  "role": "ramp",                       // roles only: ramp | card_draw | targeted_removal | board_wipe
   "include_fetch": true,                // fixing only
   "land_target": 37,                    // optional, 20–60
   "restrictions": { "no_tutors": false, "max_price_usd": 5, "notes": "tokens" },
@@ -297,6 +346,7 @@ All under the protected `/api` group, registered by `RegisterWizardRoutes`.
   "synergy": { "status": "ready", "sample": { … }, "attribution": { "text": "…", "url": "…" } },
   "model": "claude-sonnet-5" }
 // empty_reason: "land_target_met" | "no_fixing_needed" | "deck_full" | "no_candidates"
+//               | "no_archetype" | "role_filled"
 
 // POST basics → { "land_target": 37 } → response
 { "land_target": 37, "lands_in_deck": 12, "basics_needed": 25,
@@ -313,11 +363,11 @@ commander starts the gathering the picks step will use.
 ## Frontend
 
 - `frontend/src/components/builder/wizard/WizardPanel.tsx` — the panel, with the
-  five steps (setup, fixing lands, utility lands, picks, basics) and the round
-  result shared by the three curated steps; `ProposalList.tsx` — one round's
+  six steps (setup, fixing lands, utility lands, roles, picks, basics) and the
+  round result shared by the curated steps; `ProposalList.tsx` — one round's
   cards with Accept and Reject.
 - `frontend/src/lib/wizard.ts` — pure, tested: step order and skipping rules,
-  the rejected-set reducer, request-body builders, the Game Changer budget line,
+  the rejected-set reducer, request-body builders, the role rows' wording, the Game Changer budget line,
   empty-reason and error-status messages, and the basics apply plan.
 - `frontend/src/lib/api.ts` — types and `getWizardPlan`, `wizardPropose`,
   `wizardBasics`; `addCard` gains no new behaviour (the basics step sets a row's
@@ -340,17 +390,16 @@ commander starts the gathering the picks step will use.
 | Synergy cold start | Open-data (`edhrec_rank`) picks while synergy is `none` / `gathering`, with the status shown | Block the step until `ready`; fail | The synergy worker takes minutes to hours; the wizard must work meanwhile, and the response says which source it used. |
 | Lands in the picks pool | Never | Allow high-synergy lands | A player who declined duals must not see one. Land picks belong to the land steps the player opted into. |
 | Basics split | Largest remainder over pip demand, sources not netted | Frank Karsten source targets; netting nonbasic sources | Deterministic and explainable now; refinement waits for the role-filling steps, when the spells are known. |
+| Role steps | One `roles` step, one role per propose, pool chosen by the existing `deckroles` classifier, count and ranges from `decktemplates` | A step per role; a new tag-backed classifier; letting the model name any role card from the whole mirror | The player picks which gap to fill, and the wizard shows the same counts as the deck-vs-target panel. A shared classifier means the count that drops when a card is accepted is the count the model was shown. The tag-backed classifier stays the `deck-building` deferred item. |
+| Role room | Ask for up to `max − count`, empty at the maximum | Ask only up to `min − count`; always ask for a fixed number | The template range is the intent: below the minimum is a gap, inside the range is still the player's call, and at the maximum more of the role is not what the template wants. Ending at the maximum also spares a model call. |
+| Role prefilter | A coarse SQL regex per role, then the Go classifier | Classify the whole mirror in Go; classify in SQL | The classifier is Go regexes over Oracle text and is authoritative; the SQL clause only bounds the rows read. Reimplementing the classifier in SQL would fork it. |
 | Placement | Builder right-column panel replacing suggestions while open | A separate `/decks/{id}/wizard` page; a modal | The live decklist, image panel and template / bracket panels are the wizard's feedback; a separate page or modal would hide them. |
 
 ## Open Questions & Future Decisions
 
 ### Deferred (follow-up work)
 
-1. **Role-filling steps.** Ramp, card draw, targeted removal and board wipes
-   against the archetype template, using the oracle-tag classifier
-   (the tag-backed classifier in `deck-building`'s deferred list; the
-   `deckroles.Classifier` interface already allows it). The slice leaves these to
-   the picks step and the builder's "deck vs. target".
+1. **Tag-backed role classifier.** The roles step is only as complete as the Oracle-text classifier; swapping in a Scryfall-tag-backed `deckroles.Classifier` (`deck-building`'s deferred item) widens it with no change here.
 2. **Bracket 4 fast mana.** A dedicated pass for fast mana, and the Bracket 4 land
    relaxation keyed on actually running it (`deck-building`'s deferred
    fast-mana-aware relaxation). Bracket 4 today gets the Game Changers (which include much of

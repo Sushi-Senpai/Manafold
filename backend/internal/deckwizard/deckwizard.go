@@ -9,7 +9,7 @@
 // never offered to the language model, and whatever the model names is checked
 // against it again. Nothing here writes a deck.
 //
-// @spec WIZ-001, WIZ-003, WIZ-021, WIZ-023, WIZ-050
+// @spec WIZ-001, WIZ-003, WIZ-021, WIZ-023, WIZ-050, WIZ-070, WIZ-073
 package deckwizard
 
 import (
@@ -27,13 +27,14 @@ type Step string
 const (
 	StepFixing  Step = "fixing"
 	StepUtility Step = "utility"
+	StepRoles   Step = "roles"
 	StepPicks   Step = "picks"
 )
 
 // ParseStep reads a propose request's step name.
 func ParseStep(s string) (Step, bool) {
 	switch Step(s) {
-	case StepFixing, StepUtility, StepPicks:
+	case StepFixing, StepUtility, StepRoles, StepPicks:
 		return Step(s), true
 	}
 	return "", false
@@ -41,8 +42,11 @@ func ParseStep(s string) (Step, bool) {
 
 // Want is the most proposals one round returns (WIZ-015).
 func (s Step) Want() int {
-	if s == StepUtility {
+	switch s {
+	case StepUtility:
 		return 5
+	case StepRoles:
+		return roleWantCap
 	}
 	return 10
 }
@@ -55,6 +59,8 @@ func (s Step) PoolSize() int {
 		return 30
 	case StepUtility:
 		return 25
+	case StepRoles:
+		return 30
 	}
 	return 40
 }

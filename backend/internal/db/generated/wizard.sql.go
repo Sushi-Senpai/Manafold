@@ -306,6 +306,83 @@ func (q *Queries) ListWizardPopularNonlands(ctx context.Context, arg ListWizardP
 	return items, nil
 }
 
+const listWizardRoleCandidates = `-- name: ListWizardRoleCandidates :many
+SELECT c.id, c.scryfall_oracle_id, c.name, c.mana_cost, c.mana_value, c.type_line, c.oracle_text, c.colors, c.color_identity, c.produced_mana, c.keywords, c.power, c.toughness, c.loyalty, c.legalities, c.is_game_changer, c.is_reserved, c.layout, c.card_faces, c.singleton_limit, c.can_be_commander, c.commander_color_identity, c.edhrec_rank, c.created_at, c.updated_at FROM cards c
+LEFT JOIN banlist_overrides bo ON lower(bo.card_name) = lower(c.name)
+WHERE split_part(c.type_line, ' // ', 1) NOT LIKE '%Land%'
+  AND c.edhrec_rank IS NOT NULL
+  AND c.color_identity <@ $1::text[]
+  AND c.id <> ALL($2::uuid[])
+  AND CASE WHEN bo.card_name IS NOT NULL THEN NOT bo.banned
+           ELSE c.legalities->>'commander' = 'legal' END
+  AND (c.oracle_text ~* $3::text OR c.card_faces::text ~* $3::text)
+ORDER BY c.edhrec_rank ASC, c.name ASC
+LIMIT $4
+`
+
+type ListWizardRoleCandidatesParams struct {
+	Identity   []string      `json:"identity"`
+	ExcludeIds []pgtype.UUID `json:"exclude_ids"`
+	Pattern    string        `json:"pattern"`
+	Lim        int32         `json:"lim"`
+}
+
+// Nonland cards by edhrec_rank whose Oracle text (or a face's) matches a coarse
+// per-role regular expression: the raw rows of the roles step's pool. The
+// pattern only bounds what is read; the Go role classifier decides which rows
+// fill the role.
+// @spec WIZ-074
+func (q *Queries) ListWizardRoleCandidates(ctx context.Context, arg ListWizardRoleCandidatesParams) ([]Card, error) {
+	rows, err := q.db.Query(ctx, listWizardRoleCandidates,
+		arg.Identity,
+		arg.ExcludeIds,
+		arg.Pattern,
+		arg.Lim,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Card
+	for rows.Next() {
+		var i Card
+		if err := rows.Scan(
+			&i.ID,
+			&i.ScryfallOracleID,
+			&i.Name,
+			&i.ManaCost,
+			&i.ManaValue,
+			&i.TypeLine,
+			&i.OracleText,
+			&i.Colors,
+			&i.ColorIdentity,
+			&i.ProducedMana,
+			&i.Keywords,
+			&i.Power,
+			&i.Toughness,
+			&i.Loyalty,
+			&i.Legalities,
+			&i.IsGameChanger,
+			&i.IsReserved,
+			&i.Layout,
+			&i.CardFaces,
+			&i.SingletonLimit,
+			&i.CanBeCommander,
+			&i.CommanderColorIdentity,
+			&i.EdhrecRank,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWizardUtilityLands = `-- name: ListWizardUtilityLands :many
 SELECT c.id, c.scryfall_oracle_id, c.name, c.mana_cost, c.mana_value, c.type_line, c.oracle_text, c.colors, c.color_identity, c.produced_mana, c.keywords, c.power, c.toughness, c.loyalty, c.legalities, c.is_game_changer, c.is_reserved, c.layout, c.card_faces, c.singleton_limit, c.can_be_commander, c.commander_color_identity, c.edhrec_rank, c.created_at, c.updated_at FROM cards c
 LEFT JOIN banlist_overrides bo ON lower(bo.card_name) = lower(c.name)

@@ -77,19 +77,8 @@ func (a *API) getTemplateFit(w http.ResponseWriter, r *http.Request) {
 			Quantity:  int(e.Quantity),
 			IsLand:    isBasicLand(e.TypeLine),
 		})
-		var faces []deckroles.Face
-		if len(e.CardFaces) > 0 {
-			// A malformed card_faces blob just leaves the card unclassified
-			// by face; the top-level text still applies.
-			_ = json.Unmarshal(e.CardFaces, &faces)
-		}
 		roles = append(roles, deckroles.Entry{
-			Card: deckroles.Card{
-				TypeLine:   e.TypeLine,
-				OracleText: e.OracleText,
-				Keywords:   e.Keywords,
-				Faces:      faces,
-			},
+			Card:     roleCardOf(e.TypeLine, e.OracleText, e.Keywords, e.CardFaces),
 			Quantity: int(e.Quantity),
 		})
 	}
@@ -104,4 +93,15 @@ func (a *API) getTemplateFit(w http.ResponseWriter, r *http.Request) {
 	)
 	out.Rows = decktemplates.Evaluate(tpl, counts, bracket)
 	writeJSON(w, http.StatusOK, out)
+}
+
+// roleCardOf is the classifier input for a card's Oracle fields. A malformed
+// card_faces blob just leaves the card unclassified by face; the top-level text
+// still applies.
+func roleCardOf(typeLine, oracleText string, keywords []string, cardFaces []byte) deckroles.Card {
+	var faces []deckroles.Face
+	if len(cardFaces) > 0 {
+		_ = json.Unmarshal(cardFaces, &faces)
+	}
+	return deckroles.Card{TypeLine: typeLine, OracleText: oracleText, Keywords: keywords, Faces: faces}
 }

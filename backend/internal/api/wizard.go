@@ -18,6 +18,7 @@ import (
 	"manafold-backend/internal/ai"
 	"manafold-backend/internal/bracket"
 	db "manafold-backend/internal/db/generated"
+	"manafold-backend/internal/deckroles"
 	"manafold-backend/internal/deckstats"
 	"manafold-backend/internal/deckwizard"
 	"manafold-backend/internal/synergy"
@@ -82,6 +83,7 @@ type wizardPlanResponse struct {
 	Archetype *string                  `json:"archetype"`
 	Policy    *wizardPolicyJSON        `json:"policy"`
 	Lands     wizardLandsJSON          `json:"lands"`
+	Roles     []deckwizard.RoleRow     `json:"roles"`
 	Synergy   *wizardSynergyStatusJSON `json:"synergy"`
 }
 
@@ -93,6 +95,7 @@ type wizardRestrictions struct {
 
 type wizardProposeRequest struct {
 	Step            string             `json:"step"`
+	Role            string             `json:"role"`
 	IncludeFetch    bool               `json:"include_fetch"`
 	LandTarget      *int               `json:"land_target"`
 	Restrictions    wizardRestrictions `json:"restrictions"`
@@ -127,6 +130,7 @@ type wizardProposeSynergy struct {
 
 type wizardProposeResponse struct {
 	Step          string                 `json:"step"`
+	Role          string                 `json:"role,omitempty"`
 	Summary       string                 `json:"summary"`
 	Source        string                 `json:"source"`
 	Proposals     []wizardProposal       `json:"proposals"`
@@ -241,7 +245,7 @@ func (v wizardView) gameChangers() wizardGameChangersJSON {
 // getWizardPlan reports whether the wizard can run on a deck and the numbers it
 // works from. It needs neither a model nor a sign-in (WIZ-004).
 //
-// @spec WIZ-002, WIZ-003, WIZ-004, WIZ-005
+// @spec WIZ-002, WIZ-003, WIZ-004, WIZ-005, WIZ-070
 func (a *API) getWizardPlan(w http.ResponseWriter, r *http.Request) {
 	deck, ok := a.deckForOwner(w, r)
 	if !ok {
@@ -256,6 +260,7 @@ func (a *API) getWizardPlan(w http.ResponseWriter, r *http.Request) {
 
 	plan := wizardPlanResponse{
 		AIEnabled: a.AI != nil && a.AI.Enabled(),
+		Roles:     v.roleStanding(),
 		Lands: wizardLandsJSON{
 			Target:           v.landTarget(nil),
 			InDeck:           v.stats.LandCount,
@@ -319,7 +324,7 @@ type wizardPool struct {
 // that pass the validate-every-returned-card gate, belong to the pool, and keep
 // the deck inside its bracket. It writes nothing to the deck.
 //
-// @spec WIZ-010, WIZ-011, WIZ-012, WIZ-013, WIZ-014, WIZ-015, WIZ-020, WIZ-023, WIZ-025, WIZ-032, WIZ-042, WIZ-045
+// @spec WIZ-010, WIZ-011, WIZ-012, WIZ-013, WIZ-014, WIZ-015, WIZ-020, WIZ-023, WIZ-025, WIZ-032, WIZ-042, WIZ-045, WIZ-071, WIZ-072, WIZ-073, WIZ-075, WIZ-076
 func (a *API) wizardPropose(w http.ResponseWriter, r *http.Request) {
 	uid, ok := a.aiGateCaller(w, r)
 	if !ok {
@@ -356,9 +361,14 @@ func (a *API) wizardPropose(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	target := v.landTarget(req.LandTarget)
 	want := step.Want()
+	guidance := step.Guidance()
+	var role deckroles.Role
+	if step == deckwizard.StepRoles {
+		role, _ = deckwizard.ParseRole(req.Role)
+	}
 	empty := func(reason string) {
 		writeJSON(w, http.StatusOK, wizardProposeResponse{
-			Step: string(step), Source: sourceFor(step, ""), Proposals: []wizardProposal{},
+			Step: string(step), Role: string(role), Source: sourceFor(step, ""), Proposals: []wizardProposal{},
 			EmptyReason: &reason, GameChangers: v.gameChangers(),
 		})
 	}
@@ -373,6 +383,14 @@ func (a *API) wizardPropose(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		want = min(want, room)
+	case step == deckwizard.StepRoles:
+		row, reason := v.roleRoom(role)
+		if reason != "" {
+			empty(reason)
+			return
+		}
+		want = deckwizard.RoleWant(row.Count, row.Max)
+		guidance = deckwizard.RoleGuidance(role, row.Count, row.Min, row.Max)
 	case v.mainCount >= wizardDeckSize:
 		empty("deck_full")
 		return
@@ -388,7 +406,7 @@ func (a *API) wizardPropose(w http.ResponseWriter, r *http.Request) {
 	if len(pool.entries) == 0 {
 		reason := "no_candidates"
 		writeJSON(w, http.StatusOK, wizardProposeResponse{
-			Step: string(step), Source: pool.source, Proposals: []wizardProposal{}, EmptyReason: &reason,
+			Step: string(step), Role: string(role), Source: pool.source, Proposals: []wizardProposal{}, EmptyReason: &reason,
 			GameChangers: gc, CombosChecked: pool.admission.combosChecked,
 		})
 		return
@@ -396,7 +414,7 @@ func (a *API) wizardPropose(w http.ResponseWriter, r *http.Request) {
 
 	cr := ai.CurateRequest{
 		Step:             string(step),
-		StepGuidance:     step.Guidance(),
+		StepGuidance:     guidance,
 		CommanderName:    ld.commander.Name,
 		CommanderText:    ld.commander.OracleText,
 		DeckIdentity:     v.identity,
@@ -430,6 +448,7 @@ func (a *API) wizardPropose(w http.ResponseWriter, r *http.Request) {
 
 	out := wizardProposeResponse{
 		Step:          string(step),
+		Role:          string(role),
 		Summary:       res.Summary,
 		Source:        pool.source,
 		Proposals:     proposals,
@@ -545,7 +564,10 @@ func parseProposeRequest(r *http.Request) (wizardProposeRequest, deckwizard.Step
 	}
 	step, ok := deckwizard.ParseStep(req.Step)
 	if !ok {
-		return req, "", nil, "step must be one of fixing, utility, picks"
+		return req, "", nil, "step must be one of fixing, utility, roles, picks"
+	}
+	if _, ok := deckwizard.ParseRole(req.Role); step == deckwizard.StepRoles && !ok {
+		return req, "", nil, "role must be one of ramp, card_draw, targeted_removal, board_wipe"
 	}
 	if msg := validateWizardAnswers(req.LandTarget, req.Restrictions, req.RejectedCardIDs); msg != "" {
 		return req, "", nil, msg
@@ -616,7 +638,7 @@ func poolCards(entries []wizardCandidate) []ai.PoolCard {
 // every deterministic rule to it: the deck's own cards and the player's
 // rejections, the price cap, the tutor ban, and bracket admission.
 //
-// @spec WIZ-022, WIZ-030, WIZ-031, WIZ-033, WIZ-034, WIZ-040, WIZ-041, WIZ-043, WIZ-044
+// @spec WIZ-022, WIZ-030, WIZ-031, WIZ-033, WIZ-034, WIZ-040, WIZ-041, WIZ-043, WIZ-044, WIZ-074
 func (a *API) buildWizardPool(r *http.Request, v wizardView, step deckwizard.Step, req wizardProposeRequest, rejected []pgtype.UUID) (wizardPool, error) {
 	ctx := r.Context()
 	excludeSet := make(map[string]bool, len(v.onDeck)+len(rejected))
@@ -656,6 +678,16 @@ func (a *API) buildWizardPool(r *http.Request, v wizardView, step deckwizard.Ste
 			return pool, err
 		}
 		main = candidatesOf(rows)
+	case deckwizard.StepRoles:
+		role, _ := deckwizard.ParseRole(req.Role)
+		var err error
+		main, pool.synergy, err = a.rolePool(ctx, v, role, exclude, excludeSet, size*wizardRawFactor)
+		if err != nil {
+			return pool, err
+		}
+		if pool.synergy != nil {
+			pool.source = "synergy"
+		}
 	default:
 		var err error
 		main, pool.synergy, err = a.picksFromSynergy(ctx, v, excludeSet)

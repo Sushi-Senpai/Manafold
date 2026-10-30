@@ -6,6 +6,7 @@ import type {
   WizardPlan,
   WizardProposal,
   WizardProposeResponse,
+  WizardRoleRow,
 } from "./api.ts";
 import {
   BRACKET_OPTIONS,
@@ -17,11 +18,14 @@ import {
   toSavedState,
   gameChangerLine,
   canAccept,
+  canSuggestRole,
   parsePriceCap,
   picksNote,
   proposeBody,
   rejectCard,
   removeProposal,
+  roleLine,
+  roleStatusText,
   visibleSteps,
   wizardErrorText,
   afterAccept,
@@ -37,6 +41,7 @@ function plan(over: Partial<WizardPlan> = {}): WizardPlan {
     archetype: null,
     policy: { game_changer_limit: 3, game_changers_in_deck: 1, game_changers_left: 2, guidance: "g" },
     lands: { target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: true },
+    roles: [],
     synergy: null,
     ...over,
   };
@@ -99,6 +104,49 @@ test("proposeBody carries the restrictions, rejections, and only the fields a st
   assert.equal(bare.land_target, undefined);
 });
 
+function roleRow(over: Partial<WizardRoleRow> = {}): WizardRoleRow {
+  return { role: "ramp", label: "Ramp", count: 4, min: 10, max: 12, status: "under", ...over };
+}
+
+// @spec WIZ-071, WIZ-077
+test("the roles step comes after the lands and before the picks", () => {
+  const steps = visibleSteps(plan());
+  assert.ok(steps.indexOf("utility") < steps.indexOf("roles"));
+  assert.ok(steps.indexOf("roles") < steps.indexOf("picks"));
+});
+
+// @spec WIZ-071
+test("proposeBody names the role for the roles step and no land target", () => {
+  const a = defaultAnswers();
+  a.landTarget = 36;
+  const body = proposeBody("roles", a, ["r1"], "card_draw");
+  assert.deepEqual(body, {
+    step: "roles",
+    role: "card_draw",
+    restrictions: { no_tutors: false },
+    rejected_card_ids: ["r1"],
+  });
+  assert.equal(proposeBody("picks", a, []).role, undefined);
+  assert.equal(proposeBody("utility", a, [], "ramp").role, undefined, "only the roles step carries a role");
+  assert.equal(proposeBody("picks", a, []).land_target, undefined);
+});
+
+// @spec WIZ-077
+test("a role is offered only while it is below its template maximum", () => {
+  assert.equal(canSuggestRole(roleRow({ count: 0 })), true);
+  assert.equal(canSuggestRole(roleRow({ count: 11 })), true);
+  assert.equal(canSuggestRole(roleRow({ count: 12 })), false);
+  assert.equal(canSuggestRole(roleRow({ count: 15, status: "over" })), false);
+});
+
+// @spec WIZ-077
+test("role rows read as a count against the range", () => {
+  assert.equal(roleLine(roleRow()), "Ramp: 4 of 10–12");
+  assert.equal(roleStatusText(roleRow({ count: 4, status: "under" })), "6 below the target");
+  assert.equal(roleStatusText(roleRow({ count: 11, status: "ok" })), "in range");
+  assert.equal(roleStatusText(roleRow({ count: 14, status: "over" })), "above the target");
+});
+
 // @spec WIZ-034, WIZ-063
 test("rejecting a card remembers it once; removeProposal drops it from the list", () => {
   assert.deepEqual(rejectCard(["a"], "b"), ["a", "b"]);
@@ -113,12 +161,12 @@ test("rejecting a card remembers it once; removeProposal drops it from the list"
 
 // @spec WIZ-062
 test("the fixing step is skipped for a deck with fewer than two colours", () => {
-  assert.deepEqual(visibleSteps(plan()), ["setup", "fixing", "utility", "picks", "basics"]);
+  assert.deepEqual(visibleSteps(plan()), ["setup", "fixing", "utility", "roles", "picks", "basics"]);
   assert.deepEqual(
     visibleSteps(plan({ lands: { target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: false } })),
-    ["setup", "utility", "picks", "basics"],
+    ["setup", "utility", "roles", "picks", "basics"],
   );
-  assert.deepEqual(visibleSteps(null), ["setup", "fixing", "utility", "picks", "basics"]);
+  assert.deepEqual(visibleSteps(null), ["setup", "fixing", "utility", "roles", "picks", "basics"]);
 });
 
 // @spec WIZ-064
@@ -180,7 +228,7 @@ test("picksNote shows the Archidekt attribution for synergy data and a popular-p
 
 // @spec WIZ-013
 test("every empty reason has a message", () => {
-  for (const r of ["land_target_met", "no_fixing_needed", "deck_full", "no_candidates"] as const) {
+  for (const r of ["land_target_met", "no_fixing_needed", "deck_full", "no_candidates", "no_archetype", "role_filled"] as const) {
     assert.ok(emptyReasonText(r).length > 10, r);
   }
 });
