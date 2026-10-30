@@ -105,3 +105,36 @@ RETURNING state, updated_at;
 -- @spec WIZ-103
 -- name: DeleteWizardState :exec
 DELETE FROM deck_wizard_state WHERE deck_id = $1;
+
+-- Fast mana (WIZ-108): a nonland card tagged mana-rock or ritual (or a
+-- descendant) that costs two or less or is a Game Changer. The two queries below
+-- share this definition: the pool lists candidates inside the deck's identity,
+-- the filter picks the fast mana out of a deck's own cards.
+-- @spec WIZ-108, WIZ-110
+-- name: ListWizardFastMana :many
+SELECT c.* FROM cards c
+LEFT JOIN banlist_overrides bo ON lower(bo.card_name) = lower(c.name)
+WHERE split_part(c.type_line, ' // ', 1) NOT LIKE '%Land%'
+  AND (c.mana_value <= 2 OR c.is_game_changer)
+  AND EXISTS (
+    SELECT 1 FROM card_oracle_tags ct
+    WHERE ct.card_id = c.id
+      AND ct.tag_id IN (SELECT oracle_tag_reach('mana-rock') UNION SELECT oracle_tag_reach('ritual')))
+  AND c.color_identity <@ sqlc.arg(identity)::text[]
+  AND c.id <> ALL(sqlc.arg(exclude_ids)::uuid[])
+  AND CASE WHEN bo.card_name IS NOT NULL THEN NOT bo.banned
+           ELSE c.legalities->>'commander' = 'legal' END
+ORDER BY c.edhrec_rank ASC NULLS LAST, c.name ASC
+LIMIT sqlc.arg(lim);
+
+-- The subset of card_ids that are fast mana by the same definition.
+-- @spec WIZ-108, WIZ-113
+-- name: FilterFastManaCardIDs :many
+SELECT c.id FROM cards c
+WHERE c.id = ANY(sqlc.arg(card_ids)::uuid[])
+  AND split_part(c.type_line, ' // ', 1) NOT LIKE '%Land%'
+  AND (c.mana_value <= 2 OR c.is_game_changer)
+  AND EXISTS (
+    SELECT 1 FROM card_oracle_tags ct
+    WHERE ct.card_id = c.id
+      AND ct.tag_id IN (SELECT oracle_tag_reach('mana-rock') UNION SELECT oracle_tag_reach('ritual')));

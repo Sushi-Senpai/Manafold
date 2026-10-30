@@ -1439,3 +1439,263 @@ func TestWizardState_GoesWithTheDeck(t *testing.T) {
 		t.Errorf("deck_wizard_state rows after deck delete = %d, want 0", n)
 	}
 }
+
+// ---- Bracket 4 fast mana ------------------------------------------------
+
+// fastManaTags creates the mana-rock tag (with a signet-style child) and the
+// ritual tag the fast-mana definition reads (WIZ-108).
+func (fx *wizFixture) fastManaTags() (rock, signet, ritual pgtype.UUID) {
+	rock = fx.tag("mana-rock", nil)
+	signet = fx.tag("signet", &rock)
+	ritual = fx.tag("ritual", nil)
+	return rock, signet, ritual
+}
+
+func (fx *wizFixture) setManaValue(c wizCard, mv float64) {
+	fx.t.Helper()
+	if _, err := fx.a.Pool.Exec(context.Background(), `UPDATE cards SET mana_value = $2 WHERE id = $1`, c.ID, mv); err != nil {
+		fx.t.Fatal(err)
+	}
+}
+
+// @spec WIZ-109
+func TestWizardPropose_FastManaIsBracketFourOnly(t *testing.T) {
+	fx := newWizFixture(t)
+	rock, _, _ := fx.fastManaTags()
+	solRing := fx.card(wizCardSpec{name: "Fast Sol Ring", typeLine: "Artifact"})
+	fx.tagCard(rock, solRing)
+
+	calls := fx.assistant(shouldNotBeCalled(t))
+	for _, b := range []int{1, 2, 3} {
+		deckID, _ := fx.deck([]string{"W"}, b, "")
+		rec := fx.proposeRaw(deckID, map[string]any{"step": "fastmana"})
+		if rec.Code != http.StatusUnprocessableEntity {
+			t.Errorf("bracket %d: %d %s, want 422", b, rec.Code, rec.Body.String())
+		}
+		if p := fx.get(deckID); p.FastMana.Applicable || p.FastMana.InDeck != 0 {
+			t.Errorf("bracket %d plan fast_mana = %+v, want not applicable", b, p.FastMana)
+		}
+	}
+	if *calls != 0 || fx.usage("wizard") != 0 {
+		t.Errorf("fast mana at Brackets 1-3 reached the model: %d calls, %d metered", *calls, fx.usage("wizard"))
+	}
+
+	// The same cards in an ordinary picks pool at Bracket 3 are untouched by the
+	// fast-mana pass: no fast-mana guidance reaches a Bracket 3 request.
+	three, _ := fx.deck([]string{"W"}, 3, "")
+	var seen ai.CurateRequest
+	fx.assistant(capture(&seen))
+	fx.propose(three, map[string]any{"step": "picks"})
+	if seen.Step != "picks" {
+		t.Errorf("step = %q, want picks", seen.Step)
+	}
+
+	four, _ := fx.deck([]string{"W"}, 4, "")
+	if p := fx.get(four); !p.FastMana.Applicable {
+		t.Errorf("bracket 4 plan fast_mana = %+v, want applicable", p.FastMana)
+	}
+	got := fx.propose(four, map[string]any{"step": "fastmana"})
+	if got.Step != "fastmana" || got.Source != "fast_mana" {
+		t.Errorf("response step/source = %q/%q, want fastmana/fast_mana", got.Step, got.Source)
+	}
+}
+
+// @spec WIZ-108, WIZ-110, WIZ-111
+func TestWizardPropose_FastManaPool(t *testing.T) {
+	fx := newWizFixture(t)
+	rock, signet, ritualTag := fx.fastManaTags()
+	dork := fx.tag("mana-dork", nil)
+	deckID, _ := fx.deck([]string{"W", "U"}, 4, "")
+
+	solRing := fx.card(wizCardSpec{name: "FM Sol Ring", typeLine: "Artifact", usd: f64(5)})
+	fx.tagCard(rock, solRing)
+	childRock := fx.card(wizCardSpec{name: "FM Signet", typeLine: "Artifact"})
+	fx.tagCard(signet, childRock) // a descendant of mana-rock counts
+	ritual := fx.card(wizCardSpec{name: "FM Ritual", typeLine: "Instant", identity: []string{"W"}})
+	fx.tagCard(ritualTag, ritual)
+	pricey := fx.card(wizCardSpec{name: "FM Pricey Rock", typeLine: "Artifact", gc: true, usd: f64(900)})
+	fx.tagCard(rock, pricey)
+	lotus := fx.card(wizCardSpec{name: "FM Jeweled Lotus", typeLine: "Artifact", gc: true})
+	fx.setManaValue(lotus, 3)
+	fx.tagCard(rock, lotus) // a Game Changer stays in despite costing three
+
+	slow := fx.card(wizCardSpec{name: "FM Slow Rock", typeLine: "Artifact"})
+	fx.setManaValue(slow, 4)
+	fx.tagCard(rock, slow)
+	untagged := fx.card(wizCardSpec{name: "FM Plain Artifact", typeLine: "Artifact"})
+	asDork := fx.card(wizCardSpec{name: "FM Dork", typeLine: "Creature — Elf", identity: []string{"W"}})
+	fx.tagCard(dork, asDork)
+	tomb := fx.card(wizCardSpec{name: "FM Tomb", typeLine: "Land", produced: []string{"C"}})
+	fx.tagCard(rock, tomb)
+	offIdentity := fx.card(wizCardSpec{name: "FM Off Identity", typeLine: "Artifact", identity: []string{"B"}})
+	fx.tagCard(rock, offIdentity)
+	banned := fx.card(wizCardSpec{name: "FM Banned Rock", typeLine: "Artifact", legal: "banned"})
+	fx.tagCard(rock, banned)
+	onDeck := fx.card(wizCardSpec{name: "FM On Deck", typeLine: "Artifact"})
+	fx.tagCard(rock, onDeck)
+	fx.add(deckID, onDeck, "main", 1)
+	rejected := fx.card(wizCardSpec{name: "FM Rejected", typeLine: "Artifact"})
+	fx.tagCard(rock, rejected)
+
+	var seen ai.CurateRequest
+	fx.assistant(capture(&seen))
+	resp := fx.propose(deckID, map[string]any{
+		"step":              "fastmana",
+		"rejected_card_ids": []string{uuidString(rejected.ID)},
+	})
+	pool := poolNames(seen.Pool)
+	for label, c := range map[string]wizCard{"rock": solRing, "descendant tag": childRock, "ritual": ritual, "priced game changer": pricey, "game changer over the cost cut": lotus} {
+		wantIn(t, pool, "fast mana/"+label, c)
+	}
+	for label, c := range map[string]wizCard{
+		"costly rock": slow, "untagged": untagged, "dork": asDork, "land": tomb,
+		"off identity": offIdentity, "banned": banned, "on deck": onDeck, "rejected": rejected,
+	} {
+		wantOut(t, pool, "fast mana/"+label, c)
+	}
+	if seen.Step != "fastmana" || seen.Want != 8 || seen.StepGuidance == "" {
+		t.Errorf("curate request: step %q, want %d, guidance %q", seen.Step, seen.Want, seen.StepGuidance)
+	}
+	if resp.PoolSize != len(seen.Pool) || resp.Source != "fast_mana" {
+		t.Errorf("pool size %d (menu %d), source %q", resp.PoolSize, len(seen.Pool), resp.Source)
+	}
+
+	// The price cap narrows this pool like every other.
+	var cappedSeen ai.CurateRequest
+	fx.assistant(capture(&cappedSeen))
+	fx.propose(deckID, map[string]any{
+		"step": "fastmana", "restrictions": map[string]any{"max_price_usd": 500.0},
+	})
+	wantIn(t, poolNames(cappedSeen.Pool), "fast mana under a price cap", solRing)
+	wantOut(t, poolNames(cappedSeen.Pool), "fast mana over a price cap", pricey)
+}
+
+// @spec WIZ-111, WIZ-112, WIZ-020
+func TestWizardPropose_FastManaGateEmptyAndMetering(t *testing.T) {
+	fx := newWizFixture(t)
+	rock, _, _ := fx.fastManaTags()
+	deckID, _ := fx.deck([]string{"W"}, 4, "")
+	a := fx.card(wizCardSpec{name: "Gate Rock A", typeLine: "Artifact"})
+	fx.tagCard(rock, a)
+	outsider := fx.card(wizCardSpec{name: "Gate Outsider", typeLine: "Artifact"}) // not fast mana
+
+	fx.assistant(pickNames(a.Name, outsider.Name, "Not A Real Card"))
+	resp := fx.propose(deckID, map[string]any{"step": "fastmana"})
+	if names := proposalNames(resp.Proposals); len(names) != 1 || names[0] != a.Name {
+		t.Errorf("proposals = %v, want only %q", names, a.Name)
+	}
+	if resp.Dropped != 2 {
+		t.Errorf("dropped = %d, want 2 (outside the pool, unknown)", resp.Dropped)
+	}
+	if n := fx.usage("wizard"); n != 1 {
+		t.Errorf("metered %d calls, want 1", n)
+	}
+
+	// Nothing fits: no model call and no metering.
+	none, _ := fx.deck([]string{"U"}, 4, "")
+	fx.assistant(shouldNotBeCalled(t))
+	got := fx.propose(none, map[string]any{"step": "fastmana", "restrictions": map[string]any{"max_price_usd": 0.0001}})
+	if got.EmptyReason == nil || *got.EmptyReason != "no_candidates" {
+		t.Errorf("empty_reason = %v, want no_candidates", got.EmptyReason)
+	}
+
+	full, _ := fx.deck([]string{"W"}, 4, "")
+	basic := fx.card(wizCardSpec{name: "Gate Plains", typeLine: "Basic Land — Plains", identity: []string{"W"}, produced: []string{"W"}})
+	fx.add(full, basic, "main", 100)
+	got = fx.propose(full, map[string]any{"step": "fastmana"})
+	if got.EmptyReason == nil || *got.EmptyReason != "deck_full" {
+		t.Errorf("empty_reason = %v, want deck_full", got.EmptyReason)
+	}
+	if n := fx.usage("wizard"); n != 1 {
+		t.Errorf("empty answers were metered: %d calls, want still 1", n)
+	}
+}
+
+// @spec WIZ-113, WIZ-114
+func TestWizardPlan_LandTargetFollowsTheFastManaTheDeckRuns(t *testing.T) {
+	fx := newWizFixture(t)
+	rock, _, ritual := fx.fastManaTags()
+
+	build := func(bracket int, qtys ...int) string {
+		deckID, _ := fx.deck([]string{"W", "U"}, bracket, "midrange_value") // base target 37
+		for i, q := range qtys {
+			c := fx.card(wizCardSpec{name: fmt.Sprintf("Plan Rock %d", i), typeLine: "Artifact"})
+			fx.tagCard(rock, c)
+			fx.add(deckID, c, "main", q)
+		}
+		return deckID
+	}
+	check := func(label string, deckID string, wantTarget, wantFast int) {
+		t.Helper()
+		p := fx.get(deckID)
+		if p.Lands.Target != wantTarget || p.Lands.BaseTarget != 37 || p.FastMana.InDeck != wantFast {
+			t.Errorf("%s: target %d (base %d), fast mana %d; want target %d, base 37, fast mana %d",
+				label, p.Lands.Target, p.Lands.BaseTarget, p.FastMana.InDeck, wantTarget, wantFast)
+		}
+	}
+
+	check("none held", build(4), 37, 0)
+	check("one piece", build(4, 1), 37, 1)
+	check("two pieces", build(4, 1, 1), 36, 2)
+	check("quantity counts", build(4, 3), 36, 3)
+	check("six pieces", build(4, 1, 1, 1, 1, 1, 1), 34, 6)
+	check("the floor holds", build(4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), 32, 22)
+	for _, b := range []int{1, 2, 3} {
+		check(fmt.Sprintf("bracket %d ignores them", b), build(b, 1, 1, 1, 1), 37, 0)
+	}
+
+	// Staging boards, a ritual, and a card that is not fast mana.
+	deckID := build(4, 1)
+	rit := fx.card(wizCardSpec{name: "Plan Ritual", typeLine: "Instant", identity: []string{"W"}})
+	fx.tagCard(ritual, rit)
+	fx.add(deckID, rit, "main", 1)
+	maybe := fx.card(wizCardSpec{name: "Plan Maybe Rock", typeLine: "Artifact"})
+	fx.tagCard(rock, maybe)
+	fx.add(deckID, maybe, "maybe", 4)
+	slow := fx.card(wizCardSpec{name: "Plan Slow Rock", typeLine: "Artifact"})
+	fx.setManaValue(slow, 5)
+	fx.tagCard(rock, slow)
+	fx.add(deckID, slow, "main", 1)
+	check("ritual counts, maybe board and a slow rock do not", deckID, 36, 2)
+}
+
+// @spec WIZ-042, WIZ-050, WIZ-114
+func TestWizardFastMana_RelaxedTargetReachesLandStepsAndBasics(t *testing.T) {
+	fx := newWizFixture(t)
+	rock, _, _ := fx.fastManaTags()
+	plains := ensureBasic(t, fx.a, "Plains", "Basic Land — Plains", "W")
+
+	deckID, _ := fx.deck([]string{"W", "U"}, 4, "midrange_value")
+	for i := 0; i < 4; i++ {
+		c := fx.card(wizCardSpec{name: fmt.Sprintf("Relax Rock %d", i), typeLine: "Artifact"})
+		fx.tagCard(rock, c)
+		fx.add(deckID, c, "main", 1)
+	}
+	fx.add(deckID, wizCard{ID: plains}, "main", 35) // the relaxed target is 35
+
+	fx.assistant(shouldNotBeCalled(t))
+	got := fx.propose(deckID, map[string]any{"step": "fixing"})
+	if got.EmptyReason == nil || *got.EmptyReason != "land_target_met" {
+		t.Errorf("fixing at 35 lands with a relaxed target of 35: empty_reason = %v, want land_target_met", got.EmptyReason)
+	}
+	rec := fx.basics(deckID, map[string]any{})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("basics: %d %s", rec.Code, rec.Body.String())
+	}
+	if b := decode[wizardBasicsResponse](t, rec); b.LandTarget != 35 || b.BasicsNeeded != 0 {
+		t.Errorf("basics = target %d, needed %d; want 35 and 0", b.LandTarget, b.BasicsNeeded)
+	}
+
+	// The player's own target replaces the relaxation outright.
+	rec = fx.basics(deckID, map[string]any{"land_target": 40})
+	if b := decode[wizardBasicsResponse](t, rec); b.LandTarget != 40 || b.BasicsNeeded != 5 {
+		t.Errorf("basics with override = target %d, needed %d; want 40 and 5", b.LandTarget, b.BasicsNeeded)
+	}
+
+	// The same deck at Bracket 3 gets the base target.
+	fx.patch(deckID, 3, "")
+	rec = fx.basics(deckID, map[string]any{})
+	if b := decode[wizardBasicsResponse](t, rec); b.LandTarget != 37 || b.BasicsNeeded != 2 {
+		t.Errorf("bracket 3 basics = target %d, needed %d; want 37 and 2", b.LandTarget, b.BasicsNeeded)
+	}
+}

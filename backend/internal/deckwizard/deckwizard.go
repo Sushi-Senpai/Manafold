@@ -9,7 +9,7 @@
 // never offered to the language model, and whatever the model names is checked
 // against it again. Nothing here writes a deck.
 //
-// @spec WIZ-001, WIZ-003, WIZ-021, WIZ-023, WIZ-050
+// @spec WIZ-001, WIZ-003, WIZ-021, WIZ-023, WIZ-050, WIZ-109, WIZ-114
 package deckwizard
 
 import (
@@ -25,15 +25,16 @@ import (
 type Step string
 
 const (
-	StepFixing  Step = "fixing"
-	StepUtility Step = "utility"
-	StepPicks   Step = "picks"
+	StepFixing   Step = "fixing"
+	StepUtility  Step = "utility"
+	StepFastMana Step = "fastmana"
+	StepPicks    Step = "picks"
 )
 
 // ParseStep reads a propose request's step name.
 func ParseStep(s string) (Step, bool) {
 	switch Step(s) {
-	case StepFixing, StepUtility, StepPicks:
+	case StepFixing, StepUtility, StepFastMana, StepPicks:
 		return Step(s), true
 	}
 	return "", false
@@ -41,8 +42,11 @@ func ParseStep(s string) (Step, bool) {
 
 // Want is the most proposals one round returns (WIZ-015).
 func (s Step) Want() int {
-	if s == StepUtility {
+	switch s {
+	case StepUtility:
 		return 5
+	case StepFastMana:
+		return 8
 	}
 	return 10
 }
@@ -55,12 +59,24 @@ func (s Step) PoolSize() int {
 		return 30
 	case StepUtility:
 		return 25
+	case StepFastMana:
+		return 20
 	}
 	return 40
 }
 
 // IsLandStep reports whether the step proposes lands.
 func (s Step) IsLandStep() bool { return s == StepFixing || s == StepUtility }
+
+// FastManaBracket is the one bracket that gets a fast-mana pass (WIZ-109).
+const FastManaBracket = 4
+
+// AppliesAtBracket reports whether the step is part of the wizard at a bracket.
+// Every step applies everywhere except fast mana, which is Bracket 4 only: a
+// Bracket 1–3 deck is never offered it, and the endpoint refuses to build it.
+func (s Step) AppliesAtBracket(b int) bool {
+	return s != StepFastMana || b == FastManaBracket
+}
 
 // Guidance is the step's instruction to the model. It steers curation; the pool
 // it curates from is what binds.
@@ -74,6 +90,10 @@ func (s Step) Guidance() string {
 		return "Choose utility lands that do something useful for this commander and strategy " +
 			"beyond making mana. Remember each colourless land makes the deck's colours less " +
 			"consistent, so pick only the ones that earn their slot."
+	case StepFastMana:
+		return "Choose fast mana: rocks and rituals that put mana on the table ahead of the curve. " +
+			"Favour the cheapest and most efficient ones that this commander's plan can use, mix rocks " +
+			"with rituals only where the deck can spend the burst, and do not stack one kind of effect."
 	}
 	return "Choose the cards that best support this commander's strategy and the player's notes. " +
 		"Prefer cards with high synergy points when they are shown, mix roles rather than stacking " +
@@ -128,20 +148,23 @@ func GameChangersLeft(b, inDeck int) *int {
 	return &left
 }
 
-// Land target bounds and default (WIZ-003, WIZ-012).
+// Land target bounds and default (WIZ-003, WIZ-012), and the Bracket 4
+// relaxation (WIZ-114): one land fewer for every FastManaPerLand fast-mana cards
+// the deck holds, never below RelaxedLandFloor.
 const (
 	DefaultLandTarget = 37
 	MinLandTarget     = 20
 	MaxLandTarget     = 60
+	FastManaPerLand   = 2
+	RelaxedLandFloor  = decktemplates.LandRelaxedFloor
 )
 
 // ValidLandTarget reports whether a player-supplied land target is in range.
 func ValidLandTarget(n int) bool { return n >= MinLandTarget && n <= MaxLandTarget }
 
-// LandTarget is the floor of the midpoint of the archetype's land range, or
-// DefaultLandTarget with no (or an unknown) archetype. The Bracket 4 relaxation
-// is deliberately not applied: the wizard cannot yet tell whether the deck will
-// run heavy fast mana (WIZ-003).
+// LandTarget is the base land target: the floor of the midpoint of the
+// archetype's land range, or DefaultLandTarget with no (or an unknown)
+// archetype (WIZ-003). RelaxedLandTarget lowers it for Bracket 4 fast mana.
 func LandTarget(archetype string) int {
 	tpl, ok := decktemplates.Lookup(archetype)
 	if !ok {
@@ -153,6 +176,24 @@ func LandTarget(archetype string) int {
 		}
 	}
 	return DefaultLandTarget
+}
+
+// RelaxedLandTarget is the land target for a deck at a bracket that holds
+// `fastMana` fast-mana cards: at Bracket 4, the base less one land per
+// FastManaPerLand pieces, but never below RelaxedLandFloor and never above the
+// base; at any other bracket the base (WIZ-114).
+func RelaxedLandTarget(base, bracket, fastMana int) int {
+	if bracket != FastManaBracket || fastMana < FastManaPerLand {
+		return base
+	}
+	relaxed := base - fastMana/FastManaPerLand
+	if relaxed < RelaxedLandFloor {
+		relaxed = RelaxedLandFloor
+	}
+	if relaxed > base {
+		return base
+	}
+	return relaxed
 }
 
 // BasicsRow is one line of the basic-land plan.

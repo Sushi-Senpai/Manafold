@@ -348,7 +348,7 @@ export type BracketCombo = {
 
 // ---- deck-wizard ------------------------------------------------------
 
-export type WizardStep = "fixing" | "utility" | "picks";
+export type WizardStep = "fixing" | "utility" | "fastmana" | "picks";
 
 export type WizardPlan = {
   ready: boolean;
@@ -364,10 +364,12 @@ export type WizardPlan = {
   } | null;
   lands: {
     target: number;
+    base_target: number;
     in_deck: number;
     basics_needed: number;
     fixing_applicable: boolean;
   };
+  fast_mana: { applicable: boolean; in_deck: number };
   synergy: { status: "none" | "gathering" | "ready"; reason: string | null } | null;
 };
 
@@ -400,7 +402,7 @@ export type WizardEmptyReason = "land_target_met" | "no_fixing_needed" | "deck_f
 export type WizardProposeResponse = {
   step: WizardStep;
   summary: string;
-  source: "synergy" | "popular" | "lands";
+  source: "synergy" | "popular" | "lands" | "fast_mana";
   proposals: WizardProposal[];
   dropped: number;
   pool_size: number;
@@ -417,7 +419,7 @@ export type WizardProposeResponse = {
 
 // The wizard's saved answers (WIZ-092): what the first slice asks, per deck.
 export type WizardSavedState = {
-  step: "setup" | "fixing" | "utility" | "picks" | "basics";
+  step: "setup" | "fixing" | "utility" | "fastmana" | "picks" | "basics";
   restrictions: WizardRestrictions;
   fixing: "include" | "basics";
   include_fetch: boolean;

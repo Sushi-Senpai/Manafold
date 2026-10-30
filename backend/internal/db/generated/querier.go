@@ -73,6 +73,9 @@ type Querier interface {
 	// reachable through enabled tags — role counting over a deck's cards.
 	// @spec CARD-065, CARD-062, CARD-063
 	FilterCardIDsByOracleTag(ctx context.Context, arg FilterCardIDsByOracleTagParams) ([]pgtype.UUID, error)
+	// The subset of card_ids that are fast mana by the same definition.
+	// @spec WIZ-108, WIZ-113
+	FilterFastManaCardIDs(ctx context.Context, cardIds []pgtype.UUID) ([]pgtype.UUID, error)
 	FinishSyncRun(ctx context.Context, arg FinishSyncRunParams) error
 	// Commander Spellbook combo mirror (card-data, CARD-050..054) and the reads the
 	// deck bracket check makes over it (deck-building, DECK-122, DECK-124, DECK-126).
@@ -178,6 +181,12 @@ type Querier interface {
 	// not know drops out of the join (SYN-040, SYN-041).
 	// @spec SYN-040, SYN-041
 	ListTopSynergyCards(ctx context.Context, arg ListTopSynergyCardsParams) ([]ListTopSynergyCardsRow, error)
+	// Fast mana (WIZ-108): a nonland card tagged mana-rock or ritual (or a
+	// descendant) that costs two or less or is a Game Changer. The two queries below
+	// share this definition: the pool lists candidates inside the deck's identity,
+	// the filter picks the fast mana out of a deck's own cards.
+	// @spec WIZ-108, WIZ-110
+	ListWizardFastMana(ctx context.Context, arg ListWizardFastManaParams) ([]Card, error)
 	// Candidate pools for the deck wizard (WIZ-040, WIZ-041, WIZ-043, WIZ-044).
 	// Every pool is the same legality definition as the rest of the product: inside
 	// the deck's colour identity, commander-legal after banlist_overrides, and not

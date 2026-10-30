@@ -15,6 +15,7 @@ import {
   fromSavedState,
   resumeStep,
   toSavedState,
+  fastManaLine,
   gameChangerLine,
   canAccept,
   parsePriceCap,
@@ -36,7 +37,8 @@ function plan(over: Partial<WizardPlan> = {}): WizardPlan {
     bracket: 3,
     archetype: null,
     policy: { game_changer_limit: 3, game_changers_in_deck: 1, game_changers_left: 2, guidance: "g" },
-    lands: { target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: true },
+    lands: { target: 37, base_target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: true },
+    fast_mana: { applicable: false, in_deck: 0 },
     synergy: null,
     ...over,
   };
@@ -90,6 +92,13 @@ test("proposeBody carries the restrictions, rejections, and only the fields a st
     rejected_card_ids: ["r1", "r2"],
   });
 
+  const fast = proposeBody("fastmana", a, ["r1"]);
+  assert.deepEqual(fast, {
+    step: "fastmana",
+    restrictions: { no_tutors: true, max_price_usd: 4, notes: "goblins" },
+    rejected_card_ids: ["r1"],
+  }, "fast mana carries the restrictions and rejections, no land fields");
+
   const picks = proposeBody("picks", a, []);
   assert.equal(picks.include_fetch, undefined);
   assert.deepEqual(picks.rejected_card_ids, []);
@@ -115,10 +124,41 @@ test("rejecting a card remembers it once; removeProposal drops it from the list"
 test("the fixing step is skipped for a deck with fewer than two colours", () => {
   assert.deepEqual(visibleSteps(plan()), ["setup", "fixing", "utility", "picks", "basics"]);
   assert.deepEqual(
-    visibleSteps(plan({ lands: { target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: false } })),
+    visibleSteps(plan({ lands: { target: 37, base_target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: false } })),
     ["setup", "utility", "picks", "basics"],
   );
   assert.deepEqual(visibleSteps(null), ["setup", "fixing", "utility", "picks", "basics"]);
+});
+
+// @spec WIZ-108
+test("the fast-mana step is in the flow at Bracket 4 only, between utility lands and picks", () => {
+  const four = plan({ bracket: 4, fast_mana: { applicable: true, in_deck: 0 } });
+  assert.deepEqual(visibleSteps(four), ["setup", "fixing", "utility", "fastmana", "picks", "basics"]);
+  for (const bracket of [1, 2, 3, null]) {
+    assert.ok(!visibleSteps(plan({ bracket })).includes("fastmana"), `bracket ${bracket} must not offer fast mana`);
+  }
+  assert.ok(!visibleSteps(null).includes("fastmana"), "no plan yet, no fast-mana step");
+  const monoFour = plan({
+    bracket: 4,
+    fast_mana: { applicable: true, in_deck: 0 },
+    lands: { target: 37, base_target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: false },
+  });
+  assert.deepEqual(visibleSteps(monoFour), ["setup", "utility", "fastmana", "picks", "basics"]);
+});
+
+// @spec WIZ-108, WIZ-114
+test("the fast-mana line shows how the deck's fast mana moved the land target", () => {
+  const at = (in_deck: number, target: number) =>
+    plan({
+      bracket: 4,
+      fast_mana: { applicable: true, in_deck },
+      lands: { target, base_target: 37, in_deck: 0, basics_needed: target, fixing_applicable: true },
+    });
+  assert.equal(fastManaLine(plan()), null, "no line away from Bracket 4");
+  assert.equal(fastManaLine(null), null);
+  assert.match(fastManaLine(at(0, 37))!, /0 fast mana cards.*stays at 37/);
+  assert.match(fastManaLine(at(1, 37))!, /1 fast mana card in the deck.*stays at 37/);
+  assert.equal(fastManaLine(at(4, 35)), "4 fast mana cards in the deck: land target 35 (37 before fast mana).");
 });
 
 // @spec WIZ-064
@@ -264,7 +304,7 @@ test("resumeStep reopens at the saved step when the deck can show it", () => {
 
 // @spec WIZ-105
 test("resumeStep falls back to setup when the saved step cannot be shown", () => {
-  assert.equal(resumeStep("fixing", plan({ lands: { target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: false } })), "setup");
+  assert.equal(resumeStep("fixing", plan({ lands: { target: 37, base_target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: false } })), "setup");
   assert.equal(resumeStep("picks", plan({ ready: false, reason: "no_bracket" })), "setup");
   assert.equal(resumeStep("picks", null), "setup");
   assert.equal(resumeStep("setup", plan()), "setup");

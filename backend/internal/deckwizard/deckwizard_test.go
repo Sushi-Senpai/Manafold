@@ -92,6 +92,54 @@ func TestLandTarget(t *testing.T) {
 	}
 }
 
+// @spec WIZ-109
+func TestAppliesAtBracket(t *testing.T) {
+	for b, want := range map[int]bool{-1: false, 0: false, 1: false, 2: false, 3: false, 4: true, 5: false, 6: false} {
+		if got := StepFastMana.AppliesAtBracket(b); got != want {
+			t.Errorf("fast mana applies at bracket %d = %v, want %v", b, got, want)
+		}
+	}
+	for _, s := range []Step{StepFixing, StepUtility, StepPicks} {
+		for b := 0; b <= 6; b++ {
+			if !s.AppliesAtBracket(b) {
+				t.Errorf("step %s must apply at every bracket, refused %d", s, b)
+			}
+		}
+	}
+}
+
+// @spec WIZ-114
+func TestRelaxedLandTarget(t *testing.T) {
+	cases := []struct {
+		name     string
+		base     int
+		bracket  int
+		fastMana int
+		want     int
+	}{
+		{"none held", 37, 4, 0, 37},
+		{"one piece changes nothing", 37, 4, 1, 37},
+		{"two pieces cost a land", 37, 4, 2, 36},
+		{"three pieces still one land", 37, 4, 3, 36},
+		{"six pieces", 37, 4, 6, 34},
+		{"floor holds", 37, 4, 20, 32},
+		{"exactly at the floor", 37, 4, 10, 32},
+		{"lands-matter base relaxes from its own base", 42, 4, 4, 40},
+		{"a base already under the floor is never raised", 30, 4, 10, 30},
+		{"bracket 3 is the base", 37, 3, 12, 37},
+		{"bracket 2 is the base", 37, 2, 12, 37},
+		{"bracket 1 is the base", 37, 1, 12, 37},
+		{"bracket 5 is the base", 37, 5, 12, 37},
+		{"no bracket is the base", 37, 0, 12, 37},
+		{"negative count is the base", 37, 4, -3, 37},
+	}
+	for _, c := range cases {
+		if got := RelaxedLandTarget(c.base, c.bracket, c.fastMana); got != c.want {
+			t.Errorf("%s: RelaxedLandTarget(%d, %d, %d) = %d, want %d", c.name, c.base, c.bracket, c.fastMana, got, c.want)
+		}
+	}
+}
+
 // @spec WIZ-012, WIZ-050
 func TestValidLandTarget(t *testing.T) {
 	for n, want := range map[int]bool{19: false, 20: true, 37: true, 60: true, 61: false, 0: false, -5: false} {
@@ -102,13 +150,13 @@ func TestValidLandTarget(t *testing.T) {
 }
 
 func TestParseStep(t *testing.T) {
-	for in, want := range map[string]Step{"fixing": StepFixing, "utility": StepUtility, "picks": StepPicks} {
+	for in, want := range map[string]Step{"fixing": StepFixing, "utility": StepUtility, "fastmana": StepFastMana, "picks": StepPicks} {
 		got, ok := ParseStep(in)
 		if !ok || got != want {
 			t.Errorf("ParseStep(%q) = %v, %v", in, got, ok)
 		}
 	}
-	for _, bad := range []string{"", "lands", "Fixing", "basics", "synergy"} {
+	for _, bad := range []string{"", "lands", "Fixing", "basics", "synergy", "fast_mana", "FastMana"} {
 		if _, ok := ParseStep(bad); ok {
 			t.Errorf("ParseStep(%q) accepted", bad)
 		}
@@ -122,7 +170,10 @@ func TestParseStep(t *testing.T) {
 	if !StepFixing.IsLandStep() || !StepUtility.IsLandStep() || StepPicks.IsLandStep() {
 		t.Error("IsLandStep wrong")
 	}
-	for _, s := range []Step{StepFixing, StepUtility, StepPicks} {
+	if StepFastMana.Want() != 8 || StepFastMana.PoolSize() != 20 || StepFastMana.IsLandStep() {
+		t.Errorf("fast mana step: want %d, pool %d, land step %v", StepFastMana.Want(), StepFastMana.PoolSize(), StepFastMana.IsLandStep())
+	}
+	for _, s := range []Step{StepFixing, StepUtility, StepFastMana, StepPicks} {
 		if s.Guidance() == "" {
 			t.Errorf("step %s has no guidance", s)
 		}

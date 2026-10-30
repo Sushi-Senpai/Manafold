@@ -20,6 +20,7 @@ import {
   defaultAnswers,
   emptyReasonText,
   fromSavedState,
+  fastManaLine,
   gameChangerLine,
   picksNote,
   proposeBody,
@@ -46,7 +47,7 @@ import { ProposalList } from "./ProposalList";
 // Its answers, rejected cards and step are saved per deck and restored when the
 // panel opens, so a reload resumes where the player left off (WIZ-092).
 //
-// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067, WIZ-092, WIZ-105, WIZ-106, WIZ-107
+// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067, WIZ-092, WIZ-105, WIZ-106, WIZ-107, WIZ-114, WIZ-116
 export function WizardPanel({
   deckId,
   detail,
@@ -499,6 +500,31 @@ export function WizardPanel({
         </div>
       )}
 
+      {hydrated && step === "fastmana" && (
+        <div className="mt-3 flex flex-col gap-3 text-sm">
+          <p className="font-medium">Do you want fast mana?</p>
+          <p className="text-xs text-muted">
+            Bracket 4 decks lean on mana rocks and rituals. Accept the ones you want; every two you run lets the deck
+            cut a land.
+          </p>
+          {fastManaLine(plan) && <p className="text-xs">{fastManaLine(plan)}</p>}
+          <LandRound
+            enabled
+            aiOff={aiOff}
+            busy={busy}
+            round={round}
+            proposals={proposals}
+            pendingId={pendingId}
+            gcLeft={gcLeft}
+            label="Suggest fast mana"
+            onPropose={() => propose("fastmana")}
+            onAccept={accept}
+            onReject={reject}
+          />
+          <StepNav onBack={back} onNext={next} nextLabel="Continue" />
+        </div>
+      )}
+
       {hydrated && step === "picks" && (
         <div className="mt-3 flex flex-col gap-3 text-sm">
           <p className="font-medium">Cards that fit {detail.commander?.name ?? "your commander"}</p>
@@ -558,6 +584,7 @@ export function WizardPanel({
                   {basics.lands_in_deck} lands now · {basics.basics_needed} basics to add
                 </span>
               </label>
+              {fastManaLine(plan) && <p className="text-xs text-muted">{fastManaLine(plan)}</p>}
               {basics.rows.length > 0 ? (
                 <ul className="flex flex-col gap-1 text-xs">
                   {basics.rows.map((r) => (
