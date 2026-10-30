@@ -1,0 +1,40 @@
+deck d8c84ac7-b8b7-4d12-91ed-94808881d79a
+--- no bracket/commander: roles/ramp
+{"error":"assign a commander before using the wizard"}
+ [422]
+{"id":"d8c84ac7-b8b7-4d12-91ed-94808881d79a","name":"roles live","description":"","format":"commander","bracket":null,"a
+--- commander, no bracket
+{"error":"choose a bracket before using the wizard"}
+ [422]
+{"id":"d8c84ac7-b8b7-4d12-91ed-94808881d79a","name":"roles live","description":"","format":"commande
+--- bracket, no archetype -> no_archetype
+{"step":"roles","role":"ramp","summary":"","source":"popular","proposals":[],"dropped":0,"pool_size":0,"empty_reason":"no_archetype","game_changers":{"limit":0,"in_deck":0,"left":0},"combos_checked":false,"synergy":null,"model":""}
+ [200]
+{"id":"d8c84ac7-b8b7-4d12-91ed-94808881d79a","name":"roles live","description":"","format":"commande
+--- missing role -> 400
+{"error":"role must be one of ramp, card_draw, targeted_removal, board_wipe"}
+ [400]
+--- unknown role -> 400
+{"error":"role must be one of ramp, card_draw, targeted_removal, board_wipe"}
+ [400]
+--- unknown step -> 400
+{"error":"step must be one of fixing, utility, roles, picks"}
+ [400]
+--- plan
+True None
+{'role': 'ramp', 'label': 'Ramp', 'count': 3, 'min': 10, 'max': 12, 'status': 'under'}
+{'role': 'card_draw', 'label': 'Card draw', 'count': 2, 'min': 10, 'max': 12, 'status': 'under'}
+{'role': 'targeted_removal', 'label': 'Targeted removal', 'count': 0, 'min': 8, 'max': 10, 'status': 'under'}
+{'role': 'board_wipe', 'label': 'Board wipes', 'count': 1, 'min': 2, 'max': 4, 'status': 'under'}
+--- fill ramp to its max (12) with filler ramp via repeated quantity
+ [204]
+
+--- role at max -> role_filled
+{"step":"roles","role":"ramp","summary":"","source":"popular","proposals":[],"dropped":0,"pool_size":0,"empty_reason":"role_filled","game_changers":{"limit":0,"in_deck":0,"left":0},"combos_checked":false,"synergy":null,"model":""}
+ [200]
+--- card_draw (under) reaches model; dummy key
+{"step":"roles","role":"card_draw","summary":"","source":"popular","proposals":[],"dropped":0,"pool_size":0,"empty_reason":"no_candidates","game_changers":{"limit":0,"in_deck":0,"left":0},"combos_checked":false,"synergy":null,"model":""}
+ [200]
+--- unowned deck (random uuid) -> 404
+{"error":"deck not found"}
+ [404]

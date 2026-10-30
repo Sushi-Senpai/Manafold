@@ -1,0 +1,12 @@
+--- ramp (empty deck)
+{"error":"the wizard could not get picks from the model"}
+ [502]
+--- card_draw (empty deck)
+{"error":"the wizard could not get picks from the model"}
+ [502]
+--- targeted_removal (empty deck)
+{"error":"the wizard could not get picks from the model"}
+ [502]
+--- board_wipe (empty deck)
+{"error":"the wizard could not get picks from the model"}
+ [502]
