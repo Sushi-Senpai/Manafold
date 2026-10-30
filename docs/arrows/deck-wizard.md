@@ -11,10 +11,10 @@ The wizard never writes a deck — every card enters through the player's Accept
 ## Status
 
 **MAPPED** — LLD + specs authored and the first slice landed 2026-10-29
-(WIZ-001..067, AI-036, AI-050..053, SYN-043). Deferred: role-filling steps
-(WIZ-090), a Bracket 4 fast-mana pass (WIZ-091), persisted wizard answers
-(WIZ-092), tapped-land and snow-basics questions (WIZ-093). Bracket 5 is out of
-scope. The panel's logic is unit-tested; its rendering was not exercised in a
+(WIZ-001..067, AI-036, AI-050..053, SYN-043); persisted wizard answers
+(WIZ-092) landed 2026-10-30. Deferred: role-filling steps (WIZ-090), a
+Bracket 4 fast-mana pass (WIZ-091), tapped-land and snow-basics questions
+(WIZ-093). Bracket 5 is out of scope. The panel's logic is unit-tested; its rendering was not exercised in a
 browser in this environment, and the backend was exercised end to end over HTTP
 against real card data with a stand-in model.
 
@@ -28,7 +28,7 @@ against real card data with a stand-in model.
 - docs/intent/deck-wizard/deck-wizard-design.md
 
 ### EARS
-- docs/intent/deck-wizard/deck-wizard-specs.md (WIZ-001..005, WIZ-010..015, WIZ-020..025, WIZ-030..034, WIZ-040..045, WIZ-050..054, WIZ-060..067; WIZ-090..093 deferred)
+- docs/intent/deck-wizard/deck-wizard-specs.md (WIZ-001..005, WIZ-010..015, WIZ-020..025, WIZ-030..034, WIZ-040..045, WIZ-050..054, WIZ-060..067, WIZ-092, WIZ-100..107; WIZ-090, 091, 093 deferred)
 
 ### Tests
 - backend/internal/deckwizard/deckwizard_test.go — WIZ-001 (policy for brackets 1–4, none for 5), WIZ-002 (Game Changers left), WIZ-003 (land target per archetype), WIZ-012 (land-target range), WIZ-021 (Game Changer limit, combos, mass land denial, extra turns, a deck already over the limit), WIZ-023 (cumulative budget, pairs that only conflict together), WIZ-050 / WIZ-051 (largest-remainder basics split, Wastes, zero rows)
@@ -86,6 +86,5 @@ accepts or rejects.
 
 ### Nice to Have
 1. Bracket 4 fast-mana pass and fast-mana-aware land target (WIZ-091).
-2. Persist wizard answers on the deck (WIZ-092).
 3. Verify the `fetchland` and `utility-land` tag coverage against a full tag
    export and widen the utility category (man-lands) if it is thin.

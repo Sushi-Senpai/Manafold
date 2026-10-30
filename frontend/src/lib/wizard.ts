@@ -5,7 +5,7 @@
 // The wizard proposes; the player disposes. Nothing here adds a card — the panel
 // calls the ordinary add-card endpoint only on a click.
 //
-// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067
+// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067, WIZ-092, WIZ-105
 
 import { ApiError } from "./api.ts";
 import type {
@@ -17,6 +17,7 @@ import type {
   WizardProposeBody,
   WizardProposeResponse,
   WizardRestrictions,
+  WizardSavedState,
   WizardStep,
 } from "./api.ts";
 
@@ -39,8 +40,8 @@ export const BRACKET_OPTIONS: { value: number; label: string }[] = [
   { value: 4, label: "4 · Optimized" },
 ];
 
-// The player's answers, held in the panel for the page's lifetime. The deck is
-// the only durable state.
+// The player's answers, held in the panel and saved per deck (WIZ-092). The deck
+// still holds the commander, bracket, archetype and every accepted card.
 export type WizardAnswers = {
   noTutors: boolean;
   maxPriceUsd: string; // the raw input; "" = no cap
@@ -69,6 +70,52 @@ export function visibleSteps(plan: WizardPlan | null): WizardStepId[] {
   const all: WizardStepId[] = ["setup", "fixing", "utility", "picks", "basics"];
   if (plan && !plan.lands.fixing_applicable) return all.filter((s) => s !== "fixing");
   return all;
+}
+
+// toSavedState is what the panel saves: the answers, the rejected set and the
+// step the player is on (WIZ-092). Fields are always present so a save replaces
+// the stored state whole.
+export function toSavedState(step: WizardStepId, a: WizardAnswers, rejected: string[]): WizardSavedState {
+  const notes = a.notes.trim();
+  const cap = parsePriceCap(a.maxPriceUsd);
+  return {
+    step,
+    restrictions: {
+      no_tutors: a.noTutors,
+      ...(cap !== null ? { max_price_usd: cap } : {}),
+      ...(notes !== "" ? { notes } : {}),
+    },
+    fixing: a.fixing,
+    include_fetch: a.includeFetch,
+    utility: a.utility,
+    land_target: a.landTarget,
+    rejected_card_ids: rejected,
+  };
+}
+
+// fromSavedState turns a saved state back into the panel's answers and rejected
+// set; the step is resumed separately, once the plan says what can be shown.
+export function fromSavedState(s: WizardSavedState): { answers: WizardAnswers; rejected: string[] } {
+  return {
+    answers: {
+      noTutors: s.restrictions.no_tutors ?? false,
+      maxPriceUsd: s.restrictions.max_price_usd !== undefined ? String(s.restrictions.max_price_usd) : "",
+      notes: s.restrictions.notes ?? "",
+      fixing: s.fixing,
+      includeFetch: s.include_fetch,
+      utility: s.utility,
+      landTarget: s.land_target,
+    },
+    rejected: s.rejected_card_ids,
+  };
+}
+
+// resumeStep is the step to reopen at: the saved one when the deck can show it,
+// else setup (WIZ-105). Past setup the deck needs a commander and a supported
+// bracket (the plan is ready), and the fixing step needs two or more colours.
+export function resumeStep(saved: WizardStepId, plan: WizardPlan | null): WizardStepId {
+  if (saved === "setup" || !plan || !plan.ready) return "setup";
+  return visibleSteps(plan).includes(saved) ? saved : "setup";
 }
 
 // parsePriceCap reads the price input: a positive finite number, else null.

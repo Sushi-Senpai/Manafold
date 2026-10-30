@@ -68,9 +68,22 @@ the player's click.
 - [x] **WIZ-066**: The wizard's basics step shall show the plan and, on the player's click, add each row to `main` and set its quantity.
 - [x] **WIZ-067**: When a wizard request fails, the panel shall say why in the player's terms — AI not configured, sign-in required, daily or monthly limit reached, provider failure — and shall leave setup and the basics step usable.
 
+## Persisted Answers
+
+The wizard's answers are saved per deck so a reload resumes where the player left off (`WIZ-092`). Saved answers are only what the wizard already asks; the deck itself still holds the commander, bracket, archetype and every accepted card.
+
+- [x] **WIZ-092**: The system shall persist the wizard's setup restrictions, land and utility answers, land target, rejected cards and current step per deck, and the builder's wizard panel shall restore them when it opens, so that a reload resumes the wizard.
+- [x] **WIZ-100**: When the deck's owner requests `GET /api/decks/{id}/wizard/state`, the system shall return `saved: false` with no state when nothing has been saved, or `saved: true` with the saved state (`step`, `restrictions`, `fixing`, `include_fetch`, `utility`, `land_target`, `rejected_card_ids`) and its `updated_at`, and shall answer `404` to anyone else, to an authenticated owner or an anonymous-draft owner alike, without a language-model call.
+- [x] **WIZ-101**: When the deck's owner calls `PUT /api/decks/{id}/wizard/state`, the system shall replace the deck's saved state with the request body and return it, and shall answer `404` to anyone else.
+- [x] **WIZ-102**: If the saved-state body names a `step` other than `setup`, `fixing`, `utility`, `picks`, or `basics`, a `fixing` other than `include` or `basics`, a `restrictions` value or `rejected_card_ids` that `WIZ-012` would refuse (a non-UUID entry, more than 200 entries, `notes` over 500 characters, a `max_price_usd` that is not a positive finite number), or a `land_target` outside 20 to 60, then the system shall respond `400` and leave the saved state unchanged.
+- [x] **WIZ-103**: When the deck's owner calls `DELETE /api/decks/{id}/wizard/state`, the system shall remove the saved state and respond `204`, and shall answer `404` to anyone else; the deck's cards, bracket and archetype shall be left as they are.
+- [x] **WIZ-104**: When a deck is deleted, the system shall delete its saved wizard state with it.
+- [x] **WIZ-105**: When the wizard panel opens, it shall read the saved state before showing any step, restore the answers, rejected cards and step from it, and save the state again, after a short pause, whenever one of them changes, without ever saving before the read has finished; if the saved step cannot be shown for the deck as it now is, the panel shall open at setup.
+- [x] **WIZ-106**: The wizard panel shall offer a **Start over** action that deletes the saved state and returns the panel to setup with default answers and no rejected cards, without changing the deck.
+- [x] **WIZ-107**: If reading or saving the wizard state fails, then the panel shall say so and keep every step usable with the answers held in the page, and shall not save after a failed read, so a stored state it could not read is never overwritten by defaults.
+
 ## Deferred
 
 - [D] **WIZ-090**: The wizard shall fill the archetype template's role slots (ramp, card draw, targeted removal, board wipes) in dedicated steps.
 - [D] **WIZ-091**: Where the bracket is 4, the wizard shall run a fast-mana pass and relax the land target by the amount of fast mana the deck actually runs.
-- [D] **WIZ-092**: The system shall persist the wizard's restrictions and land answers on the deck so that a reload resumes the wizard.
 - [D] **WIZ-093**: The wizard shall ask about tapped-land tolerance and snow basics.

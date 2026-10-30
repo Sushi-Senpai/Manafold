@@ -1258,3 +1258,184 @@ func TestWizardBasics_ColourlessUsesWastesAndReportsMissing(t *testing.T) {
 		t.Errorf("with Wastes: %+v", got)
 	}
 }
+
+// ---- persisted answers (WIZ-092, WIZ-100..104) --------------------------
+
+func (fx *wizFixture) stateRaw(deckID, method string, body any) *httptest.ResponseRecorder {
+	fx.t.Helper()
+	return aiServe(fx.t, fx.a, fx.owner, "", method, "/decks/"+deckID+"/wizard/state", body)
+}
+
+func validWizardState() map[string]any {
+	return map[string]any{
+		"step":              "utility",
+		"restrictions":      map[string]any{"no_tutors": true, "max_price_usd": 5.5, "notes": "goblin tokens"},
+		"fixing":            "include",
+		"include_fetch":     false,
+		"utility":           true,
+		"land_target":       36,
+		"rejected_card_ids": []string{"0b1f6a2e-3c4d-4e5f-8a9b-0c1d2e3f4a5b"},
+	}
+}
+
+// @spec WIZ-092, WIZ-100, WIZ-101, WIZ-103
+func TestWizardState_SaveRestoreReset(t *testing.T) {
+	fx := newWizFixture(t)
+	deckID, _ := fx.deck([]string{"W", "U"}, 3, "")
+	calls := fx.assistant(shouldNotBeCalled(t))
+
+	rec := fx.stateRaw(deckID, http.MethodGet, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get empty: %d %s", rec.Code, rec.Body.String())
+	}
+	if got := decode[wizardStateResponse](t, rec); got.Saved || got.State != nil {
+		t.Errorf("fresh deck state = %+v, want saved false and no state", got)
+	}
+
+	if rec := fx.stateRaw(deckID, http.MethodPut, validWizardState()); rec.Code != http.StatusOK {
+		t.Fatalf("put: %d %s", rec.Code, rec.Body.String())
+	}
+	got := decode[wizardStateResponse](t, fx.stateRaw(deckID, http.MethodGet, nil))
+	if !got.Saved || got.State == nil || got.UpdatedAt == nil {
+		t.Fatalf("after put: %+v, want saved with state and updated_at", got)
+	}
+	s := got.State
+	if s.Step != "utility" || s.Fixing != "include" || s.IncludeFetch || !s.Utility ||
+		s.LandTarget == nil || *s.LandTarget != 36 || !s.Restrictions.NoTutors ||
+		s.Restrictions.MaxPriceUSD == nil || *s.Restrictions.MaxPriceUSD != 5.5 ||
+		s.Restrictions.Notes != "goblin tokens" || len(s.RejectedCardIDs) != 1 {
+		t.Errorf("restored state = %+v", s)
+	}
+
+	// A second save replaces the first, including clearing the land target.
+	next := validWizardState()
+	next["step"] = "picks"
+	next["land_target"] = nil
+	next["rejected_card_ids"] = []string{}
+	if rec := fx.stateRaw(deckID, http.MethodPut, next); rec.Code != http.StatusOK {
+		t.Fatalf("put 2: %d %s", rec.Code, rec.Body.String())
+	}
+	got = decode[wizardStateResponse](t, fx.stateRaw(deckID, http.MethodGet, nil))
+	if got.State.Step != "picks" || got.State.LandTarget != nil || len(got.State.RejectedCardIDs) != 0 {
+		t.Errorf("replaced state = %+v", got.State)
+	}
+
+	if rec := fx.stateRaw(deckID, http.MethodDelete, nil); rec.Code != http.StatusNoContent {
+		t.Fatalf("delete: %d %s", rec.Code, rec.Body.String())
+	}
+	if got := decode[wizardStateResponse](t, fx.stateRaw(deckID, http.MethodGet, nil)); got.Saved {
+		t.Errorf("after delete: saved = true")
+	}
+	// Reset leaves the deck alone.
+	if p := fx.get(deckID); p.Bracket == nil || *p.Bracket != 3 {
+		t.Errorf("bracket after reset = %v, want 3", p.Bracket)
+	}
+	if rec := fx.stateRaw(deckID, http.MethodDelete, nil); rec.Code != http.StatusNoContent {
+		t.Errorf("delete when nothing saved = %d, want 204", rec.Code)
+	}
+	if *calls != 0 {
+		t.Errorf("state endpoints made %d model calls, want 0", *calls)
+	}
+}
+
+// @spec WIZ-100, WIZ-101, WIZ-103
+func TestWizardState_OwnerOnly(t *testing.T) {
+	fx := newWizFixture(t)
+	deckID, _ := fx.deck([]string{"W"}, 2, "")
+	if rec := fx.stateRaw(deckID, http.MethodPut, validWizardState()); rec.Code != http.StatusOK {
+		t.Fatalf("put: %d", rec.Code)
+	}
+
+	stranger := makeUser(t, fx.a)
+	for _, m := range []string{http.MethodGet, http.MethodPut, http.MethodDelete} {
+		var body any
+		if m == http.MethodPut {
+			body = validWizardState()
+		}
+		if rec := aiServe(t, fx.a, stranger, "", m, "/decks/"+deckID+"/wizard/state", body); rec.Code != http.StatusNotFound {
+			t.Errorf("non-owner %s = %d, want 404", m, rec.Code)
+		}
+	}
+	// The stranger's attempts changed nothing.
+	if got := decode[wizardStateResponse](t, fx.stateRaw(deckID, http.MethodGet, nil)); !got.Saved {
+		t.Errorf("owner's state was removed by a non-owner")
+	}
+
+	// An anonymous draft's owner can save and read its own state.
+	token := "wiz-state-anon-" + fx.suffix
+	rec := aiServe(t, fx.a, pgtype.UUID{}, token, http.MethodPost, "/decks", map[string]string{"name": "Anon Wizard Deck"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("anon create: %d %s", rec.Code, rec.Body.String())
+	}
+	anonDeck := decode[deckJSON](t, rec).ID
+	fx.deckIDs = append(fx.deckIDs, anonDeck)
+	path := "/decks/" + anonDeck + "/wizard/state"
+	if rec := aiServe(t, fx.a, pgtype.UUID{}, token, http.MethodPut, path, validWizardState()); rec.Code != http.StatusOK {
+		t.Errorf("anon put = %d, want 200", rec.Code)
+	}
+	if rec := aiServe(t, fx.a, pgtype.UUID{}, token, http.MethodGet, path, nil); rec.Code != http.StatusOK ||
+		!decode[wizardStateResponse](t, rec).Saved {
+		t.Errorf("anon get = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+// @spec WIZ-102
+func TestWizardState_Validation(t *testing.T) {
+	fx := newWizFixture(t)
+	deckID, _ := fx.deck([]string{"W"}, 2, "")
+	if rec := fx.stateRaw(deckID, http.MethodPut, validWizardState()); rec.Code != http.StatusOK {
+		t.Fatalf("put: %d", rec.Code)
+	}
+
+	tooMany := make([]string, 201)
+	for i := range tooMany {
+		tooMany[i] = "0b1f6a2e-3c4d-4e5f-8a9b-0c1d2e3f4a5b"
+	}
+	long := make([]byte, 501)
+	for i := range long {
+		long[i] = 'a'
+	}
+	cases := map[string]func(m map[string]any){
+		"unknown step":     func(m map[string]any) { m["step"] = "roles" },
+		"empty step":       func(m map[string]any) { delete(m, "step") },
+		"unknown fixing":   func(m map[string]any) { m["fixing"] = "some" },
+		"bad rejected id":  func(m map[string]any) { m["rejected_card_ids"] = []string{"nope"} },
+		"too many ids":     func(m map[string]any) { m["rejected_card_ids"] = tooMany },
+		"long notes":       func(m map[string]any) { m["restrictions"] = map[string]any{"notes": string(long)} },
+		"zero price":       func(m map[string]any) { m["restrictions"] = map[string]any{"max_price_usd": 0} },
+		"negative price":   func(m map[string]any) { m["restrictions"] = map[string]any{"max_price_usd": -1} },
+		"low land target":  func(m map[string]any) { m["land_target"] = 19 },
+		"high land target": func(m map[string]any) { m["land_target"] = 61 },
+	}
+	for name, mutate := range cases {
+		body := validWizardState()
+		mutate(body)
+		if rec := fx.stateRaw(deckID, http.MethodPut, body); rec.Code != http.StatusBadRequest {
+			t.Errorf("%s: put = %d, want 400", name, rec.Code)
+		}
+	}
+	// None of the refused saves touched the stored state.
+	got := decode[wizardStateResponse](t, fx.stateRaw(deckID, http.MethodGet, nil))
+	if got.State == nil || got.State.Step != "utility" {
+		t.Errorf("state after refused saves = %+v, want the original", got.State)
+	}
+}
+
+// @spec WIZ-104
+func TestWizardState_GoesWithTheDeck(t *testing.T) {
+	fx := newWizFixture(t)
+	deckID, _ := fx.deck([]string{"W"}, 2, "")
+	if rec := fx.stateRaw(deckID, http.MethodPut, validWizardState()); rec.Code != http.StatusOK {
+		t.Fatalf("put: %d", rec.Code)
+	}
+	if _, err := fx.a.Pool.Exec(context.Background(), `DELETE FROM decks WHERE id = $1`, deckID); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := fx.a.Pool.QueryRow(context.Background(), `SELECT count(*) FROM deck_wizard_state WHERE deck_id = $1`, deckID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("deck_wizard_state rows after deck delete = %d, want 0", n)
+	}
+}

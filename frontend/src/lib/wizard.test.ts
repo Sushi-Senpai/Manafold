@@ -12,6 +12,9 @@ import {
   applyBasicsPlan,
   defaultAnswers,
   emptyReasonText,
+  fromSavedState,
+  resumeStep,
+  toSavedState,
   gameChangerLine,
   canAccept,
   parsePriceCap,
@@ -209,4 +212,60 @@ test("applyBasicsPlan adds a missing basic once and sets every row's final quant
     { cardId: "island", add: true, quantity: 24 },
   ]);
   assert.deepEqual(applyBasicsPlan({ ...plan, rows: [] }), []);
+});
+
+// @spec WIZ-092, WIZ-105
+test("saved state round-trips the answers, rejected set and step", () => {
+  const answers = {
+    ...defaultAnswers(),
+    noTutors: true,
+    maxPriceUsd: "5.5",
+    notes: "  goblins  ",
+    fixing: "basics" as const,
+    includeFetch: false,
+    utility: false,
+    landTarget: 36,
+  };
+  const saved = toSavedState("utility", answers, ["a", "b"]);
+  assert.deepEqual(saved, {
+    step: "utility",
+    restrictions: { no_tutors: true, max_price_usd: 5.5, notes: "goblins" },
+    fixing: "basics",
+    include_fetch: false,
+    utility: false,
+    land_target: 36,
+    rejected_card_ids: ["a", "b"],
+  });
+  const back = fromSavedState(saved);
+  assert.deepEqual(back.answers, { ...answers, notes: "goblins" });
+  assert.deepEqual(back.rejected, ["a", "b"]);
+});
+
+// @spec WIZ-092
+test("saved state of the defaults restores the defaults", () => {
+  const saved = toSavedState("setup", defaultAnswers(), []);
+  assert.deepEqual(saved.restrictions, { no_tutors: false });
+  assert.equal(saved.land_target, null);
+  assert.deepEqual(fromSavedState(saved).answers, defaultAnswers());
+});
+
+// @spec WIZ-092
+test("an unusable price input is not saved as a cap", () => {
+  const saved = toSavedState("setup", { ...defaultAnswers(), maxPriceUsd: "abc" }, []);
+  assert.equal(saved.restrictions.max_price_usd, undefined);
+});
+
+// @spec WIZ-105
+test("resumeStep reopens at the saved step when the deck can show it", () => {
+  assert.equal(resumeStep("picks", plan()), "picks");
+  assert.equal(resumeStep("fixing", plan()), "fixing");
+  assert.equal(resumeStep("basics", plan()), "basics");
+});
+
+// @spec WIZ-105
+test("resumeStep falls back to setup when the saved step cannot be shown", () => {
+  assert.equal(resumeStep("fixing", plan({ lands: { target: 37, in_deck: 0, basics_needed: 37, fixing_applicable: false } })), "setup");
+  assert.equal(resumeStep("picks", plan({ ready: false, reason: "no_bracket" })), "setup");
+  assert.equal(resumeStep("picks", null), "setup");
+  assert.equal(resumeStep("setup", plan()), "setup");
 });

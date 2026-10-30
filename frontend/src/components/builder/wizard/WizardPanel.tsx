@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   api,
   ApiError,
@@ -19,11 +19,14 @@ import {
   applyBasicsPlan,
   defaultAnswers,
   emptyReasonText,
+  fromSavedState,
   gameChangerLine,
   picksNote,
   proposeBody,
   rejectCard,
   removeProposal,
+  resumeStep,
+  toSavedState,
   visibleSteps,
   wizardErrorText,
   type WizardAnswers,
@@ -40,7 +43,10 @@ import { ProposalList } from "./ProposalList";
 // builder's own add-card path. It replaces the AI suggestions panel while open
 // (WIZ-060).
 //
-// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067
+// Its answers, rejected cards and step are saved per deck and restored when the
+// panel opens, so a reload resumes where the player left off (WIZ-092).
+//
+// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067, WIZ-092, WIZ-105, WIZ-106, WIZ-107
 export function WizardPanel({
   deckId,
   detail,
@@ -68,6 +74,13 @@ export function WizardPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  // Saving waits for the saved state to be read (WIZ-105), and never happens
+  // after a failed read (WIZ-107). lastSaved is the serialized state the server
+  // holds, so an unchanged state is not written again.
+  const [hydrated, setHydrated] = useState(false);
+  const canSave = useRef(false);
+  const lastSaved = useRef<string | null>(null);
+
   const update = (patch: Partial<WizardAnswers>) => setAnswers((a) => ({ ...a, ...patch }));
 
   // The plan follows the deck: it is read again whenever the commander, bracket,
@@ -93,6 +106,49 @@ export function WizardPanel({
       cancelled = true;
     };
   }, [deckId, signature]);
+
+  // Restore the saved answers before any step is shown (WIZ-105).
+  useEffect(() => {
+    let cancelled = false;
+    Promise.allSettled([api.getWizardState(deckId), api.getWizardPlan(deckId)]).then(([st, pl]) => {
+      if (cancelled) return;
+      const resumePlan = pl.status === "fulfilled" ? pl.value : null;
+      if (st.status === "fulfilled") {
+        canSave.current = true;
+        if (st.value.saved) {
+          const restored = fromSavedState(st.value.state);
+          lastSaved.current = JSON.stringify(st.value.state);
+          setAnswers(restored.answers);
+          setRejected(restored.rejected);
+          setStep(resumeStep(st.value.state.step, resumePlan));
+        }
+      } else {
+        setMessage("Could not load your saved wizard answers. Your answers will not be saved this time.");
+      }
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [deckId]);
+
+  // Save whenever an answer, the rejected set or the step changes, after a short
+  // pause (WIZ-105).
+  useEffect(() => {
+    if (!hydrated || !canSave.current) return;
+    const state = toSavedState(step, answers, rejected);
+    const body = JSON.stringify(state);
+    if (body === lastSaved.current) return;
+    const timer = setTimeout(() => {
+      api
+        .saveWizardState(deckId, state)
+        .then(() => {
+          lastSaved.current = body;
+        })
+        .catch(() => setMessage("Could not save your wizard answers. They are kept for this page."));
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [hydrated, deckId, step, answers, rejected]);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,6 +192,28 @@ export function WizardPanel({
   }
   const next = () => go(steps[Math.min(index + 1, steps.length - 1)]);
   const back = () => go(steps[Math.max(index - 1, 0)]);
+
+  // Start over forgets the saved answers and returns to setup; the deck is left
+  // as it is (WIZ-106).
+  async function startOver() {
+    setBusy(true);
+    try {
+      await api.resetWizardState(deckId);
+      canSave.current = true;
+      lastSaved.current = JSON.stringify(toSavedState("setup", defaultAnswers(), []));
+      setAnswers(defaultAnswers());
+      setRejected([]);
+      setRound(null);
+      setProposals([]);
+      setDone(false);
+      setStep("setup");
+      setMessage(null);
+    } catch (e) {
+      setMessage(e instanceof ApiError ? e.message : "Could not reset the wizard");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function save(patch: { bracket?: number; archetype?: string }) {
     setBusy(true);
@@ -214,19 +292,31 @@ export function WizardPanel({
             Step {index + 1} of {steps.length} · {STEP_LABELS[step]}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close the wizard"
-          className="rounded-md border border-border px-2 py-1 text-xs"
-        >
-          Close
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={startOver}
+            disabled={busy}
+            className="rounded-md border border-border px-2 py-1 text-xs disabled:opacity-40"
+          >
+            Start over
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close the wizard"
+            className="rounded-md border border-border px-2 py-1 text-xs"
+          >
+            Close
+          </button>
+        </div>
       </div>
 
       {message && <p className="mt-3 text-sm text-danger">{message}</p>}
 
-      {step === "setup" && (
+      {!hydrated && <p className="mt-3 text-sm text-muted">Loading your wizard…</p>}
+
+      {hydrated && step === "setup" && (
         <div className="mt-3 flex flex-col gap-3 text-sm">
           <p>
             {detail.commander ? (
@@ -333,7 +423,7 @@ export function WizardPanel({
         </div>
       )}
 
-      {step === "fixing" && (
+      {hydrated && step === "fixing" && (
         <div className="mt-3 flex flex-col gap-3 text-sm">
           <p className="font-medium">Which lands are you comfortable playing?</p>
           <label className="flex items-center gap-2">
@@ -381,7 +471,7 @@ export function WizardPanel({
         </div>
       )}
 
-      {step === "utility" && (
+      {hydrated && step === "utility" && (
         <div className="mt-3 flex flex-col gap-3 text-sm">
           <p className="font-medium">Do you want any utility lands?</p>
           <label className="flex items-center gap-2">
@@ -409,7 +499,7 @@ export function WizardPanel({
         </div>
       )}
 
-      {step === "picks" && (
+      {hydrated && step === "picks" && (
         <div className="mt-3 flex flex-col gap-3 text-sm">
           <p className="font-medium">Cards that fit {detail.commander?.name ?? "your commander"}</p>
           {(round?.game_changers ?? plan?.policy) && (
@@ -444,7 +534,7 @@ export function WizardPanel({
         </div>
       )}
 
-      {step === "basics" && (
+      {hydrated && step === "basics" && (
         <div className="mt-3 flex flex-col gap-3 text-sm">
           <p className="font-medium">Basic lands</p>
           {!basics && <p className="text-muted">Planning…</p>}

@@ -66,13 +66,12 @@ not want duals never sees one. The price cap addresses the other common worry:
 the player who is fine with duals but not with expensive ones.
 
 **Interactivity** is structural. A proposal list changes the deck only through
-the player's Accept click; a Reject adds the card to a session-only rejected set
+the player's Accept click; a Reject adds the card to the deck's rejected set
 that later rounds exclude. There is no "build it for me" path in the API or the
 UI.
 
 **Deferred past this slice** (listed under *Open Questions & Future Decisions*):
-role-filling steps (ramp, draw, removal, wipes), Bracket 5, persistence of
-wizard answers across reloads, partner commanders, a fast-mana-specific pass
+role-filling steps (ramp, draw, removal, wipes), Bracket 5, partner commanders, a fast-mana-specific pass
 for Bracket 4, and a free-form chat with the model.
 
 ## Where It Lives in the Builder
@@ -90,11 +89,49 @@ creates a deck and routes to `/decks/{id}?wizard=1`. Closing the panel returns
 the suggestions panel; nothing is lost, because every accepted card is already
 in the deck.
 
-Wizard answers (restrictions, land preferences, the rejected set) live in the
-panel's React state for the page's lifetime. The deck itself, which holds the
-commander, bracket, archetype and every accepted card, is the only durable
-state. Reloading restarts the wizard at setup with the deck's bracket and
-archetype prefilled.
+Wizard answers (restrictions, land preferences, the rejected set and the current
+step) are saved per deck in `deck_wizard_state` (see *Persisted Answers*), so a
+reload resumes where the player left off. The deck itself still holds the
+commander, bracket, archetype and every accepted card; the saved state holds only
+what the wizard asked.
+
+## Persisted Answers
+
+Each deck has at most one `deck_wizard_state` row (`deck_id` primary key,
+`ON DELETE CASCADE`, `state jsonb`, `updated_at`), written only through the
+owner-gated state endpoints. The state is the wizard's answers and nothing the
+deck already holds:
+
+```json
+{ "step": "utility",                  // setup | fixing | utility | picks | basics
+  "restrictions": { "no_tutors": true, "max_price_usd": 5, "notes": "tokens" },
+  "fixing": "include",                // include | basics
+  "include_fetch": true,
+  "utility": true,
+  "land_target": null,                // 20-60, or null for the plan's default
+  "rejected_card_ids": ["…"] }        // at most 200
+```
+
+The server validates the whole body with the same rules as a propose request
+(`WIZ-012`) and stores it as given; it does not interpret it. A save replaces the
+row. Proposals themselves are not saved: a reload re-asks the step, which is one
+metered call the player chooses to make, and the saved rejected set keeps already
+decided cards out of it.
+
+The panel reads the state when it opens and shows nothing until the read has
+finished, so it can never save defaults over an earlier session. After that it
+saves on every change to the answers, the rejected set or the step, after a short
+debounce. A saved step that the deck cannot show now (the fixing step for a deck
+that has become mono-coloured, or any step past setup for a deck that lost its
+commander or bracket) opens at setup instead. **Start over** deletes the row and
+resets the panel; the deck is untouched. A failed read or save is reported in the
+panel and does not block it: the answers stay in page state, and after a failed
+read the panel saves nothing, so defaults never overwrite a state it could not
+see.
+
+Ownership is the deck's (`deckForOwner`), so anonymous-draft owners persist their
+answers too, and claiming a draft on sign-in carries the deck, and so its state,
+with it. State is not exposed on the public share view.
 
 ## Bracket Policy (`internal/deckwizard`)
 
@@ -227,6 +264,9 @@ All under the protected `/api` group, registered by `RegisterWizardRoutes`.
 | `/api/decks/{id}/wizard` | GET | ownership (`404`) | the plan: readiness, bracket policy and Game Changer budget, land target and counts, synergy status |
 | `/api/decks/{id}/wizard/propose` | POST | AI gates (`503`/`403`/`404`/`503`/`429`) | one curated round for a step |
 | `/api/decks/{id}/wizard/basics` | POST | ownership (`404`) | the basic-land plan; writes nothing |
+| `/api/decks/{id}/wizard/state` | GET | ownership (`404`) | the saved answers, or `saved: false` |
+| `/api/decks/{id}/wizard/state` | PUT | ownership (`404`), validation (`400`) | replace the saved answers |
+| `/api/decks/{id}/wizard/state` | DELETE | ownership (`404`) | forget the saved answers (`204`) |
 
 ```json
 // GET → WizardPlan
@@ -295,7 +335,7 @@ commander starts the gathering the picks step will use.
 | Dual-land avoidance | A step the player can skip, plus a price cap | A "no duals" flag threaded through every prompt; a hard-coded cheap/expensive land list | Skipping is exact and free, and a pool with no lands cannot leak one. A price cap uses data the mirror already holds; a hand-kept list of expensive duals would go stale. |
 | Land categories | Structural: produces two or more of the deck's colours; fetch lands by Oracle text or tag; utility lands by tag | Tag everything (`dual-land`, `shockland`, …) | Community tags are incomplete (the mirrored `dual-land` tag has no direct taggings), while `produced_mana` and Oracle text are Scryfall's own fields. A tag is used where there is no structural signal (utility lands) and as a second route for fetch lands, so a renamed tag cannot silently empty the category. |
 | Price | Lowest USD among non-digital printings | Newest printing's price | The player's concern is what they would pay; the cheapest printing is the honest answer for a card with a pricey promo reprint. |
-| Wizard state | Client-held answers, the deck as the only durable state | A `wizard_sessions` table | A session lasts minutes and the deck already holds everything that matters. A table would add a migration, ownership queries and cleanup for no recovered value in this slice. |
+| Wizard state | One `deck_wizard_state` row per deck holding the answers as validated JSON; the deck stays the home of cards, bracket and archetype | Client-held answers only; a `wizard_sessions` table with per-session rows; typed columns for each answer; browser storage | A reload must resume the wizard, which browser storage would not do across devices or for the owner-gated deck. One row per deck needs no session lifecycle and goes with the deck. JSON mirrors the propose body, so one validator serves both and a new question adds no migration; the server never queries inside it. |
 | Spend | A new `wizard` feature sharing the monthly ceiling, limit 40 | Count against `suggest`; unmetered because it is deterministic-heavy | One propose is one Sonnet call, so it is metered like suggest; a separate counter stops a wizard run from exhausting the suggest allowance and vice versa. 40 covers about five full runs a day. |
 | Synergy cold start | Open-data (`edhrec_rank`) picks while synergy is `none` / `gathering`, with the status shown | Block the step until `ready`; fail | The synergy worker takes minutes to hours; the wizard must work meanwhile, and the response says which source it used. |
 | Lands in the picks pool | Never | Allow high-synergy lands | A player who declined duals must not see one. Land picks belong to the land steps the player opted into. |
@@ -316,8 +356,6 @@ commander starts the gathering the picks step will use.
    fast-mana-aware relaxation). Bracket 4 today gets the Game Changers (which include much of
    the fast mana) and the full combo allowance.
 3. **Bracket 5.** Out of scope: cEDH is a metagame, not a card list.
-4. **Persistence.** Saving restrictions and land answers on the deck so a reload
-   resumes the wizard.
 5. **Partner commanders** (needs `SYN-051`).
 6. **More land preferences.** Tapped-land tolerance, a snow-basics toggle, a
    land-count slider with the Bracket 4 relaxation.
@@ -343,6 +381,7 @@ commander starts the gathering the picks step will use.
   admission), `backend/internal/api/wizard.go`, `backend/internal/ai/` (`Curate`),
   `backend/internal/db/queries/wizard.sql`,
   `backend/internal/db/migrations/000010_add_wizard_ai_feature.up.sql`,
+  `backend/internal/db/migrations/000011_create_deck_wizard_state.up.sql`,
   `frontend/src/components/builder/wizard/`, `frontend/src/lib/wizard.ts`
 - Cross-segment: `deck-building` (`internal/bracket`, `internal/decktemplates`,
   `internal/deckstats`, `internal/deckrules`), `card-data` (oracle tags, price
