@@ -1,0 +1,26 @@
+## GET empty
+{"saved":false,"state":null,"updated_at":null}
+
+## PUT valid
+{"saved":true,"state":{"step":"utility","restrictions":{"no_tutors":false,"max_price_usd":null,"notes":""},"fixing":"include","include_fetch":true,"utility":true,"land_target":36,"rejected_card_ids":["35215fe7-924d-431a-b9e9-14f9cc86a9dc"]},"updated_at":"2026-10-30T11:37:56.164149-05:00"}
+
+## GET restored
+{"saved":true,"state":{"step":"utility","restrictions":{"no_tutors":false,"max_price_usd":null,"notes":""},"fixing":"include","include_fetch":true,"utility":true,"land_target":36,"rejected_card_ids":["35215fe7-924d-431a-b9e9-14f9cc86a9dc"]},"updated_at":"2026-10-30T11:37:56.164149-05:00"}
+
+## PUT invalid step
+{"error":"step must be one of setup, fixing, utility, picks, basics"}
+ [400]
+## PUT land_target out of range
+{"error":"land_target must be between 20 and 60"}
+ [400]
+## GET (still the valid state)
+{"saved":true,"state":{"step":"utility","restrictions":{"no_tutors":false,"max_price_usd":null,"notes":""},"fixing":"include","include_fetch":true,"utility":true,"land_target":36,"rejected_card_ids":["35215fe7-924d-431a-b9e9-14f9cc86a9dc"]},"updated_at":"2026-10-30T11:37:56.164149-05:00"}
+
+## DELETE
+ [204]
+## GET after reset
+{"saved":false,"state":null,"updated_at":null}
+
+## unknown deck
+{"error":"deck not found"}
+ [404]
