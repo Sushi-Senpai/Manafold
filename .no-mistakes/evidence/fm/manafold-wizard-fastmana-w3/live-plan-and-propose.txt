@@ -1,0 +1,18 @@
+== Bracket 2 deck 28b2bf84-6e96-417c-b06e-bb529b986257
+-- GET wizard plan (lands/fast_mana):
+{"ready": true, "bracket": 2, "lands": {"target": 37, "base_target": 37, "in_deck": 0, "basics_needed": 37, "fixing_applicable": false}, "fast_mana": {"applicable": false, "in_deck": 0}}
+-- POST propose step=fast_mana:
+{"error":"step must be one of fixing, utility, fastmana, picks"}
+ [HTTP 400]
+== Bracket 3 deck 3e42af8c-f32c-4bbb-bced-7963465107b7
+-- GET wizard plan (lands/fast_mana):
+{"ready": true, "bracket": 3, "lands": {"target": 37, "base_target": 37, "in_deck": 0, "basics_needed": 37, "fixing_applicable": false}, "fast_mana": {"applicable": false, "in_deck": 0}}
+-- POST propose step=fast_mana:
+{"error":"step must be one of fixing, utility, fastmana, picks"}
+ [HTTP 400]
+== Bracket 4 deck 06d38b83-b4f0-4a4d-ba73-f09613361b94
+-- GET wizard plan (lands/fast_mana):
+{"ready": true, "bracket": 4, "lands": {"target": 37, "base_target": 37, "in_deck": 0, "basics_needed": 37, "fixing_applicable": false}, "fast_mana": {"applicable": true, "in_deck": 0}}
+-- POST propose step=fast_mana:
+{"error":"step must be one of fixing, utility, fastmana, picks"}
+ [HTTP 400]
