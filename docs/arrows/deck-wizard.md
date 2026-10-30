@@ -11,10 +11,10 @@ The wizard never writes a deck — every card enters through the player's Accept
 ## Status
 
 **MAPPED** — LLD + specs authored and the first slice landed 2026-10-29
-(WIZ-001..067, AI-036, AI-050..053, SYN-043). Deferred: role-filling steps
-(WIZ-090), a Bracket 4 fast-mana pass (WIZ-091), persisted wizard answers
-(WIZ-092, done), tapped-land and snow-basics questions (WIZ-093). Bracket 5 is out of
-scope. The panel's logic is unit-tested; its rendering was not exercised in a
+(WIZ-001..067, AI-036, AI-050..053, SYN-043); persisted wizard answers
+(WIZ-092) landed 2026-10-30. Deferred: role-filling steps (WIZ-090), a
+Bracket 4 fast-mana pass (WIZ-091), tapped-land and snow-basics questions
+(WIZ-093). Bracket 5 is out of scope. The panel's logic is unit-tested; its rendering was not exercised in a
 browser in this environment, and the backend was exercised end to end over HTTP
 against real card data with a stand-in model.
 
