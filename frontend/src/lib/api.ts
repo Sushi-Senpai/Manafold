@@ -415,6 +415,21 @@ export type WizardProposeResponse = {
   model: string;
 };
 
+// The wizard's saved answers (WIZ-092): what the first slice asks, per deck.
+export type WizardSavedState = {
+  step: "setup" | "fixing" | "utility" | "picks" | "basics";
+  restrictions: WizardRestrictions;
+  fixing: "include" | "basics";
+  include_fetch: boolean;
+  utility: boolean;
+  land_target: number | null;
+  rejected_card_ids: string[];
+};
+
+export type WizardStateResponse =
+  | { saved: false; state: null; updated_at: null }
+  | { saved: true; state: WizardSavedState; updated_at: string };
+
 export type WizardBasicsRow = { card: CardSummary; quantity: number; in_deck: number };
 
 export type WizardBasics = {
@@ -547,6 +562,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  // The wizard's saved answers, replaced whole on save and forgotten on reset
+  // (WIZ-100, WIZ-101, WIZ-103).
+  getWizardState: (id: string) => request<WizardStateResponse>(`/api/decks/${id}/wizard/state`),
+  saveWizardState: (id: string, state: WizardSavedState) =>
+    request<WizardStateResponse>(`/api/decks/${id}/wizard/state`, {
+      method: "PUT",
+      body: JSON.stringify(state),
+    }),
+  resetWizardState: (id: string) =>
+    request<void>(`/api/decks/${id}/wizard/state`, { method: "DELETE" }),
   // Plans the basic lands the deck still needs; writes nothing (WIZ-053).
   wizardBasics: (id: string, landTarget?: number) =>
     request<WizardBasics>(`/api/decks/${id}/wizard/basics`, {

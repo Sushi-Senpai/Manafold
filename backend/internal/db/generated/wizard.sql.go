@@ -7,9 +7,38 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const deleteWizardState = `-- name: DeleteWizardState :exec
+DELETE FROM deck_wizard_state WHERE deck_id = $1
+`
+
+// @spec WIZ-103
+func (q *Queries) DeleteWizardState(ctx context.Context, deckID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWizardState, deckID)
+	return err
+}
+
+const getWizardState = `-- name: GetWizardState :one
+SELECT state, updated_at FROM deck_wizard_state WHERE deck_id = $1
+`
+
+type GetWizardStateRow struct {
+	State     json.RawMessage    `json:"state"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+// The deck wizard's saved answers (WIZ-092). Callers check deck ownership first.
+// @spec WIZ-100
+func (q *Queries) GetWizardState(ctx context.Context, deckID pgtype.UUID) (GetWizardStateRow, error) {
+	row := q.db.QueryRow(ctx, getWizardState, deckID)
+	var i GetWizardStateRow
+	err := row.Scan(&i.State, &i.UpdatedAt)
+	return i, err
+}
 
 const listCheapestUSD = `-- name: ListCheapestUSD :many
 SELECT cp.card_id, MIN((cp.prices->>'usd')::float8)::float8 AS usd
@@ -346,4 +375,28 @@ func (q *Queries) ListWizardUtilityLands(ctx context.Context, arg ListWizardUtil
 		return nil, err
 	}
 	return items, nil
+}
+
+const upsertWizardState = `-- name: UpsertWizardState :one
+INSERT INTO deck_wizard_state (deck_id, state) VALUES ($1, $2)
+ON CONFLICT (deck_id) DO UPDATE SET state = EXCLUDED.state, updated_at = now()
+RETURNING state, updated_at
+`
+
+type UpsertWizardStateParams struct {
+	DeckID pgtype.UUID     `json:"deck_id"`
+	State  json.RawMessage `json:"state"`
+}
+
+type UpsertWizardStateRow struct {
+	State     json.RawMessage    `json:"state"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+// @spec WIZ-101
+func (q *Queries) UpsertWizardState(ctx context.Context, arg UpsertWizardStateParams) (UpsertWizardStateRow, error) {
+	row := q.db.QueryRow(ctx, upsertWizardState, arg.DeckID, arg.State)
+	var i UpsertWizardStateRow
+	err := row.Scan(&i.State, &i.UpdatedAt)
+	return i, err
 }

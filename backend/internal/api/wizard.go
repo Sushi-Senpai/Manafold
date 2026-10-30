@@ -43,11 +43,14 @@ const (
 // authenticated /api group. The wizard proposes cards and never writes a deck:
 // the player's Accept goes through the ordinary add-card endpoint.
 //
-// @spec WIZ-002, WIZ-010, WIZ-050, PLATFORM-005
+// @spec WIZ-002, WIZ-010, WIZ-050, WIZ-100, PLATFORM-005
 func (a *API) RegisterWizardRoutes(r chi.Router) {
 	r.Get("/decks/{id}/wizard", a.getWizardPlan)
 	r.Post("/decks/{id}/wizard/propose", a.wizardPropose)
 	r.Post("/decks/{id}/wizard/basics", a.wizardBasics)
+	r.Get("/decks/{id}/wizard/state", a.getWizardState)
+	r.Put("/decks/{id}/wizard/state", a.putWizardState)
+	r.Delete("/decks/{id}/wizard/state", a.deleteWizardState)
 }
 
 // ---- JSON shapes --------------------------------------------------------
@@ -509,6 +512,30 @@ func wizardReasonText(reason string) string {
 	return "the wizard supports Brackets 1 through 4"
 }
 
+// validateWizardAnswers holds the checks a propose request and a saved wizard
+// state share (WIZ-012, WIZ-102): the land target, the restrictions and the
+// rejected set. A non-empty message is a 400.
+func validateWizardAnswers(landTarget *int, restr wizardRestrictions, rejected []string) string {
+	if landTarget != nil && !deckwizard.ValidLandTarget(*landTarget) {
+		return "land_target must be between 20 and 60"
+	}
+	if p := restr.MaxPriceUSD; p != nil && (!(*p > 0) || math.IsInf(*p, 0)) {
+		return "max_price_usd must be a positive number"
+	}
+	if utf8.RuneCountInString(restr.Notes) > maxWizardNotesRunes {
+		return "notes must be at most 500 characters"
+	}
+	if len(rejected) > maxWizardRejected {
+		return "at most 200 rejected_card_ids"
+	}
+	for _, s := range rejected {
+		if _, ok := parseUUID(s); !ok {
+			return "rejected_card_ids must be card ids"
+		}
+	}
+	return ""
+}
+
 // parseProposeRequest decodes and validates a propose body. A non-empty message
 // is a 400 (WIZ-012).
 func parseProposeRequest(r *http.Request) (wizardProposeRequest, deckwizard.Step, []pgtype.UUID, string) {
@@ -520,25 +547,13 @@ func parseProposeRequest(r *http.Request) (wizardProposeRequest, deckwizard.Step
 	if !ok {
 		return req, "", nil, "step must be one of fixing, utility, picks"
 	}
-	if req.LandTarget != nil && !deckwizard.ValidLandTarget(*req.LandTarget) {
-		return req, "", nil, "land_target must be between 20 and 60"
-	}
-	if p := req.Restrictions.MaxPriceUSD; p != nil && (!(*p > 0) || math.IsInf(*p, 0)) {
-		return req, "", nil, "max_price_usd must be a positive number"
-	}
-	if utf8.RuneCountInString(req.Restrictions.Notes) > maxWizardNotesRunes {
-		return req, "", nil, "notes must be at most 500 characters"
+	if msg := validateWizardAnswers(req.LandTarget, req.Restrictions, req.RejectedCardIDs); msg != "" {
+		return req, "", nil, msg
 	}
 	req.Restrictions.Notes = strings.Join(strings.Fields(req.Restrictions.Notes), " ")
-	if len(req.RejectedCardIDs) > maxWizardRejected {
-		return req, "", nil, "at most 200 rejected_card_ids"
-	}
 	rejected := make([]pgtype.UUID, 0, len(req.RejectedCardIDs))
 	for _, s := range req.RejectedCardIDs {
-		id, ok := parseUUID(s)
-		if !ok {
-			return req, "", nil, "rejected_card_ids must be card ids"
-		}
+		id, _ := parseUUID(s)
 		rejected = append(rejected, id)
 	}
 	return req, step, rejected, ""

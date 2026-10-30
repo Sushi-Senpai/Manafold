@@ -138,6 +138,12 @@ type DeckCard struct {
 	AddedAt  pgtype.Timestamptz `json:"added_at"`
 }
 
+type DeckWizardState struct {
+	DeckID    pgtype.UUID        `json:"deck_id"`
+	State     json.RawMessage    `json:"state"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Import struct {
 	ID           pgtype.UUID        `json:"id"`
 	DeckID       pgtype.UUID        `json:"deck_id"`

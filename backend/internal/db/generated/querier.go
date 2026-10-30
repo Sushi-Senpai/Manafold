@@ -62,6 +62,8 @@ type Querier interface {
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
 	DeleteSynergyBaselineCards(ctx context.Context, colorIdentity string) error
 	DeleteSynergyCommanderCards(ctx context.Context, commanderOracleID pgtype.UUID) error
+	// @spec WIZ-103
+	DeleteWizardState(ctx context.Context, deckID pgtype.UUID) error
 	// Queue a gathering job for a commander unless one is already queued or
 	// running; no row comes back when one is (SYN-031).
 	// @spec SYN-030, SYN-031
@@ -115,6 +117,9 @@ type Querier interface {
 	GetSynergySample(ctx context.Context, id pgtype.UUID) (GetSynergySampleRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	// The deck wizard's saved answers (WIZ-092). Callers check deck ownership first.
+	// @spec WIZ-100
+	GetWizardState(ctx context.Context, deckID pgtype.UUID) (GetWizardStateRow, error)
 	// @spec SYN-040
 	HasActiveSynergyJob(ctx context.Context, commanderOracleID pgtype.UUID) (bool, error)
 	// @spec CARD-053
@@ -256,6 +261,8 @@ type Querier interface {
 	UpsertSynergyBaseline(ctx context.Context, arg UpsertSynergyBaselineParams) error
 	// @spec SYN-020, SYN-022
 	UpsertSynergyCommander(ctx context.Context, arg UpsertSynergyCommanderParams) error
+	// @spec WIZ-101
+	UpsertWizardState(ctx context.Context, arg UpsertWizardStateParams) (UpsertWizardStateRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

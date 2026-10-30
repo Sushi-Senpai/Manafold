@@ -90,3 +90,18 @@ WHERE cp.card_id = ANY(sqlc.arg(card_ids)::uuid[])
   AND NOT cp.is_digital
   AND cp.prices->>'usd' IS NOT NULL
 GROUP BY cp.card_id;
+
+-- The deck wizard's saved answers (WIZ-092). Callers check deck ownership first.
+-- @spec WIZ-100
+-- name: GetWizardState :one
+SELECT state, updated_at FROM deck_wizard_state WHERE deck_id = $1;
+
+-- @spec WIZ-101
+-- name: UpsertWizardState :one
+INSERT INTO deck_wizard_state (deck_id, state) VALUES ($1, $2)
+ON CONFLICT (deck_id) DO UPDATE SET state = EXCLUDED.state, updated_at = now()
+RETURNING state, updated_at;
+
+-- @spec WIZ-103
+-- name: DeleteWizardState :exec
+DELETE FROM deck_wizard_state WHERE deck_id = $1;
