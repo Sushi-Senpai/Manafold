@@ -1396,7 +1396,7 @@ func TestWizardState_Validation(t *testing.T) {
 		long[i] = 'a'
 	}
 	cases := map[string]func(m map[string]any){
-		"unknown step":     func(m map[string]any) { m["step"] = "roles" },
+		"unknown step":     func(m map[string]any) { m["step"] = "sideboard" },
 		"empty step":       func(m map[string]any) { delete(m, "step") },
 		"unknown fixing":   func(m map[string]any) { m["fixing"] = "some" },
 		"bad rejected id":  func(m map[string]any) { m["rejected_card_ids"] = []string{"nope"} },

@@ -32,7 +32,7 @@ type wizardStateResponse struct {
 }
 
 var (
-	wizardStateSteps  = map[string]bool{"setup": true, "fixing": true, "utility": true, "picks": true, "basics": true}
+	wizardStateSteps  = map[string]bool{"setup": true, "fixing": true, "utility": true, "roles": true, "picks": true, "basics": true}
 	wizardStateFixing = map[string]bool{"include": true, "basics": true}
 )
 

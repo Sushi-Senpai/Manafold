@@ -5,7 +5,7 @@
 // The wizard proposes; the player disposes. Nothing here adds a card — the panel
 // calls the ordinary add-card endpoint only on a click.
 //
-// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067, WIZ-092, WIZ-105
+// @spec WIZ-060, WIZ-061, WIZ-062, WIZ-063, WIZ-064, WIZ-065, WIZ-066, WIZ-067, WIZ-077, WIZ-092, WIZ-105
 
 import { ApiError } from "./api.ts";
 import type {
@@ -18,15 +18,18 @@ import type {
   WizardProposeResponse,
   WizardRestrictions,
   WizardSavedState,
+  WizardRole,
+  WizardRoleRow,
   WizardStep,
 } from "./api.ts";
 
-export type WizardStepId = "setup" | "fixing" | "utility" | "picks" | "basics";
+export type WizardStepId = "setup" | "fixing" | "utility" | "roles" | "picks" | "basics";
 
 export const STEP_LABELS: Record<WizardStepId, string> = {
   setup: "Setup",
   fixing: "Fixing lands",
   utility: "Utility lands",
+  roles: "Roles",
   picks: "Picks",
   basics: "Basics",
 };
@@ -67,7 +70,7 @@ export function defaultAnswers(): WizardAnswers {
 // visibleSteps is the order the panel walks. A deck with fewer than two colours
 // has nothing to fix, so the fixing step is left out (WIZ-013, WIZ-062).
 export function visibleSteps(plan: WizardPlan | null): WizardStepId[] {
-  const all: WizardStepId[] = ["setup", "fixing", "utility", "picks", "basics"];
+  const all: WizardStepId[] = ["setup", "fixing", "utility", "roles", "picks", "basics"];
   if (plan && !plan.lands.fixing_applicable) return all.filter((s) => s !== "fixing");
   return all;
 }
@@ -135,11 +138,40 @@ function restrictionsOf(a: WizardAnswers): WizardRestrictions {
 
 // proposeBody is the request for one round: the restrictions and the cards the
 // player has rejected so far (WIZ-030..034).
-export function proposeBody(step: WizardStep, a: WizardAnswers, rejected: string[]): WizardProposeBody {
+export function proposeBody(
+  step: WizardStep,
+  a: WizardAnswers,
+  rejected: string[],
+  role?: WizardRole,
+): WizardProposeBody {
   const body: WizardProposeBody = { step, restrictions: restrictionsOf(a), rejected_card_ids: rejected };
   if (step === "fixing") body.include_fetch = a.includeFetch;
-  if (step !== "picks" && a.landTarget !== null) body.land_target = a.landTarget;
+  if (step === "roles" && role) body.role = role;
+  if ((step === "fixing" || step === "utility") && a.landTarget !== null) body.land_target = a.landTarget;
   return body;
+}
+
+// canSuggestRole: a role already at its template maximum needs no more cards,
+// so the panel makes no request for it (WIZ-072, WIZ-077).
+export function canSuggestRole(row: WizardRoleRow): boolean {
+  return row.count < row.max;
+}
+
+// roleLine reads one role's count against its range, e.g. "Ramp: 4 of 10–12".
+export function roleLine(row: WizardRoleRow): string {
+  return `${row.label}: ${row.count} of ${row.min}–${row.max}`;
+}
+
+// roleStatusText says where the count stands against the range (WIZ-077).
+export function roleStatusText(row: WizardRoleRow): string {
+  switch (row.status) {
+    case "under":
+      return `${row.min - row.count} below the target`;
+    case "over":
+      return "above the target";
+    default:
+      return "in range";
+  }
 }
 
 // rejectCard remembers a rejected card once (WIZ-063).
@@ -200,6 +232,8 @@ const EMPTY_TEXT: Record<WizardEmptyReason, string> = {
   no_fixing_needed: "A deck with fewer than two colours has nothing to fix.",
   deck_full: "The deck already has 100 cards.",
   no_candidates: "Nothing in the pool fits your rules. Try loosening the price cap or the tutor ban.",
+  no_archetype: "Choose an archetype in setup to see its role targets.",
+  role_filled: "The deck already has as many of this role as its archetype asks for.",
 };
 
 export function emptyReasonText(reason: WizardEmptyReason): string {

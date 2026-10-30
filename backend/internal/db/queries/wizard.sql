@@ -105,3 +105,21 @@ RETURNING state, updated_at;
 -- @spec WIZ-103
 -- name: DeleteWizardState :exec
 DELETE FROM deck_wizard_state WHERE deck_id = $1;
+
+-- Nonland cards by edhrec_rank whose Oracle text (or a face's) matches a coarse
+-- per-role regular expression: the raw rows of the roles step's pool. The
+-- pattern only bounds what is read; the Go role classifier decides which rows
+-- fill the role.
+-- @spec WIZ-074
+-- name: ListWizardRoleCandidates :many
+SELECT c.* FROM cards c
+LEFT JOIN banlist_overrides bo ON lower(bo.card_name) = lower(c.name)
+WHERE split_part(c.type_line, ' // ', 1) NOT LIKE '%Land%'
+  AND c.edhrec_rank IS NOT NULL
+  AND c.color_identity <@ sqlc.arg(identity)::text[]
+  AND c.id <> ALL(sqlc.arg(exclude_ids)::uuid[])
+  AND CASE WHEN bo.card_name IS NOT NULL THEN NOT bo.banned
+           ELSE c.legalities->>'commander' = 'legal' END
+  AND (c.oracle_text ~* sqlc.arg(pattern)::text OR c.card_faces::text ~* sqlc.arg(pattern)::text)
+ORDER BY c.edhrec_rank ASC, c.name ASC
+LIMIT sqlc.arg(lim);

@@ -348,7 +348,20 @@ export type BracketCombo = {
 
 // ---- deck-wizard ------------------------------------------------------
 
-export type WizardStep = "fixing" | "utility" | "picks";
+export type WizardStep = "fixing" | "utility" | "roles" | "picks";
+
+export type WizardRole = "ramp" | "card_draw" | "targeted_removal" | "board_wipe";
+
+// WizardRoleRow is one role's count on the main board against the archetype
+// template's range (WIZ-070).
+export type WizardRoleRow = {
+  role: WizardRole;
+  label: string;
+  count: number;
+  min: number;
+  max: number;
+  status: "ok" | "under" | "over" | "relaxed";
+};
 
 export type WizardPlan = {
   ready: boolean;
@@ -368,6 +381,7 @@ export type WizardPlan = {
     basics_needed: number;
     fixing_applicable: boolean;
   };
+  roles: WizardRoleRow[]; // empty when the deck has no archetype
   synergy: { status: "none" | "gathering" | "ready"; reason: string | null } | null;
 };
 
@@ -379,6 +393,7 @@ export type WizardRestrictions = {
 
 export type WizardProposeBody = {
   step: WizardStep;
+  role?: WizardRole; // roles step only
   include_fetch?: boolean;
   land_target?: number;
   restrictions?: WizardRestrictions;
@@ -395,10 +410,17 @@ export type WizardProposal = {
 
 export type WizardGameChangers = { limit: number | null; in_deck: number; left: number | null };
 
-export type WizardEmptyReason = "land_target_met" | "no_fixing_needed" | "deck_full" | "no_candidates";
+export type WizardEmptyReason =
+  | "land_target_met"
+  | "no_fixing_needed"
+  | "deck_full"
+  | "no_candidates"
+  | "no_archetype"
+  | "role_filled";
 
 export type WizardProposeResponse = {
   step: WizardStep;
+  role?: WizardRole;
   summary: string;
   source: "synergy" | "popular" | "lands";
   proposals: WizardProposal[];
@@ -417,7 +439,7 @@ export type WizardProposeResponse = {
 
 // The wizard's saved answers (WIZ-092): what the first slice asks, per deck.
 export type WizardSavedState = {
-  step: "setup" | "fixing" | "utility" | "picks" | "basics";
+  step: "setup" | "fixing" | "utility" | "roles" | "picks" | "basics";
   restrictions: WizardRestrictions;
   fixing: "include" | "basics";
   include_fetch: boolean;

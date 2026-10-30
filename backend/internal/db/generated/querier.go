@@ -198,6 +198,12 @@ type Querier interface {
 	// synergy sample.
 	// @spec WIZ-043
 	ListWizardPopularNonlands(ctx context.Context, arg ListWizardPopularNonlandsParams) ([]Card, error)
+	// Nonland cards by edhrec_rank whose Oracle text (or a face's) matches a coarse
+	// per-role regular expression: the raw rows of the roles step's pool. The
+	// pattern only bounds what is read; the Go role classifier decides which rows
+	// fill the role.
+	// @spec WIZ-074
+	ListWizardRoleCandidates(ctx context.Context, arg ListWizardRoleCandidatesParams) ([]Card, error)
 	// Lands carrying the utility-land tag or a descendant.
 	// @spec WIZ-041
 	ListWizardUtilityLands(ctx context.Context, arg ListWizardUtilityLandsParams) ([]Card, error)
