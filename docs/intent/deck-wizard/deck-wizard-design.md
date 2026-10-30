@@ -8,8 +8,9 @@ prefix: WIZ
 The deck wizard is an interactive scaffolder. A player names a commander, a
 Commander Bracket, and any restrictions, and the wizard walks them through the
 build one question at a time: which kinds of lands they will play, which utility
-lands they want, and then a stream of synergy picks they accept or reject, all
-inside the bracket's Game Changer and combo limits. **It never generates a
+lands they want, at Bracket 4 which fast mana they want, and then a stream of
+synergy picks they accept or reject, all inside the bracket's Game Changer and
+combo limits. **It never generates a
 whole deck.** Every card enters the deck only because the player clicked
 Accept, through the same add-card endpoint the builder already uses; the wizard's
 backend proposes and never writes a deck.
@@ -46,18 +47,19 @@ The wizard is a **signed-in feature** like every AI endpoint (`AI-033`). Its
 deterministic parts (the plan and the basic-land split) need neither a model nor
 a sign-in.
 
-## The Flow (the first slice)
+## The Flow
 
-The wizard ships as the smallest end-to-end path that works. Five steps, in
-order; the player can stop after any of them and carry on in the builder.
+Five steps, in order, and a sixth at Bracket 4 only; the player can stop after
+any of them and carry on in the builder.
 
 | # | Step | Player is asked | Candidate pool (deterministic) | Model's job | Who writes the deck |
 |---|---|---|---|---|---|
 | 0 | **Setup** | commander (already on the deck), bracket 1–4, optional archetype, restrictions (no tutors, price cap per card, free-text strategy notes) | — | none | the existing `PATCH /api/decks/{id}` for bracket and archetype |
 | 1 | **Fixing lands** | "Basics only, or include dual / fixing lands?" and "fetch lands too?" | nonbasic lands that make two or more of the deck's colours, plus fetch lands if allowed | pick up to 10 and explain | Accept → existing add-card |
 | 2 | **Utility lands** | "Any utility lands (man-lands, colourless utility)?" | lands tagged `utility-land` (or a descendant) | pick up to 5 and explain | Accept → existing add-card |
-| 3 | **Picks** | nothing: the player reviews rounds of up to 10 proposals and accepts or rejects each; "more" asks for another round | synergy-ranked cards (Archidekt), or `edhrec_rank`-ranked while synergy is gathering, plus the Game Changers the bracket still allows | pick up to 10 and explain, steered by the strategy notes | Accept → existing add-card |
-| 4 | **Basics** | "Fill the rest with basics?" | the remaining land slots, split by colour-pip demand | none (deterministic) | the player's click → existing add-card |
+| 3 | **Fast mana** (Bracket 4 only) | "Any fast mana?" — mana rocks and rituals | nonland cards tagged `mana-rock` or `ritual` (or a descendant) with mana value 2 or less, or a Game Changer | pick up to 8 and explain | Accept → existing add-card |
+| 4 | **Picks** | nothing: the player reviews rounds of up to 10 proposals and accepts or rejects each; "more" asks for another round | synergy-ranked cards (Archidekt), or `edhrec_rank`-ranked while synergy is gathering, plus the Game Changers the bracket still allows | pick up to 10 and explain, steered by the strategy notes | Accept → existing add-card |
+| 5 | **Basics** | "Fill the rest with basics?" | the remaining land slots, split by colour-pip demand, against a land target the accepted fast mana has lowered | none (deterministic) | the player's click → existing add-card |
 
 **Dual-land avoidance** is a choice, not a filter on the model: a player who
 picks "basics only" makes no step-1 call at all, and no later step ever proposes
@@ -71,8 +73,8 @@ that later rounds exclude. There is no "build it for me" path in the API or the
 UI.
 
 **Deferred past this slice** (listed under *Open Questions & Future Decisions*):
-role-filling steps (ramp, draw, removal, wipes), Bracket 5, partner commanders, a fast-mana-specific pass
-for Bracket 4, and a free-form chat with the model.
+role-filling steps (ramp, draw, removal, wipes), Bracket 5, partner commanders,
+and a free-form chat with the model.
 
 ## Where It Lives in the Builder
 
@@ -133,6 +135,40 @@ Ownership is the deck's (`deckForOwner`), so anonymous-draft owners persist thei
 answers too, and claiming a draft on sign-in carries the deck, and so its state,
 with it. State is not exposed on the public share view.
 
+## Fast Mana (Bracket 4)
+
+Bracket 4 is where fast mana is expected (`PolicyFor`'s guidance says so), and a
+deck that runs it needs fewer lands. The wizard handles both, only at Bracket 4:
+
+- **A pass** — the *Fast mana* step offers rocks and rituals for the player to
+  accept or reject, like any other curated step. Brackets 1–3 never see it: the
+  step is not in their flow, and a propose request for it at another bracket is
+  refused (`422`) before any pool is built or model called, so a Bracket 2 or 3
+  deck gets no fast-mana push beyond what its existing rules already allow.
+- **A land target** that follows the fast mana the deck *actually holds*.
+
+**What counts as fast mana** is one deterministic definition, shared by the pool
+and the count: a nonland card whose oracle tags include `mana-rock` or `ritual`
+(or a descendant, via `oracle_tag_reach`) and that either has mana value 2 or less
+or is a Game Changer. Sol Ring, Mana Crypt, the Moxen, Lotus Petal, Mana Vault,
+Chrome Mox, Dark Ritual and Jeweled Lotus qualify; a four-mana rock does not, and
+mana dorks are left to the picks step (a creature is not fast: it waits a turn
+and dies to a sweeper). Lands that tap for extra mana (Ancient Tomb) are lands and
+belong to the land steps. The definition lives in two SQL queries
+(`ListWizardFastMana`, `FilterFastManaCardIDs`), so the "fast mana in the deck"
+count and the pool cannot drift apart without a test noticing.
+
+**The relaxation.** At Bracket 4 the land target is the archetype's base target
+(`LandTarget`) minus one land for every two fast-mana cards on `main` and
+`command` (a single piece changes nothing; Sol Ring alone does not justify a
+land), never below `decktemplates.LandRelaxedFloor` (32, the floor `DECK-108`
+reports against) and never above the base. At any other bracket the target is the
+base. The count comes from the deck, not from what the player accepted this
+session, so a deck that already runs fast mana is credited for it, a card the
+player removes lowers the credit again, and the plan, the land steps' room, and the
+basics plan all see the same target. A land target the player types in
+overrides the whole computation, as before.
+
 ## Bracket Policy (`internal/deckwizard`)
 
 `PolicyFor(bracket)` returns, for brackets 1–4, the Game Changer limit
@@ -145,7 +181,7 @@ the model. Bracket 5 and anything else is not supported: the plan reports
 | 1 Exhibition | none | theme over power; no combos, no extra turns, no mass land denial |
 | 2 Core | none | precon-level power; no infinite combos; no mass land denial; extra turns incidental |
 | 3 Upgraded | up to 3, chosen sparingly | some combos, none that win quickly; no mass land denial |
-| 4 Optimized | unlimited | go for efficient interaction, fast mana, Game Changers and strong combos |
+| 4 Optimized | unlimited | go for efficient interaction, fast mana (offered by its own step), Game Changers and strong combos |
 
 ### Admission: what the bracket check lets through
 
@@ -194,6 +230,7 @@ rejected set. Every pool is then narrowed by the **restrictions**:
 |---|---|---|---|
 | fixing | nonbasic lands (front face a Land) with at least two of the deck's colours in `produced_mana`, plus, when `include_fetch`, lands that sacrifice themselves to search the library (by Oracle text) or carry the `fetchland` tag | `edhrec_rank`, unranked last | 30 |
 | utility | lands tagged `utility-land` or a descendant | `edhrec_rank`, unranked last | 25 |
+| fast mana | nonland cards carrying `mana-rock` or `ritual` or a descendant, with mana value 2 or less or a Game Changer, within the identity and commander-legal | `edhrec_rank`, unranked last | 20 |
 | picks | the commander's stored synergy cards when a sample exists, else nonland cards by `edhrec_rank`; plus up to 10 identity-legal Game Changers when the bracket still allows them | synergy descending (then inclusion) or `edhrec_rank` | 40 |
 
 The picks pool never contains a land, whatever the source (`WIZ-033`). Land
@@ -203,11 +240,11 @@ to fix), the step answers empty without a model call.
 
 ## Land Target and Basics
 
-The **land target** is the midpoint (rounded down) of the chosen archetype's land
-range from `internal/decktemplates`, or 37 with no archetype. The Bracket 4
-relaxation is not applied: the wizard cannot know yet whether the deck will run
-heavy fast mana, so the player may lower the target by hand. The player can
-override the target in the panel (20–60).
+The **base land target** is the midpoint (rounded down) of the chosen archetype's
+land range from `internal/decktemplates`, or 37 with no archetype. At Bracket 4
+the **land target** is that base lowered by the deck's fast mana (see *Fast
+Mana*); at Brackets 1–3 it is the base. The player can override the target in the
+panel (20–60); the override replaces the computed target outright.
 
 The **basics plan** is `needed = max(0, target − lands already on main + command)`,
 split across the identity's colours by largest-remainder allocation over weights
@@ -250,8 +287,9 @@ existing AI features:
 - the same gate order — disabled → anonymous → not the owner → ceiling → daily
   limit — so ownership is checked first (`AI-035`).
 
-A full run is about eight calls: at most one each for fixing and utility, then a
-round per ten picks. Choosing "basics only", skipping utility lands, a mono-colour
+A full run is about eight calls: at most one each for fixing, utility and (Bracket
+4) fast mana, then a round per ten picks. Choosing "basics only", skipping utility
+lands, skipping fast mana, a mono-colour
 deck, a met land target, a full deck, an empty pool, the plan and the basics
 split all cost no model call.
 
@@ -274,20 +312,21 @@ All under the protected `/api` group, registered by `RegisterWizardRoutes`.
   "bracket": 3, "archetype": "midrange_value",
   "policy": { "game_changer_limit": 3, "game_changers_in_deck": 1,
               "game_changers_left": 2, "guidance": "…" },
-  "lands": { "target": 37, "in_deck": 12, "basics_needed": 25,
+  "lands": { "target": 36, "base_target": 37, "in_deck": 12, "basics_needed": 24,
              "fixing_applicable": true },
+  "fast_mana": { "applicable": true, "in_deck": 2 },   // applicable: bracket 4
   "synergy": { "status": "gathering", "reason": null } }
 // reason: "no_commander" | "no_bracket" | "bracket_unsupported" when not ready
 
 // POST propose → body
-{ "step": "picks",                      // "fixing" | "utility" | "picks"
+{ "step": "picks",                      // "fixing" | "utility" | "fastmana" | "picks"
   "include_fetch": true,                // fixing only
   "land_target": 37,                    // optional, 20–60
   "restrictions": { "no_tutors": false, "max_price_usd": 5, "notes": "tokens" },
   "rejected_card_ids": ["…"] }          // at most 200
 
 // POST propose → response
-{ "step": "picks", "summary": "…", "source": "synergy",   // "synergy" | "popular" | "lands"
+{ "step": "picks", "summary": "…", "source": "synergy",   // "synergy" | "popular" | "lands" | "fast_mana"
   "proposals": [ { "card": CardSummary, "reason": "…", "game_changer": false,
                    "price_usd": 1.2,
                    "synergy": { "decks": 36, "inclusion": 0.95, "synergy": 0.87 } } ],
@@ -297,6 +336,7 @@ All under the protected `/api` group, registered by `RegisterWizardRoutes`.
   "synergy": { "status": "ready", "sample": { … }, "attribution": { "text": "…", "url": "…" } },
   "model": "claude-sonnet-5" }
 // empty_reason: "land_target_met" | "no_fixing_needed" | "deck_full" | "no_candidates"
+// step "fastmana" at a bracket other than 4 → 422, no pool, no model call
 
 // POST basics → { "land_target": 37 } → response
 { "land_target": 37, "lands_in_deck": 12, "basics_needed": 25,
@@ -313,8 +353,9 @@ commander starts the gathering the picks step will use.
 ## Frontend
 
 - `frontend/src/components/builder/wizard/WizardPanel.tsx` — the panel, with the
-  five steps (setup, fixing lands, utility lands, picks, basics) and the round
-  result shared by the three curated steps; `ProposalList.tsx` — one round's
+  five steps (setup, fixing lands, utility lands, picks, basics) plus, at Bracket
+  4, a fast-mana step between utility lands and picks, and the round result shared
+  by the curated steps; `ProposalList.tsx` — one round's
   cards with Accept and Reject.
 - `frontend/src/lib/wizard.ts` — pure, tested: step order and skipping rules,
   the rejected-set reducer, request-body builders, the Game Changer budget line,
@@ -340,6 +381,9 @@ commander starts the gathering the picks step will use.
 | Synergy cold start | Open-data (`edhrec_rank`) picks while synergy is `none` / `gathering`, with the status shown | Block the step until `ready`; fail | The synergy worker takes minutes to hours; the wizard must work meanwhile, and the response says which source it used. |
 | Lands in the picks pool | Never | Allow high-synergy lands | A player who declined duals must not see one. Land picks belong to the land steps the player opted into. |
 | Basics split | Largest remainder over pip demand, sources not netted | Frank Karsten source targets; netting nonbasic sources | Deterministic and explainable now; refinement waits for the role-filling steps, when the spells are known. |
+| Fast-mana definition | Oracle tags (`mana-rock`, `ritual`) plus mana value 2 or less or Game Changer, in SQL | Oracle-text patterns (as `deckroles` does for ramp); a hand-kept list of cards; ask the model what is fast | Tags are the project's role signal for cards (`CARD-060`..`067`) and the mana-value cut separates Sol Ring from a five-mana rock; a list goes stale and the model must not decide a rule. The Game Changer clause keeps Jeweled Lotus and its kin in despite their cost. |
+| Land relaxation | One land per two fast-mana cards held, floor 32 and never above the base, counted from the deck | Relax on the bracket claim alone (what `DECK-108` reports); one land per piece; count only what was accepted this session | The bracket claim alone cuts lands for a deck that runs no fast mana, which is exactly what the captain wanted avoided. One per piece overstates cheap rocks; one per two is the usual rule of thumb. Counting from the deck keeps the plan, the land steps and the basics plan agreeing after any reload, removal or manual add. `DECK-108`'s report-only read is unchanged. |
+| Fast mana outside Bracket 4 | The step is absent from the flow and refused (`422`) | Offer it everywhere with softer guidance; offer it as an empty result | Brackets 2 and 3 must not receive fast-mana pushes; a refused request makes that a rule of the endpoint instead of a property of the panel. |
 | Placement | Builder right-column panel replacing suggestions while open | A separate `/decks/{id}/wizard` page; a modal | The live decklist, image panel and template / bracket panels are the wizard's feedback; a separate page or modal would hide them. |
 
 ## Open Questions & Future Decisions
@@ -351,10 +395,10 @@ commander starts the gathering the picks step will use.
    (the tag-backed classifier in `deck-building`'s deferred list; the
    `deckroles.Classifier` interface already allows it). The slice leaves these to
    the picks step and the builder's "deck vs. target".
-2. **Bracket 4 fast mana.** A dedicated pass for fast mana, and the Bracket 4 land
-   relaxation keyed on actually running it (`deck-building`'s deferred
-   fast-mana-aware relaxation). Bracket 4 today gets the Game Changers (which include much of
-   the fast mana) and the full combo allowance.
+2. **Fast-mana refinements.** The fast-mana definition is a tag-and-mana-value
+   rule that weighs every piece equally. Deferred: weighting by strength (Mana
+   Crypt against a Talisman), mana dorks and extra-mana lands in the count, and
+   a tag-coverage check of `ritual` against a full tag export (see Gaps).
 3. **Bracket 5.** Out of scope: cEDH is a metagame, not a card list.
 5. **Partner commanders** (needs `SYN-051`).
 6. **More land preferences.** Tapped-land tolerance, a snow-basics toggle, a
@@ -374,11 +418,15 @@ commander starts the gathering the picks step will use.
 13. **Pool narrowness.** A tight price cap or a thin synergy sample can leave a
     short pool; the response then carries fewer proposals and `pool_size` says
     why.
+14. **Fast-mana tag coverage.** Like every community tag, `mana-rock` and `ritual`
+    are thin in places and the `ritual` slug could not be confirmed offline; a
+    missing tag shrinks the pool and the count, and a missing pool answers
+    `no_candidates` rather than anything out of bracket.
 
 ## References
 
-- Code: `backend/internal/deckwizard/` (policy, land target, basics split,
-  admission), `backend/internal/api/wizard.go`, `backend/internal/ai/` (`Curate`),
+- Code: `backend/internal/deckwizard/` (policy, land target and its fast-mana
+  relaxation, basics split, admission), `backend/internal/api/wizard.go`, `backend/internal/ai/` (`Curate`),
   `backend/internal/db/queries/wizard.sql`,
   `backend/internal/db/migrations/000010_add_wizard_ai_feature.up.sql`,
   `backend/internal/db/migrations/000011_create_deck_wizard_state.up.sql`,
